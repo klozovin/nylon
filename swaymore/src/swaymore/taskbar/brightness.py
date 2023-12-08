@@ -67,7 +67,7 @@ class Brightness(Gtk.Label):
     @threaded
     def _update_backlight_level(self):
         current, max = self.brightness_utility.get_current_brightness()
-        GLib.idle_add(lambda: self.set_text(f"✲ {current}"))
+        GLib.idle_add(self.set_text, f"✲ {current}")
 
     @threaded
     def _change_brightness_level(self, change: BrightnessChange):

@@ -3,7 +3,7 @@ name = "swaymore"
 version = "0.1.0"
 description = "Utilities for sway"
 authors = ["klozovin"]
-license = " GPL-3.0-only"
+license = "GPL-3.0-only"
 
 [tool.poetry.dependencies]
 python = "3.11.*"
