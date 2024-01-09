@@ -40,20 +40,6 @@ public class Tiny {
             var memoryAddress = libLookup.find(fn);
             System.out.println(fn + ": " + memoryAddress.isPresent());
         }
-
-        // Scope to allocate strings in
-//        var scope = ResourceScope.newConfinedScope();
-
-        // Initialize logging and check if it worked
-//        log_h.wlr_log_init(log_h.WLR_DEBUG(), log_h.NULL());
-//        System.out.println("Log verbosity should be: " + log_h.WLR_DEBUG());
-//        System.out.println("Log verbosity is: " + log_h.wlr_log_get_verbosity());
-
-        // Use the previously setup logging to output something
-//        log_h._wlr_log(log_h.WLR_INFO(), CLinker.toCString("Hello from logging", scope));
-
-        // Show the process PID
-//        printPid(linker, sysLookup);
     }
 
 //    private static void printPid(CLinker linker, SymbolLookup sysLookup) throws Throwable {
