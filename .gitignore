@@ -1,0 +1,6 @@
+/gir-files
+/java-gi
+
+.idea
+.gradle
+build
