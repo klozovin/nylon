@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
     java
-    kotlin("jvm") version "2.0.0"
+    kotlin("jvm") version "2.0.21"
     application
 }
 
@@ -15,7 +15,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.github.jwharm.javagi", "gtk", "0.10.1")
+    implementation("io.github.jwharm.javagi", "gtk", "0.10.2")
 }
 
 sourceSets.main {
