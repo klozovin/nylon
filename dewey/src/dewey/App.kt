@@ -15,6 +15,7 @@ val homeDirectory = Path(System.getProperty("user.home"))
 val styleCss = """
     .directory {
         color: #ff0000;
+        font-weight: bold;
     }
     .file {
         color: #0000ff;
@@ -23,7 +24,40 @@ val styleCss = """
         color: #000000;
         font-style: italic;
     }
+    
+    box.cwd {
+        color: #00ff00;
+        font-weight: bold;
+    }
+    box.focused {
+        color: #000000;
+        font-style: italic;
+    }
 """
+
+
+class CurrentPath : Box(Orientation.HORIZONTAL, 4) {
+    val current = Label("").apply { addCssClass("cwd") }
+    val separator = Label(" → ").apply { addCssClass("separator") }
+    val focused = Label("").apply { addCssClass("focused") }
+
+    init {
+        halign = Align.START
+        append(current)
+        append(separator)
+        append(focused)
+    }
+
+    fun updateCurrent(path: Path) {
+        // Don't show double "//" when showing the root filesystem.
+        current.label = "${path.pathString}${if (path.parent != null) "/" else ""}"
+    }
+
+    fun updateFocused(path: Path?) {
+        // Empty directories
+        focused.label = path?.fileName?.pathString ?: ""
+    }
+}
 
 class DirectoryBrowser(path: Path) {
 
@@ -34,9 +68,19 @@ class DirectoryBrowser(path: Path) {
         onKeyPressed(::keyPressHandler)
     }
 
-    val widget = ListView(state.selectionModel, itemFactory).apply {
+    val cwdPath = CurrentPath().apply {
+        updateCurrent(state.path)
+        updateFocused(state.dirList[state.selectionModel.selected]) // BUG?: What if we start in empty directory?
+    }
+
+    val dirListing = ListView(state.selectionModel, itemFactory).apply {
         onActivate(::activateHandler)
         addController(eventController)
+    }
+
+    val widget = Box(Orientation.VERTICAL, 4).apply {
+        append(cwdPath)
+        append(dirListing)
     }
 
     /**
@@ -44,10 +88,10 @@ class DirectoryBrowser(path: Path) {
      */
     private fun keyPressHandler(keyVal: Int, keyCode: Int, modifierTypes: MutableSet<ModifierType>?): Boolean {
         when (keyVal) {
-            Gdk.KEY_Left -> navigateToParent()
-            Gdk.KEY_Right -> widget.emitActivate(state.selectionModel.selected)
+            Gdk.KEY_Left, Gdk.KEY_j -> navigateToParent()
+            Gdk.KEY_Right, Gdk.KEY_l -> dirListing.emitActivate(state.selectionModel.selected)
         }
-        println("> Key: [$keyVal]: ${Gdk.keyvalName(keyVal)}, $keyCode, $modifierTypes")
+//        println("> Key: [$keyVal]: ${Gdk.keyvalName(keyVal)}, $keyCode, $modifierTypes")
         return false
     }
 
@@ -55,6 +99,10 @@ class DirectoryBrowser(path: Path) {
      * Handle activating an item in the browser.
      */
     private fun activateHandler(idx: Int) {
+        // Empty directory, nothing to activate, there's a dummy element in ListView (hacky?)
+        if (state.isEmpty)
+            return
+
         val activatedPath = state.dirList[idx]
 
         // Skip files when activated
@@ -71,12 +119,27 @@ class DirectoryBrowser(path: Path) {
     }
 
     /**
+     * Called when currently selected item in directory browser changes. Update UI accordingly.
+     */
+    private fun selectionChangedHandler(i: Int, i1: Int) {
+        val selected = state.dirList[state.selectionModel.selected]
+        cwdPath.updateFocused(selected)
+    }
+
+    /**
      * Go to new directory and show its contents.
      */
     private fun navigateTo(target: Path) {
         println("Navigating to directory: ${target}")
         state = State(target)
-        widget.model = state.selectionModel
+        dirListing.model = state.selectionModel
+        cwdPath.updateCurrent(state.path)
+
+        // BUG: empty directory?
+        if (!state.isEmpty)
+            cwdPath.updateFocused(state.dirList[state.selectionModel.selected])
+        else
+            cwdPath.updateFocused(null)
     }
 
     /**
@@ -90,8 +153,9 @@ class DirectoryBrowser(path: Path) {
     /**
      * Keep the state related to single directory view in one place. Don't mutate, recreate.
      */
-    class State(val path: Path) {
+    inner class State(val path: Path) {
         val dirList = path.listDirectoryEntries().sortedByDescending { it.isDirectory() }
+
         val isEmpty = dirList.isEmpty()
 
         // Handle empty directories by adding a dummy item to ListView model
@@ -99,13 +163,15 @@ class DirectoryBrowser(path: Path) {
             if (!isEmpty) StringList(dirList.map { pathToString(it) }.toTypedArray())
             else StringList(arrayOf("<< empty folder >>"))
 
-        val selectionModel = SingleSelection(dirListModel)
+        val selectionModel = SingleSelection(dirListModel).apply {
+            onSelectionChanged(::selectionChangedHandler)
+        }
 
         private fun pathToString(path: Path): String =
             if (path.isDirectory())
-                "[[${path.toString()}]]"
+                "[[${path.fileName}]]"
             else
-                path.toString()
+                path.fileName.toString()
     }
 
 
@@ -121,6 +187,7 @@ class DirectoryBrowser(path: Path) {
 
         private fun setup(listItem: ListItem) {
             listItem.child = Label("")
+            listItem.child.halign = Align.START
             println("Creating a new label")
         }
 
@@ -132,6 +199,7 @@ class DirectoryBrowser(path: Path) {
             check(label.cssClasses.size <= 1) { "Can't have more than one class set" }
 
             if (!state.isEmpty) {
+                // Showing a non-empty directory
                 if (state.dirList[listItem.position].isDirectory())
                     label.addCssClass("directory")
                 else
@@ -140,7 +208,7 @@ class DirectoryBrowser(path: Path) {
                 check(state.dirListModel.nItems == 1) { "On empty directory ListView should have only one element inside." }
                 label.addCssClass("empty")
             }
-            println("Postion: ${listItem.position}")
+//            println("Postion: ${listItem.position}")
         }
     }
 }
@@ -162,11 +230,11 @@ fun main(args: Array<String>) {
         StyleContext.addProviderForDisplay(Display.getDefault(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         val window = ApplicationWindow(app)
         val scrolled = ScrolledWindow()
-
         val browser = DirectoryBrowser(homeDirectory)
 
         scrolled.child = browser.widget
         window.child = scrolled
+
         window.present()
     }
 
@@ -176,19 +244,6 @@ fun main(args: Array<String>) {
 
     app.run(args)
 }
-
-/*
-
-class MyTreeView
-
-class ListItem<I, C>() where
-    I: ModelProvides,
-    C: org.gnome.Widget
-{
-
-ListItem
-
- */
 
 //val listItemFactoryOuter = SignalListItemFactory().apply {
 //    onSetup {
