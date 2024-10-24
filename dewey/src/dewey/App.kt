@@ -61,6 +61,11 @@ class DirectoryBrowser(path: Path) {
         if (!activatedPath.isDirectory())
             return
 
+        // Skip directories without read permission
+        // BUG: Race condition: permission can be changed after checking it, better to use exception for this.
+        if (!activatedPath.isReadable())
+            return
+
         println("> Activated: [${activatedPath}]")
         navigateTo(activatedPath)
     }
