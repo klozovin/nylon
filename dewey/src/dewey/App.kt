@@ -68,19 +68,31 @@ class DirectoryBrowser(path: Path) {
         onKeyPressed(::keyPressHandler)
     }
 
-    val cwdPath = CurrentPath().apply {
+    // Top: Show current directory and selected item
+    val currentPathAndSelectionWidget = CurrentPath().apply {
         updateCurrent(state.path)
         updateFocused(state.dirList[state.selectionModel.selected]) // BUG?: What if we start in empty directory?
     }
 
-    val dirListing = ListView(state.selectionModel, itemFactory).apply {
+    // Middle: List of directories/files in the current directory
+    val directoryListWidget = ListView(state.selectionModel, itemFactory).apply {
         onActivate(::activateHandler)
         addController(eventController)
     }
+    // Scrolll container for the listing
+    val scrolledWidget = ScrolledWindow().apply {
+        child = directoryListWidget
+        vexpand = true
+    }
 
-    val widget = Box(Orientation.VERTICAL, 4).apply {
-        append(cwdPath)
-        append(dirListing)
+    // Bottom: Details about the selected item (directory/file)
+    val selectedItemDetails = Label("More details come here...").apply { halign = Align.START }
+
+    // Main parent widget, contains everything else
+    val boxWidget = Box(Orientation.VERTICAL, 8).apply {
+        append(currentPathAndSelectionWidget)
+        append(scrolledWidget)
+        append(selectedItemDetails)
     }
 
     /**
@@ -89,7 +101,7 @@ class DirectoryBrowser(path: Path) {
     private fun keyPressHandler(keyVal: Int, keyCode: Int, modifierTypes: MutableSet<ModifierType>?): Boolean {
         when (keyVal) {
             Gdk.KEY_Left, Gdk.KEY_j -> navigateToParent()
-            Gdk.KEY_Right, Gdk.KEY_l -> dirListing.emitActivate(state.selectionModel.selected)
+            Gdk.KEY_Right, Gdk.KEY_l -> directoryListWidget.emitActivate(state.selectionModel.selected)
         }
 //        println("> Key: [$keyVal]: ${Gdk.keyvalName(keyVal)}, $keyCode, $modifierTypes")
         return false
@@ -123,7 +135,7 @@ class DirectoryBrowser(path: Path) {
      */
     private fun selectionChangedHandler(i: Int, i1: Int) {
         val selected = state.dirList[state.selectionModel.selected]
-        cwdPath.updateFocused(selected)
+        currentPathAndSelectionWidget.updateFocused(selected)
     }
 
     /**
@@ -132,14 +144,14 @@ class DirectoryBrowser(path: Path) {
     private fun navigateTo(target: Path) {
         println("Navigating to directory: ${target}")
         state = State(target)
-        dirListing.model = state.selectionModel
-        cwdPath.updateCurrent(state.path)
+        directoryListWidget.model = state.selectionModel
+        currentPathAndSelectionWidget.updateCurrent(state.path)
 
         // BUG: empty directory?
         if (!state.isEmpty)
-            cwdPath.updateFocused(state.dirList[state.selectionModel.selected])
+            currentPathAndSelectionWidget.updateFocused(state.dirList[state.selectionModel.selected])
         else
-            cwdPath.updateFocused(null)
+            currentPathAndSelectionWidget.updateFocused(null)
     }
 
     /**
@@ -229,12 +241,8 @@ fun main(args: Array<String>) {
         println("App activating")
         StyleContext.addProviderForDisplay(Display.getDefault(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         val window = ApplicationWindow(app)
-        val scrolled = ScrolledWindow()
         val browser = DirectoryBrowser(homeDirectory)
-
-        scrolled.child = browser.widget
-        window.child = scrolled
-
+        window.child = browser.boxWidget
         window.present()
     }
 
@@ -244,24 +252,3 @@ fun main(args: Array<String>) {
 
     app.run(args)
 }
-
-//val listItemFactoryOuter = SignalListItemFactory().apply {
-//    onSetup {
-//        val listItem = it as ListItem
-//        listItem.child = Label("")
-//        println("item setup")
-//    }
-//
-//    onBind {
-//        val listItem = it as ListItem
-//        val label = listItem.child as Label?
-//        val item = listItem.item as StringObject?
-//
-//        if (label == null || item == null) {
-//            println("!!! Should never happen??? !!!")
-//            return@onBind
-//        }
-//
-//        label.label = item.string
-//    }
-//}
