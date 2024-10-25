@@ -198,9 +198,8 @@ class DirectoryBrowser(path: Path) {
         }
 
         private fun setup(listItem: ListItem) {
-            listItem.child = Label("")
-            listItem.child.halign = Align.START
-            println("Creating a new label")
+            val label = Label("").apply { halign = Align.START }
+            listItem.child = label
         }
 
         private fun bind(listItem: ListItem) {
@@ -208,7 +207,8 @@ class DirectoryBrowser(path: Path) {
             val item = listItem.item as StringObject
 
             label.label = item.string
-            check(label.cssClasses.size <= 1) { "Can't have more than one class set" }
+            // Clear all CSS classes from the Label widget because the widgets get reused by ListView.
+            label.cssClasses = emptyArray()
 
             if (!state.isEmpty) {
                 // Showing a non-empty directory
@@ -217,10 +217,11 @@ class DirectoryBrowser(path: Path) {
                 else
                     label.addCssClass("file")
             } else {
+                // TODO: Maybe remove this check?
                 check(state.dirListModel.nItems == 1) { "On empty directory ListView should have only one element inside." }
                 label.addCssClass("empty")
             }
-//            println("Postion: ${listItem.position}")
+            check(label.cssClasses.size <= 1) { "Can't have more than one class set" }
         }
     }
 }
