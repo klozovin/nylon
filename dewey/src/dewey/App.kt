@@ -6,13 +6,19 @@ import org.gnome.gdk.ModifierType
 import org.gnome.gio.ApplicationFlags
 import org.gnome.gtk.*
 import java.nio.file.Path
-
+import java.nio.file.attribute.PosixFileAttributes
+import java.nio.file.attribute.PosixFilePermission
+import java.nio.file.attribute.PosixFilePermission.*
+import java.nio.file.attribute.PosixFilePermissions
 import kotlin.io.path.*
 
 
 val homeDirectory = Path(System.getProperty("user.home"))
 
 val styleCss = """
+    window {
+        font-size: 18px;
+    }
     .directory {
         color: #ff0000;
         font-weight: bold;
@@ -37,12 +43,11 @@ val styleCss = """
 
 
 class CurrentPath : Box(Orientation.HORIZONTAL, 4) {
-    val current = Label("").apply { addCssClass("cwd") }
+    val current = Label("✕").apply { addCssClass("cwd") }
     val separator = Label(" → ").apply { addCssClass("separator") }
-    val focused = Label("").apply { addCssClass("focused") }
+    val focused = Label("✕").apply { addCssClass("focused") }
 
     init {
-        halign = Align.START
         append(current)
         append(separator)
         append(focused)
@@ -50,18 +55,71 @@ class CurrentPath : Box(Orientation.HORIZONTAL, 4) {
 
     fun updateCurrent(path: Path) {
         // Don't show double "//" when showing the root filesystem.
-        current.label = "${path.pathString}${if (path.parent != null) "/" else ""}"
+        current.label = "${path.pathString}${if (path.parent != null) "/" else "✕"}"
     }
 
     fun updateFocused(path: Path?) {
-        // Empty directories
-        focused.label = path?.fileName?.pathString ?: ""
+        // path = null for empty directories, so there's nothing to focus on
+        focused.label = path?.fileName?.pathString ?: "✕"
     }
 }
 
+
+class Details : Box(Orientation.HORIZONTAL, 8) {
+    private val prefix = Label("✕").apply { addCssClass("prefix") }
+    private val permissions = Label("✕").apply { addCssClass("permissions") }
+    private val owner = Label("✕").apply { addCssClass("owner") }
+    private val group = Label("✕").apply { addCssClass("group") }
+    private val size = Label("✕").apply { addCssClass("size") }
+    private val modifiedAt = Label("✕").apply { addCssClass("modified-at") }
+
+    init {
+        name = "details"
+        append(prefix)
+        append(permissions)
+        append(owner)
+        append(group)
+        append(size)
+        append(modifiedAt)
+    }
+
+    fun clear() {
+        prefix.label = "✕"
+        permissions.label = "✕"
+        owner.label = "✕"
+        group.label = "✕"
+        size.label = "✕"
+        modifiedAt.label = "✕"
+    }
+
+    fun update(path: Path) {
+        val attributes = path.readAttributes<PosixFileAttributes>()
+
+        prefix.label = when {
+            attributes.isDirectory -> "d"
+            attributes.isRegularFile -> "-"
+            attributes.isSymbolicLink -> "l"
+            else -> "-"
+        }
+
+        permissions.label = PosixFilePermissions.toString(attributes.permissions())
+        owner.label = attributes.owner().name
+        group.label = attributes.group().name
+
+        val sizeSuffix = if (!attributes.isDirectory) "B" else ""
+        size.label = "${attributes.size()}$sizeSuffix"
+
+        modifiedAt.label = attributes.lastModifiedTime().toString()
+
+        // TODO: move somewhere else
+        assert(PosixFilePermissions.toString(attributes.permissions()) == posixPermissionsToString(attributes.permissions()))
+    }
+}
+
+
 class DirectoryBrowser(path: Path) {
 
-    private var state = State(path)
+    private lateinit var state: CurrentDirectoryState
     private val itemFactory = ItemFactory()
 
     private val eventController = EventControllerKey().apply {
@@ -69,16 +127,14 @@ class DirectoryBrowser(path: Path) {
     }
 
     // Top: Show current directory and selected item
-    val currentPathAndSelectionWidget = CurrentPath().apply {
-        updateCurrent(state.path)
-        updateFocused(state.dirList[state.selectionModel.selected]) // BUG?: What if we start in empty directory?
-    }
+    val currentPathAndSelectionWidget = CurrentPath()
 
     // Middle: List of directories/files in the current directory
-    val directoryListWidget = ListView(state.selectionModel, itemFactory).apply {
+    val directoryListWidget = ListView(null, itemFactory).apply {
         onActivate(::activateHandler)
         addController(eventController)
     }
+
     // Scrolll container for the listing
     val scrolledWidget = ScrolledWindow().apply {
         child = directoryListWidget
@@ -86,13 +142,19 @@ class DirectoryBrowser(path: Path) {
     }
 
     // Bottom: Details about the selected item (directory/file)
-    val selectedItemDetails = Label("More details come here...").apply { halign = Align.START }
+//    val selectedItemDetails = Label("More details come here...")
+    val selectedItemDetails = Details()
 
     // Main parent widget, contains everything else
     val boxWidget = Box(Orientation.VERTICAL, 8).apply {
+        vexpand = true
         append(currentPathAndSelectionWidget)
         append(scrolledWidget)
         append(selectedItemDetails)
+    }
+
+    init {
+        navigateTo(path)
     }
 
     /**
@@ -122,7 +184,7 @@ class DirectoryBrowser(path: Path) {
             return
 
         // Skip directories without read permission
-        // BUG: Race condition: permission can be changed after checking it, better to use exception for this.
+        // BUG: Race condition: Permission can be changed after checking it, better to use exception for this.
         if (!activatedPath.isReadable())
             return
 
@@ -131,11 +193,24 @@ class DirectoryBrowser(path: Path) {
     }
 
     /**
-     * Called when currently selected item in directory browser changes. Update UI accordingly.
+     * Updates the UI when the selection changes.
+     *
+     * Called by:
+     * - SelectionModel selection-changed signal.
+     * - DirectoryBrowser, when navigating to a directory
      */
-    private fun selectionChangedHandler(i: Int, i1: Int) {
-        val selected = state.dirList[state.selectionModel.selected]
-        currentPathAndSelectionWidget.updateFocused(selected)
+    private fun selectionChangedHandler() {
+        // Check if inside empty-directory: ListView is not empty, but that item doesn't represent a real dir/file.
+        if (state.dirList.isEmpty()) {
+            currentPathAndSelectionWidget.updateFocused(null)
+            selectedItemDetails.clear()
+            return
+        }
+
+        // Update: current path / item name, bottom info
+        val selectedItem = state.dirList[state.selectionModel.selected]
+        currentPathAndSelectionWidget.updateFocused(selectedItem)
+        selectedItemDetails.update(selectedItem)
     }
 
     /**
@@ -143,15 +218,19 @@ class DirectoryBrowser(path: Path) {
      */
     private fun navigateTo(target: Path) {
         println("Navigating to directory: ${target}")
-        state = State(target)
+        state = CurrentDirectoryState(target)
         directoryListWidget.model = state.selectionModel
         currentPathAndSelectionWidget.updateCurrent(state.path)
-
-        // BUG: empty directory?
-        if (!state.isEmpty)
-            currentPathAndSelectionWidget.updateFocused(state.dirList[state.selectionModel.selected])
-        else
+        if (!state.isEmpty) {
+            // Current directory is NOT empty
+            val selectedItem = state.dirList[state.selectionModel.selected]
+            currentPathAndSelectionWidget.updateFocused(selectedItem)
+            selectedItemDetails.update(selectedItem)
+        } else {
+            // Current directory empty: clear info at bottom, and selected in path on top
             currentPathAndSelectionWidget.updateFocused(null)
+            selectedItemDetails.clear()
+        }
     }
 
     /**
@@ -165,9 +244,8 @@ class DirectoryBrowser(path: Path) {
     /**
      * Keep the state related to single directory view in one place. Don't mutate, recreate.
      */
-    inner class State(val path: Path) {
+    inner class CurrentDirectoryState(val path: Path) {
         val dirList = path.listDirectoryEntries().sortedByDescending { it.isDirectory() }
-
         val isEmpty = dirList.isEmpty()
 
         // Handle empty directories by adding a dummy item to ListView model
@@ -176,11 +254,11 @@ class DirectoryBrowser(path: Path) {
             else StringList(arrayOf("<< empty folder >>"))
 
         val selectionModel = SingleSelection(dirListModel).apply {
-            onSelectionChanged(::selectionChangedHandler)
+            onSelectionChanged { _, _ -> selectionChangedHandler() }
         }
 
         private fun pathToString(path: Path): String =
-            if (path.isDirectory())
+            if (path.isDirectory()) // TODO (perf): read attributes in one place
                 "[[${path.fileName}]]"
             else
                 path.fileName.toString()
@@ -198,7 +276,7 @@ class DirectoryBrowser(path: Path) {
         }
 
         private fun setup(listItem: ListItem) {
-            val label = Label("").apply { halign = Align.START }
+            val label = Label("✕").apply { halign = Align.START }
             listItem.child = label
         }
 
@@ -227,7 +305,35 @@ class DirectoryBrowser(path: Path) {
 }
 
 
+fun posixPermissionsToString(permissions: Set<PosixFilePermission>): String {
+    val permissionsOrdered = arrayOf(
+        OWNER_READ,
+        OWNER_WRITE,
+        OWNER_EXECUTE,
+
+        GROUP_READ,
+        GROUP_WRITE,
+        GROUP_EXECUTE,
+
+        OTHERS_READ,
+        OTHERS_WRITE,
+        OTHERS_EXECUTE,
+    )
+    val permissionChars = charArrayOf('r', 'w', 'x')
+    val permissionStringBuilder = StringBuilder(9)
+
+    for ((idx, permission) in permissionsOrdered.withIndex())
+        permissionStringBuilder.insert(
+            idx,
+            if (permission in permissions) permissionChars[idx % 3] else '-'
+        )
+
+    return permissionStringBuilder.toString()
+}
+
+
 fun main(args: Array<String>) {
+    println("Running with arguments: ${args.contentToString()}")
     val app = Application("com.sklogw.nylon.Dewey", ApplicationFlags.DEFAULT_FLAGS)
     val css = CssProvider().apply {
         onParsingError { section, error -> println("CSS parsing error: $section, ${error.readMessage()}") }
@@ -242,7 +348,11 @@ fun main(args: Array<String>) {
         println("App activating")
         StyleContext.addProviderForDisplay(Display.getDefault(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         val window = ApplicationWindow(app)
-        val browser = DirectoryBrowser(homeDirectory)
+
+        // Use home directory if nothing passed on the command line
+        val startupDirectory = args.getOrNull(0)?.let { Path(it) } ?: homeDirectory
+
+        val browser = DirectoryBrowser(startupDirectory)
         window.child = browser.boxWidget
         window.present()
     }
@@ -252,4 +362,6 @@ fun main(args: Array<String>) {
     }
 
     app.run(args)
+
+    homeDirectory.getPosixFilePermissions()
 }
