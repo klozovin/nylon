@@ -5,6 +5,7 @@ import org.gnome.gdk.Gdk
 import org.gnome.gdk.ModifierType
 import org.gnome.gio.ApplicationFlags
 import org.gnome.gtk.*
+import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermission
@@ -25,6 +26,13 @@ val styleCss = """
     }
     .file {
         color: #0000ff;
+    }
+    .symlink {
+        color: #2dcee3;
+        font-style: italic;
+    }
+    .unknown {
+        color: #000000;
     }
     .empty {
         color: #000000;
@@ -72,6 +80,7 @@ class Details : Box(Orientation.HORIZONTAL, 8) {
     private val group = Label("✕").apply { addCssClass("group") }
     private val size = Label("✕").apply { addCssClass("size") }
     private val modifiedAt = Label("✕").apply { addCssClass("modified-at") }
+    private val extra = Label("")
 
     init {
         name = "details"
@@ -81,6 +90,7 @@ class Details : Box(Orientation.HORIZONTAL, 8) {
         append(group)
         append(size)
         append(modifiedAt)
+        append(extra)
     }
 
     fun clear() {
@@ -90,15 +100,17 @@ class Details : Box(Orientation.HORIZONTAL, 8) {
         group.label = "✕"
         size.label = "✕"
         modifiedAt.label = "✕"
+        extra.label = ""
     }
 
     fun update(path: Path) {
-        val attributes = path.readAttributes<PosixFileAttributes>()
+        // MAYBE: Clear (reset to default?) before every update?
+        val attributes = path.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
 
         prefix.label = when {
+            attributes.isSymbolicLink -> "l"
             attributes.isDirectory -> "d"
             attributes.isRegularFile -> "-"
-            attributes.isSymbolicLink -> "l"
             else -> "-"
         }
 
@@ -110,6 +122,11 @@ class Details : Box(Orientation.HORIZONTAL, 8) {
         size.label = "${attributes.size()}$sizeSuffix"
 
         modifiedAt.label = attributes.lastModifiedTime().toString()
+
+        if (attributes.isSymbolicLink)
+            extra.label = "⇥ ${path.readSymbolicLink()}"
+        else
+            extra.label = ""
 
         // TODO: move somewhere else
         assert(PosixFilePermissions.toString(attributes.permissions()) == posixPermissionsToString(attributes.permissions()))
@@ -249,19 +266,17 @@ class DirectoryBrowser(path: Path) {
         val isEmpty = dirList.isEmpty()
 
         // Handle empty directories by adding a dummy item to ListView model
-        val dirListModel =
-            if (!isEmpty) StringList(dirList.map { pathToString(it) }.toTypedArray())
-            else StringList(arrayOf("<< empty folder >>"))
+        val dirListModel = StringList(
+            if (!isEmpty)
+                dirList.map(Path::pathString).toTypedArray()
+            else
+                arrayOf("<< empty folder >>")
+        )
 
         val selectionModel = SingleSelection(dirListModel).apply {
             onSelectionChanged { _, _ -> selectionChangedHandler() }
         }
 
-        private fun pathToString(path: Path): String =
-            if (path.isDirectory()) // TODO (perf): read attributes in one place
-                "[[${path.fileName}]]"
-            else
-                path.fileName.toString()
     }
 
 
@@ -281,25 +296,45 @@ class DirectoryBrowser(path: Path) {
         }
 
         private fun bind(listItem: ListItem) {
-            val label = listItem.child as Label
-            val item = listItem.item as StringObject
+            val listItemLabel = listItem.child as Label
 
-            label.label = item.string
-            // Clear all CSS classes from the Label widget because the widgets get reused by ListView.
-            label.cssClasses = emptyArray()
+            // Clear all CSS classes from the Label (because virtualized ListView)
+            listItemLabel.cssClasses = emptyArray()
 
-            if (!state.isEmpty) {
-                // Showing a non-empty directory
-                if (state.dirList[listItem.position].isDirectory())
-                    label.addCssClass("directory")
-                else
-                    label.addCssClass("file")
-            } else {
-                // TODO: Maybe remove this check?
+            // Showing an empty directory
+            if (state.isEmpty) {
                 check(state.dirListModel.nItems == 1) { "On empty directory ListView should have only one element inside." }
-                label.addCssClass("empty")
+                listItemLabel.addCssClass("empty")
+                return
             }
-            check(label.cssClasses.size <= 1) { "Can't have more than one class set" }
+
+            val itemPath = state.dirList[listItem.position]
+
+            when {
+                itemPath.isSymbolicLink() -> {
+                    if (itemPath.isDirectory())
+                        listItemLabel.label = "[[⇥${itemPath.name}]]"
+                    else
+                        listItemLabel.label = "⇥ ${itemPath.name}"
+                    listItemLabel.addCssClass("symlink")
+                }
+
+                itemPath.isDirectory() -> {
+                    listItemLabel.addCssClass("directory")
+                    listItemLabel.label = "[[${itemPath.name}]]"
+                }
+
+                itemPath.isRegularFile() -> {
+                    listItemLabel.label = itemPath.name
+                    listItemLabel.addCssClass("file")
+                }
+
+                else -> {
+                    listItemLabel.label = itemPath.name
+                    listItemLabel.addCssClass("unknown")
+                }
+            }
+            check(listItemLabel.cssClasses.size <= 1) { "Can't have more than one class set" }
         }
     }
 }
