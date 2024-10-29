@@ -63,7 +63,7 @@ class CurrentPath : Box(Orientation.HORIZONTAL, 4) {
 
     fun updateCurrent(path: Path) {
         // Don't show double "//" when showing the root filesystem.
-        current.label = "${path.pathString}${if (path.parent != null) "/" else "✕"}"
+        current.label = "${path.pathString}${if (path.parent != null) "/" else ""}"
     }
 
     fun updateFocused(path: Path?) {
@@ -103,10 +103,8 @@ class Details : Box(Orientation.HORIZONTAL, 8) {
         extra.label = ""
     }
 
-    fun update(path: Path) {
+    fun update(path: Path, attributes: PosixFileAttributes) {
         // MAYBE: Clear (reset to default?) before every update?
-        val attributes = path.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
-
         prefix.label = when {
             attributes.isSymbolicLink -> "l"
             attributes.isDirectory -> "d"
@@ -194,7 +192,7 @@ class DirectoryBrowser(path: Path) {
         if (state.isEmpty)
             return
 
-        val activatedPath = state.dirList[idx]
+        val activatedPath = state.directoryList[idx]
 
         // Skip files when activated
         if (!activatedPath.isDirectory())
@@ -218,16 +216,16 @@ class DirectoryBrowser(path: Path) {
      */
     private fun selectionChangedHandler() {
         // Check if inside empty-directory: ListView is not empty, but that item doesn't represent a real dir/file.
-        if (state.dirList.isEmpty()) {
+        if (state.directoryList.isEmpty()) {
             currentPathAndSelectionWidget.updateFocused(null)
             selectedItemDetails.clear()
             return
         }
 
         // Update: current path / item name, bottom info
-        val selectedItem = state.dirList[state.selectionModel.selected]
-        currentPathAndSelectionWidget.updateFocused(selectedItem)
-        selectedItemDetails.update(selectedItem)
+        val selectedItem = state.directoryList[state.selectionModel.selected]
+        currentPathAndSelectionWidget.updateFocused(state.selectedItem)
+        selectedItemDetails.update(state.selectedItem, state.selectedItemAttributes)
     }
 
     /**
@@ -240,9 +238,8 @@ class DirectoryBrowser(path: Path) {
         currentPathAndSelectionWidget.updateCurrent(state.path)
         if (!state.isEmpty) {
             // Current directory is NOT empty
-            val selectedItem = state.dirList[state.selectionModel.selected]
-            currentPathAndSelectionWidget.updateFocused(selectedItem)
-            selectedItemDetails.update(selectedItem)
+            currentPathAndSelectionWidget.updateFocused(state.selectedItem)
+            selectedItemDetails.update(state.selectedItem, state.selectedItemAttributes)
         } else {
             // Current directory empty: clear info at bottom, and selected in path on top
             currentPathAndSelectionWidget.updateFocused(null)
@@ -262,13 +259,14 @@ class DirectoryBrowser(path: Path) {
      * Keep the state related to single directory view in one place. Don't mutate, recreate.
      */
     inner class CurrentDirectoryState(val path: Path) {
-        val dirList = path.listDirectoryEntries().sortedByDescending { it.isDirectory() }
-        val isEmpty = dirList.isEmpty()
+        val directoryList = path.listDirectoryEntries().sortedByDescending { it.isDirectory() }
+        val directoryAttributes = directoryList.map { it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS) }
+        val isEmpty = directoryList.isEmpty()
 
         // Handle empty directories by adding a dummy item to ListView model
         val dirListModel = StringList(
             if (!isEmpty)
-                dirList.map(Path::pathString).toTypedArray()
+                directoryList.map(Path::pathString).toTypedArray()
             else
                 arrayOf("<< empty folder >>")
         )
@@ -277,6 +275,11 @@ class DirectoryBrowser(path: Path) {
             onSelectionChanged { _, _ -> selectionChangedHandler() }
         }
 
+        val selectedItem: Path
+            get() = directoryList[selectionModel.selected]
+
+        val selectedItemAttributes: PosixFileAttributes
+            get() = directoryAttributes[selectionModel.selected]
     }
 
 
@@ -304,11 +307,12 @@ class DirectoryBrowser(path: Path) {
             // Showing an empty directory
             if (state.isEmpty) {
                 check(state.dirListModel.nItems == 1) { "On empty directory ListView should have only one element inside." }
+                listItemLabel.label = "<< empty >>"
                 listItemLabel.addCssClass("empty")
                 return
             }
 
-            val itemPath = state.dirList[listItem.position]
+            val itemPath = state.directoryList[listItem.position]
 
             when {
                 itemPath.isSymbolicLink() -> {
