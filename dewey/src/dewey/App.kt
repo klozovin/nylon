@@ -177,6 +177,7 @@ class DirectoryBrowser(path: Path) {
      */
     private fun keyPressHandler(keyVal: Int, keyCode: Int, modifierTypes: MutableSet<ModifierType>?): Boolean {
         when (keyVal) {
+            Gdk.KEY_F5 -> reloadDirectory()
             Gdk.KEY_Left, Gdk.KEY_j -> navigateToParent()
             Gdk.KEY_Right, Gdk.KEY_l -> directoryListWidget.emitActivate(state.selectionModel.selected)
         }
@@ -256,6 +257,14 @@ class DirectoryBrowser(path: Path) {
     }
 
     /**
+     * Reload current directory.
+     */
+    private fun reloadDirectory() {
+        println("Reloading: ${state.path}")
+        navigateTo(state.path) // Somehow feels ... wrong?
+    }
+
+    /**
      * Keep the state related to single directory view in one place. Don't mutate, recreate.
      */
     inner class CurrentDirectoryState(val path: Path) {
@@ -280,6 +289,10 @@ class DirectoryBrowser(path: Path) {
 
         val selectedItemAttributes: PosixFileAttributes
             get() = directoryAttributes[selectionModel.selected]
+
+        init {
+            println("Creating [CurrentDirectoryState]")
+        }
     }
 
 
