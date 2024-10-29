@@ -7,6 +7,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 plugins {
     java
     kotlin("jvm") version "2.0.21"
+    id("org.jetbrains.kotlinx.benchmark") version "0.4.12"
     application
 }
 
@@ -16,12 +17,15 @@ repositories {
 
 dependencies {
     implementation("org.jetbrains.kotlin", "kotlin-reflect", "2.0.21")
+    implementation("org.jetbrains.kotlinx", "kotlinx-benchmark-runtime", "0.4.12")
     implementation("io.github.jwharm.javagi", "gtk", "0.10.2")
 }
 
 sourceSets.main {
     kotlin.srcDir("src")
 }
+
+benchmark.targets.register("main")
 
 kotlin.compilerOptions {
     languageVersion = KotlinVersion.KOTLIN_2_0

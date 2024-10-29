@@ -11,6 +11,7 @@ import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.attribute.PosixFilePermission.*
 import java.nio.file.attribute.PosixFilePermissions
+import java.util.stream.Collectors
 import kotlin.io.path.*
 
 
@@ -224,7 +225,6 @@ class DirectoryBrowser(path: Path) {
         }
 
         // Update: current path / item name, bottom info
-        val selectedItem = state.directoryList[state.selectionModel.selected]
         currentPathAndSelectionWidget.updateFocused(state.selectedItem)
         selectedItemDetails.update(state.selectedItem, state.selectedItemAttributes)
     }
@@ -269,7 +269,9 @@ class DirectoryBrowser(path: Path) {
      */
     inner class CurrentDirectoryState(val path: Path) {
         val directoryList = path.listDirectoryEntries().sortedByDescending { it.isDirectory() }
-        val directoryAttributes = directoryList.map { it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS) }
+        val directoryAttributes = directoryList.parallelStream().map {
+            it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
+        }.collect(Collectors.toList())
         val isEmpty = directoryList.isEmpty()
 
         // Handle empty directories by adding a dummy item to ListView model
@@ -326,7 +328,9 @@ class DirectoryBrowser(path: Path) {
             }
 
             val itemPath = state.directoryList[listItem.position]
+            val itemAttributes = state.directoryAttributes[listItem.position]
 
+            // TODO: Change to using attributes
             when {
                 itemPath.isSymbolicLink() -> {
                     if (itemPath.isDirectory())
