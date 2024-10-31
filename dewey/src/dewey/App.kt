@@ -6,6 +6,7 @@ import org.gnome.gdk.Gdk
 import org.gnome.gdk.ModifierType
 import org.gnome.gio.ApplicationFlags
 import org.gnome.gtk.*
+import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFileAttributes
@@ -185,11 +186,24 @@ class DirectoryBrowser(path: Path) {
     private fun keyPressHandler(keyVal: Int, keyCode: Int, modifierTypes: MutableSet<ModifierType>?): Boolean {
         when (keyVal) {
             Gdk.KEY_F5 -> reloadDirectory()
+            Gdk.KEY_F6 -> showChangeDirectoryDialog()
             Gdk.KEY_Left, Gdk.KEY_j -> navigateToParent()
             Gdk.KEY_Right, Gdk.KEY_l -> directoryListWidget.emitActivate(state.selectionModel.selected)
         }
 //        println("> Key: [$keyVal]: ${Gdk.keyvalName(keyVal)}, $keyCode, $modifierTypes")
         return false
+    }
+
+    private fun showChangeDirectoryDialog() {
+        val dialog = ChangeDirectoryDialog().apply {
+            modal = true
+            onInputReceive { maybePath ->
+                println("Maybe we should navigate to...? $maybePath")
+                navigateTo(maybePath)
+            }
+//            transientFor = this@DirectoryBrowser.directoryListWidget.root as Window
+            present()
+        }
     }
 
     /**
@@ -389,6 +403,44 @@ class DirectoryBrowser(path: Path) {
             }
             check(listItemLabel.cssClasses.size <= 1) { "Can't have more than one class set" }
         }
+    }
+}
+
+class ChangeDirectoryDialog : Window() {
+
+    private val directoryPathInput = Entry().apply {
+
+        placeholderText = "/path/to/cd/into"
+
+        // Close everything on Escape
+        addController(EventControllerKey().apply {
+            onKeyPressed { keyVal, _, _ ->
+                when (keyVal) {
+                    Gdk.KEY_Escape -> close()
+                }
+                return@onKeyPressed false
+            }
+        })
+    }
+
+    fun onInputReceive(callback: (Path) -> Unit) {
+        directoryPathInput.onActivate {
+            val entryPath = Path(directoryPathInput.text)
+            if (Files.exists(entryPath, LinkOption.NOFOLLOW_LINKS)) {
+                // TODO: BUG: Race condition, should use exceptions for this
+                close()
+                callback(entryPath)
+            } else
+                println("Error: Tried to cd into non existent directory.")
+        }
+    }
+
+    init {
+//        directoryPathInput.onActivate {
+//            println("activated")
+//            close()
+//        }
+        child = directoryPathInput
     }
 }
 
