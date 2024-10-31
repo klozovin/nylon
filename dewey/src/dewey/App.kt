@@ -1,5 +1,6 @@
 package dewey
 
+import io.github.jwharm.javagi.gio.ListIndexModel
 import org.gnome.gdk.Display
 import org.gnome.gdk.Gdk
 import org.gnome.gdk.ModifierType
@@ -14,8 +15,6 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.util.stream.Collectors
 import kotlin.io.path.*
 
-
-val homeDirectory = Path(System.getProperty("user.home"))
 
 val styleCss = """
     window {
@@ -136,6 +135,13 @@ class Details : Box(Orientation.HORIZONTAL, 8) {
 class DirectoryBrowser(path: Path) {
 
     private lateinit var state: CurrentDirectoryState
+
+    /**
+     * For a given directory, remember the last selected item when the user navigated away from it. Used for easier
+     * movement through the file system.
+     */
+    private val directorySelectionHistory: MutableMap<Path, Path> = mutableMapOf()
+
     private val itemFactory = ItemFactory()
 
     private val eventController = EventControllerKey().apply {
@@ -195,6 +201,7 @@ class DirectoryBrowser(path: Path) {
             return
 
         val activatedPath = state.directoryList[idx]
+        check(activatedPath == state.selectedItem)
 
         // Skip files when activated
         if (!activatedPath.isDirectory())
@@ -234,8 +241,37 @@ class DirectoryBrowser(path: Path) {
      */
     private fun navigateTo(target: Path) {
         println("Navigating to directory: ${target}")
+
+        // Still have the old state and Path, save it now
+        if (::state.isInitialized && !state.isEmpty)
+            directorySelectionHistory[state.path] = state.selectedItem
+//            directorySelectionHistory.addAll(arrayOf(state.selectedItem, state.path))
+
+
+        // TODO: State could mark this on startup so that we don't iterate twice over the directory list
+        //       -- move it to new FilesystemNavigator class
         state = CurrentDirectoryState(target)
         directoryListWidget.model = state.selectionModel
+
+        // Restore previous selection in this directory.
+        directorySelectionHistory.get(state.path)?.let { savedSelection ->
+            // There was previously saved selection, but that doesn't mean this Path still exists. It could've been
+            // deleted or renamed while we were showing another directory. If the previously saved selection doesn't
+            // exist in the current directory listing, delete it.
+            val idxSelectedPath = state.directoryList.indexOf(savedSelection)
+            if (idxSelectedPath != -1) {
+                // Found it, move the ListView selection *and* focus to it.
+                directoryListWidget.scrollTo(
+                    idxSelectedPath,
+                    setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT),
+                    null
+                )
+            } else {
+                // Item was saved, but it's no longer in the directory. Clear it.
+                directorySelectionHistory.remove(savedSelection)
+            }
+        }
+
         currentPathAndSelectionWidget.updateCurrent(state.path)
         if (!state.isEmpty) {
             // Current directory is NOT empty
@@ -274,14 +310,7 @@ class DirectoryBrowser(path: Path) {
         }.collect(Collectors.toList())
         val isEmpty = directoryList.isEmpty()
 
-        // Handle empty directories by adding a dummy item to ListView model
-        val dirListModel = StringList(
-            if (!isEmpty)
-                directoryList.map(Path::pathString).toTypedArray()
-            else
-                arrayOf("<< empty folder >>")
-        )
-
+        val dirListModel = ListIndexModel.newInstance(if (!isEmpty) directoryList.size else 1)
         val selectionModel = SingleSelection(dirListModel).apply {
             onSelectionChanged { _, _ -> selectionChangedHandler() }
         }
@@ -316,6 +345,8 @@ class DirectoryBrowser(path: Path) {
         private fun bind(listItem: ListItem) {
             val listItemLabel = listItem.child as Label
 
+            val item = listItem.item as ListIndexModel.ListIndex
+
             // Clear all CSS classes from the Label (because virtualized ListView)
             listItemLabel.cssClasses = emptyArray()
 
@@ -327,6 +358,7 @@ class DirectoryBrowser(path: Path) {
                 return
             }
 
+            check(item.index == listItem.position)
             val itemPath = state.directoryList[listItem.position]
             val itemAttributes = state.directoryAttributes[listItem.position]
 
@@ -406,6 +438,7 @@ fun main(args: Array<String>) {
         val window = ApplicationWindow(app)
 
         // Use home directory if nothing passed on the command line
+        val homeDirectory = Path(System.getProperty("user.home"))
         val startupDirectory = args.getOrNull(0)?.let { Path(it) } ?: homeDirectory
 
         val browser = DirectoryBrowser(startupDirectory)
@@ -418,6 +451,4 @@ fun main(args: Array<String>) {
     }
 
     app.run(args)
-
-    homeDirectory.getPosixFilePermissions()
 }
