@@ -185,6 +185,16 @@ class DirectoryBrowser(path: Path) {
      */
     private fun keyPressHandler(keyVal: Int, keyCode: Int, modifierTypes: MutableSet<ModifierType>?): Boolean {
         when (keyVal) {
+            Gdk.KEY_i -> if (state.selectedItemIdx > 0)
+                directoryListWidget.scrollTo(
+                    state.selectedItemIdx - 1, setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT), null
+                )
+
+            Gdk.KEY_k -> if (state.selectedItemIdx < state.selectionModel.nItems - 1)
+                directoryListWidget.scrollTo(
+                    state.selectedItemIdx + 1, setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT), null
+                )
+
             Gdk.KEY_F5 -> reloadDirectory()
             Gdk.KEY_F6 -> showChangeDirectoryDialog()
             Gdk.KEY_Left, Gdk.KEY_j -> navigateToParent()
@@ -328,6 +338,9 @@ class DirectoryBrowser(path: Path) {
         val selectionModel = SingleSelection(dirListModel).apply {
             onSelectionChanged { _, _ -> selectionChangedHandler() }
         }
+
+        val selectedItemIdx: Int
+            get() = selectionModel.selected
 
         val selectedItem: Path
             get() = directoryList[selectionModel.selected]
