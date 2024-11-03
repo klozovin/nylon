@@ -98,7 +98,7 @@ class PathNavigator {
                 it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
             }.toList()
 
-            this.entries = (entries zip entriesAttributes).map(::Entry)//.sortedByDescending { it.isDirectory }
+            this.entries = (entries zip entriesAttributes).map(::Entry).sortedByDescending { it.isDirectory }
 
             isEmpty = this.entries.isEmpty()
             count = this.entries.size
@@ -121,6 +121,8 @@ class PathNavigator {
         constructor(p: Pair<Path, PosixFileAttributes>) : this(p.first, p.second)
 
         val isDirectory get() = attributes.isDirectory
+        val isRegularFile get() = attributes.isRegularFile
+        val isSymbolicLink get() = attributes.isSymbolicLink
         val readable get() = attributes.permissions().contains(PosixFilePermission.OWNER_READ)
     }
 }

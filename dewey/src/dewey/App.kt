@@ -380,30 +380,30 @@ class DirectoryBrowser(path: Path) {
             }
 
             check(item.index == listItem.position)
-            val itemPath = state.pn.target.entries[listItem.position].path
 
-            // TODO: Change to using attributes
+            val itemEntry = state.pn.target.entries[listItem.position]
+            val entryName = itemEntry.path.name
             when {
-                itemPath.isSymbolicLink() -> {
-                    if (itemPath.isDirectory())
-                        listItemLabel.label = "[[⇥${itemPath.name}]]"
+                itemEntry.isSymbolicLink -> {
+                    if (itemEntry.isDirectory)
+                        listItemLabel.label = "[[⇥$entryName]]"
                     else
-                        listItemLabel.label = "⇥ ${itemPath.name}"
+                        listItemLabel.label = "⇥ $entryName"
                     listItemLabel.addCssClass("symlink")
                 }
 
-                itemPath.isDirectory() -> {
+                itemEntry.isDirectory -> {
                     listItemLabel.addCssClass("directory")
-                    listItemLabel.label = "[[${itemPath.name}]]"
+                    listItemLabel.label = "[[$entryName]]"
                 }
 
-                itemPath.isRegularFile() -> {
-                    listItemLabel.label = itemPath.name
+                itemEntry.isRegularFile -> {
+                    listItemLabel.label = entryName
                     listItemLabel.addCssClass("file")
                 }
 
                 else -> {
-                    listItemLabel.label = itemPath.name
+                    listItemLabel.label = entryName
                     listItemLabel.addCssClass("unknown")
                 }
             }
