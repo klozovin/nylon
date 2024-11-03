@@ -10,10 +10,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFileAttributes
-import java.nio.file.attribute.PosixFilePermission
-import java.nio.file.attribute.PosixFilePermission.*
 import java.nio.file.attribute.PosixFilePermissions
-import java.util.stream.Collectors
 import kotlin.io.path.*
 
 
@@ -143,8 +140,6 @@ class DirectoryBrowser(path: Path) {
      */
     private val directorySelectionHistory: MutableMap<Path, Path> = mutableMapOf()
 
-    private val itemFactory = ItemFactory()
-
     private val eventController = EventControllerKey().apply {
         onKeyPressed(::keyPressHandler)
     }
@@ -153,7 +148,7 @@ class DirectoryBrowser(path: Path) {
     val currentPathAndSelectionWidget = CurrentPath()
 
     // Middle: List of directories/files in the current directory
-    val directoryListWidget = ListView(null, itemFactory).apply {
+    val directoryListWidget = ListView(null, ItemFactory()).apply {
         onActivate(::activateHandler)
         addController(eventController)
     }
@@ -221,10 +216,10 @@ class DirectoryBrowser(path: Path) {
      */
     private fun activateHandler(idx: Int) {
         // Empty directory, nothing to activate, there's a dummy element in ListView (hacky?)
-        if (state.isEmpty)
+        if (state.pn.target.isEmpty)
             return
 
-        val activatedPath = state.directoryList[idx]
+        val activatedPath = state.pn.target.entries[idx].path
         check(activatedPath == state.selectedItem)
 
         // Skip files when activated
@@ -233,6 +228,7 @@ class DirectoryBrowser(path: Path) {
 
         // Skip directories without read permission
         // BUG: Race condition: Permission can be changed after checking it, better to use exception for this.
+        //      Maybe still check before atempting?
         if (!activatedPath.isReadable())
             return
 
@@ -249,7 +245,7 @@ class DirectoryBrowser(path: Path) {
      */
     private fun selectionChangedHandler() {
         // Check if inside empty-directory: ListView is not empty, but that item doesn't represent a real dir/file.
-        if (state.directoryList.isEmpty()) {
+        if (state.pn.target.isEmpty) {
             currentPathAndSelectionWidget.updateFocused(null)
             selectedItemDetails.clear()
             return
@@ -267,7 +263,7 @@ class DirectoryBrowser(path: Path) {
         println("Navigating to directory: ${target}")
 
         // Still have the old state and Path, save it now
-        if (::state.isInitialized && !state.isEmpty)
+        if (::state.isInitialized && !state.pn.target.isEmpty)
             directorySelectionHistory[state.path] = state.selectedItem
 //            directorySelectionHistory.addAll(arrayOf(state.selectedItem, state.path))
 
@@ -282,7 +278,7 @@ class DirectoryBrowser(path: Path) {
             // There was previously saved selection, but that doesn't mean this Path still exists. It could've been
             // deleted or renamed while we were showing another directory. If the previously saved selection doesn't
             // exist in the current directory listing, delete it.
-            val idxSelectedPath = state.directoryList.indexOf(savedSelection)
+            val idxSelectedPath = state.pn.target.indexOf(savedSelection)
             if (idxSelectedPath != -1) {
                 // Found it, move the ListView selection *and* focus to it.
                 directoryListWidget.scrollTo(
@@ -297,7 +293,7 @@ class DirectoryBrowser(path: Path) {
         }
 
         currentPathAndSelectionWidget.updateCurrent(state.path)
-        if (!state.isEmpty) {
+        if (!state.pn.target.isEmpty) {
             // Current directory is NOT empty
             currentPathAndSelectionWidget.updateFocused(state.selectedItem)
             selectedItemDetails.update(state.selectedItem, state.selectedItemAttributes)
@@ -328,13 +324,11 @@ class DirectoryBrowser(path: Path) {
      * Keep the state related to single directory view in one place. Don't mutate, recreate.
      */
     inner class CurrentDirectoryState(val path: Path) {
-        val directoryList = path.listDirectoryEntries().sortedByDescending { it.isDirectory() }
-        val directoryAttributes = directoryList.parallelStream().map {
-            it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
-        }.collect(Collectors.toList())
-        val isEmpty = directoryList.isEmpty()
 
-        val dirListModel = ListIndexModel.newInstance(if (!isEmpty) directoryList.size else 1)
+        val pn = PathNavigator().apply { navigateTo(path) }
+
+        val dirListModel = ListIndexModel.newInstance(if (!pn.target.isEmpty) pn.target.count else 1)
+
         val selectionModel = SingleSelection(dirListModel).apply {
             onSelectionChanged { _, _ -> selectionChangedHandler() }
         }
@@ -343,10 +337,10 @@ class DirectoryBrowser(path: Path) {
             get() = selectionModel.selected
 
         val selectedItem: Path
-            get() = directoryList[selectionModel.selected]
+            get() = pn.target.entries[selectionModel.selected].path
 
         val selectedItemAttributes: PosixFileAttributes
-            get() = directoryAttributes[selectionModel.selected]
+            get() = pn.target.entries[selectionModel.selected].attributes
 
         init {
             println("Creating [CurrentDirectoryState]")
@@ -378,7 +372,7 @@ class DirectoryBrowser(path: Path) {
             listItemLabel.cssClasses = emptyArray()
 
             // Showing an empty directory
-            if (state.isEmpty) {
+            if (state.pn.target.isEmpty) {
                 check(state.dirListModel.nItems == 1) { "On empty directory ListView should have only one element inside." }
                 listItemLabel.label = "<< empty >>"
                 listItemLabel.addCssClass("empty")
@@ -386,8 +380,7 @@ class DirectoryBrowser(path: Path) {
             }
 
             check(item.index == listItem.position)
-            val itemPath = state.directoryList[listItem.position]
-            val itemAttributes = state.directoryAttributes[listItem.position]
+            val itemPath = state.pn.target.entries[listItem.position].path
 
             // TODO: Change to using attributes
             when {
@@ -455,33 +448,6 @@ class ChangeDirectoryDialog : Window() {
 //        }
         child = directoryPathInput
     }
-}
-
-
-fun posixPermissionsToString(permissions: Set<PosixFilePermission>): String {
-    val permissionsOrdered = arrayOf(
-        OWNER_READ,
-        OWNER_WRITE,
-        OWNER_EXECUTE,
-
-        GROUP_READ,
-        GROUP_WRITE,
-        GROUP_EXECUTE,
-
-        OTHERS_READ,
-        OTHERS_WRITE,
-        OTHERS_EXECUTE,
-    )
-    val permissionChars = charArrayOf('r', 'w', 'x')
-    val permissionStringBuilder = StringBuilder(9)
-
-    for ((idx, permission) in permissionsOrdered.withIndex())
-        permissionStringBuilder.insert(
-            idx,
-            if (permission in permissions) permissionChars[idx % 3] else '-'
-        )
-
-    return permissionStringBuilder.toString()
 }
 
 
