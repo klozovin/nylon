@@ -144,26 +144,33 @@ class DirectoryBrowser(path: Path) {
         onKeyPressed(::keyPressHandler)
     }
 
+    //
     // Top: Show current directory and selected item
+    //
     val currentPathAndSelectionWidget = CurrentPath()
 
+    //
     // Middle: List of directories/files in the current directory
+    //
     val directoryListWidget = ListView(null, ItemFactory()).apply {
         onActivate(::activateHandler)
         addController(eventController)
     }
 
-    // Scrolll container for the listing
+    // Scroll container for the listing
     val scrolledWidget = ScrolledWindow().apply {
         child = directoryListWidget
         vexpand = true
     }
 
+    //
     // Bottom: Details about the selected item (directory/file)
-//    val selectedItemDetails = Label("More details come here...")
+    //
     val selectedItemDetails = Details()
 
+    //
     // Main parent widget, contains everything else
+    //
     val boxWidget = Box(Orientation.VERTICAL, 8).apply {
         vexpand = true
         append(currentPathAndSelectionWidget)
@@ -175,27 +182,23 @@ class DirectoryBrowser(path: Path) {
         navigateTo(path)
     }
 
+    private fun scrollTo(idx: Int) =
+        directoryListWidget.scrollTo(idx, setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT), null)
+
     /**
      * Handle keyboard shortcuts in browser.
      */
     private fun keyPressHandler(keyVal: Int, keyCode: Int, modifierTypes: MutableSet<ModifierType>?): Boolean {
         when (keyVal) {
-            Gdk.KEY_i -> if (state.selectedItemIdx > 0)
-                directoryListWidget.scrollTo(
-                    state.selectedItemIdx - 1, setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT), null
-                )
-
-            Gdk.KEY_k -> if (state.selectedItemIdx < state.selectionModel.nItems - 1)
-                directoryListWidget.scrollTo(
-                    state.selectedItemIdx + 1, setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT), null
-                )
+            Gdk.KEY_i -> if (state.selectedItemIdx > 0) scrollTo(state.selectedItemIdx)
+            Gdk.KEY_k -> if (state.selectedItemIdx < state.selectionModel.nItems - 1) scrollTo(state.selectedItemIdx + 1)
 
             Gdk.KEY_F5 -> reloadDirectory()
             Gdk.KEY_F6 -> showChangeDirectoryDialog()
+
             Gdk.KEY_Left, Gdk.KEY_j -> navigateToParent()
             Gdk.KEY_Right, Gdk.KEY_l -> directoryListWidget.emitActivate(state.selectionModel.selected)
         }
-//        println("> Key: [$keyVal]: ${Gdk.keyvalName(keyVal)}, $keyCode, $modifierTypes")
         return false
     }
 
@@ -281,11 +284,7 @@ class DirectoryBrowser(path: Path) {
             val idxSelectedPath = state.pn.target.indexOf(savedSelection)
             if (idxSelectedPath != -1) {
                 // Found it, move the ListView selection *and* focus to it.
-                directoryListWidget.scrollTo(
-                    idxSelectedPath,
-                    setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT),
-                    null
-                )
+                scrollTo(idxSelectedPath)
             } else {
                 // Item was saved, but it's no longer in the directory. Clear it.
                 directorySelectionHistory.remove(savedSelection)
@@ -346,7 +345,6 @@ class DirectoryBrowser(path: Path) {
             println("Creating [CurrentDirectoryState]")
         }
     }
-
 
     /**
      * Creates and updates rows in virtualized ListView control.
