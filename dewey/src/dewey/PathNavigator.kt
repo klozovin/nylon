@@ -123,6 +123,6 @@ class PathNavigator {
         val isDirectory get() = attributes.isDirectory
         val isRegularFile get() = attributes.isRegularFile
         val isSymbolicLink get() = attributes.isSymbolicLink
-        val readable get() = attributes.permissions().contains(PosixFilePermission.OWNER_READ)
+        val isReadable get() = attributes.permissions().contains(PosixFilePermission.OWNER_READ)
     }
 }
