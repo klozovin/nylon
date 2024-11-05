@@ -6,13 +6,12 @@ import org.gnome.gdk.ModifierType
 import org.gnome.gtk.*
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFileAttributes
-import kotlin.io.path.isDirectory
-import kotlin.io.path.isReadable
 import kotlin.io.path.name
+import dewey.FilesystemNavigator.Entry.Type as EntryType
 
 class WidgetDirectoryBrowser(path: Path) {
 
-    val pathNavigator = PathNavigator()
+    val pathNavigator = FilesystemNavigator()
     private lateinit var state: CurrentDirectoryState
 
     /**
@@ -63,9 +62,6 @@ class WidgetDirectoryBrowser(path: Path) {
         navigateTo(path)
     }
 
-    private fun scrollTo(idx: Int) =
-        directoryListWidget.scrollTo(idx, setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT), null)
-
     /**
      * Handle keyboard shortcuts in browser.
      */
@@ -83,6 +79,33 @@ class WidgetDirectoryBrowser(path: Path) {
         return false
     }
 
+    private fun openSelectedEntry() {
+
+    }
+
+    /**
+     * Opens an entry:
+     * - Directory : change to it, list its contents
+     * - Executable : try to run it?
+     * - File : try to open it using a default program?
+     */
+    private fun openEntry(entry: FilesystemNavigator.Entry) {
+        when (entry.type) {
+            EntryType.Regular -> openFile(entry)
+            EntryType.Directory -> openDirectory(entry)
+            else -> println("Don't know what to do with [${entry.path.name}]")
+        }
+    }
+
+    private fun openDirectory(entry: FilesystemNavigator.Entry) {
+        println("Opening [${entry.path.name}]")
+        navigateTo(entry.path)
+    }
+
+    private fun openFile(entry: FilesystemNavigator.Entry) {
+        println("Opening [${entry.path.name}]")
+    }
+
     private fun showChangeDirectoryDialog() {
         val dialog = ChangeDirectoryDialog().apply {
             modal = true
@@ -95,54 +118,6 @@ class WidgetDirectoryBrowser(path: Path) {
         }
     }
 
-    /**
-     * Handle activating an item in the browser.
-     */
-    private fun activateHandler(idx: Int) {
-        // Empty directory, nothing to activate, there's a dummy element in ListView (hacky?)
-        if (pathNavigator.target.isEmpty)
-            return
-
-        val activatedPath = pathNavigator.target.entries[idx].path
-        check(activatedPath == state.selectedItem)
-
-        // Skip files when activated
-        if (!activatedPath.isDirectory())
-            return
-
-        // Skip directories without read permission
-        // BUG: Race condition: Permission can be changed after checking it, better to use exception for this.
-        //      Maybe still check before atempting?
-        if (!activatedPath.isReadable())
-            return
-
-        println("> Activated: [${activatedPath}]")
-        navigateTo(activatedPath)
-    }
-
-    /**
-     * Opens an entry:
-     * - Directory : change to it, list its contents
-     * - Executable : try to run it?
-     * - File : try to open it using a default program?
-     */
-    private fun open(entry: PathNavigator.Entry) {
-        when {
-            entry.isDirectory -> openDirectory(entry)
-            entry.isRegularFile -> openFile(entry)
-            else -> println("Don't know what to do with [${entry.path.name}]")
-        }
-    }
-
-    private fun openDirectory(entry: PathNavigator.Entry) {
-
-    }
-
-    private fun openFile(entry: PathNavigator.Entry) {
-        println("Opening [${entry.path.name}]")
-    }
-
-
     // ------------------------------------------------------------------------ //
 
     /**
@@ -153,18 +128,18 @@ class WidgetDirectoryBrowser(path: Path) {
 
         // Still have the old state and Path, save it now
         if (::state.isInitialized && !pathNavigator.target.isEmpty)
-            directorySelectionHistory[state.path] = state.selectedItem
+            directorySelectionHistory[pathNavigator.target.path] = state.selectedItem
 //            directorySelectionHistory.addAll(arrayOf(state.selectedItem, state.path))
 
 
         // TODO: State could mark this on startup so that we don't iterate twice over the directory list
         //       -- move it to new FilesystemNavigator class
         pathNavigator.navigateTo(target) // TODO: handle errors here
-        state = CurrentDirectoryState(target)
+        state = CurrentDirectoryState()
         directoryListWidget.model = state.selectionModel
 
         // Restore previous selection in this directory.
-        directorySelectionHistory.get(state.path)?.let { savedSelection ->
+        directorySelectionHistory.get(pathNavigator.target.path)?.let { savedSelection ->
             // There was previously saved selection, but that doesn't mean this Path still exists. It could've been
             // deleted or renamed while we were showing another directory. If the previously saved selection doesn't
             // exist in the current directory listing, delete it.
@@ -179,16 +154,53 @@ class WidgetDirectoryBrowser(path: Path) {
         }
 
         // Update top and bottom widgets
-        currentPathAndSelectionWidget.updateCurrent(state.path)
+        // TODO: move this to some common function set selected
+        currentPathAndSelectionWidget.updateCurrent(pathNavigator.target.path)
+
+        // Current directory is NOT empty
         if (!pathNavigator.target.isEmpty) {
-            // Current directory is NOT empty
             currentPathAndSelectionWidget.updateFocused(state.selectedItem)
-            selectedItemDetails.update(state.selectedItem, state.selectedItemAttributes)
+
+            // TODO back here
+            if (state.selectedEntry.type != null)
+                selectedItemDetails.update(state.selectedEntry)
+            else
+                selectedItemDetails.clear()
         } else {
             // Current directory empty: clear info at bottom, and selected in path on top
             currentPathAndSelectionWidget.updateFocused(null)
             selectedItemDetails.clear()
         }
+    }
+
+
+    /**
+     * Go up in directory hierarchy.
+     */
+    private fun navigateToParent() {
+        val parent = pathNavigator.target.path.parent ?: return // Do nothing when currently in root (/)
+        navigateTo(parent)
+    }
+
+    /**
+     * Reload current directory.
+     */
+    private fun reloadDirectory() {
+        println("Reloading: ${pathNavigator.target.path}")
+        navigateTo(pathNavigator.target.path)
+    }
+
+    /**
+     * Handle activating an item in the browser.
+     */
+    private fun activateHandler(activatedIdx: Int) {
+        // Empty directory, nothing to activate, there's a dummy element in ListView (hacky?)
+        // TODO: Can't activate entry in a [rw-] directory
+        if (pathNavigator.target.isEmpty)
+            return
+        // TODO: Handle invalid list items here? (empty dir, no-execute dir, etc?)
+        val activatedEntry = pathNavigator.target.entries!![activatedIdx]
+        openEntry(activatedEntry)
     }
 
     /**
@@ -199,6 +211,7 @@ class WidgetDirectoryBrowser(path: Path) {
      * - DirectoryBrowser, when navigating to a directory
      */
     private fun selectionChangedHandler() {
+        println("Selection change handler called")
         // Check if inside empty-directory: ListView is not empty, but that item doesn't represent a real dir/file.
         if (pathNavigator.target.isEmpty) {
             currentPathAndSelectionWidget.updateFocused(null)
@@ -208,33 +221,20 @@ class WidgetDirectoryBrowser(path: Path) {
 
         // Update: current path / item name, bottom info
         currentPathAndSelectionWidget.updateFocused(state.selectedItem)
-        selectedItemDetails.update(state.selectedItem, state.selectedItemAttributes)
+
+        if (state.selectedEntry.type != null)
+            selectedItemDetails.update(state.selectedEntry)
     }
 
-    /**
-     * Go up in directory hierarchy.
-     */
-    private fun navigateToParent() {
-        val parent = state.path.parent ?: return // Handle when showing root
-        navigateTo(parent)
-    }
-
-    /**
-     * Reload current directory.
-     */
-    private fun reloadDirectory() {
-        println("Reloading: ${state.path}")
-        navigateTo(state.path) // Somehow feels ... wrong?
-    }
+    private fun scrollTo(idx: Int) =
+        directoryListWidget.scrollTo(idx, setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT), null)
 
     /**
      * Keep the state related to single directory view in one place. Don't mutate, recreate.
      */
-    inner class CurrentDirectoryState(val path: Path) {
-
-//        val pn = PathNavigator().apply { navigateTo(path) }
-
-        val dirListModel = ListIndexModel.newInstance(if (!pathNavigator.target.isEmpty) pathNavigator.target.count else 1)
+    inner class CurrentDirectoryState {
+        val dirListModel =
+            ListIndexModel.newInstance(if (!pathNavigator.target.isEmpty) pathNavigator.target.count else 1)
 
         val selectionModel = SingleSelection(dirListModel).apply {
             onSelectionChanged { _, _ -> selectionChangedHandler() }
@@ -243,11 +243,14 @@ class WidgetDirectoryBrowser(path: Path) {
         val selectedItemIdx: Int
             get() = selectionModel.selected
 
+        val selectedEntry: FilesystemNavigator.Entry
+            get() = pathNavigator.target.entries!![selectionModel.selected]
+
         val selectedItem: Path
-            get() = pathNavigator.target.entries[selectionModel.selected].path
+            get() = pathNavigator.target.entries!![selectionModel.selected].path
 
         val selectedItemAttributes: PosixFileAttributes
-            get() = pathNavigator.target.entries[selectionModel.selected].attributes
+            get() = pathNavigator.target.entries!![selectionModel.selected].attributes!!
 
         init {
             println("Creating [CurrentDirectoryState]")
@@ -286,32 +289,60 @@ class WidgetDirectoryBrowser(path: Path) {
 
             check(item.index == listItem.position)
 
-            val itemEntry = pathNavigator.target.entries[listItem.position]
+            val itemEntry = pathNavigator.target.entries!![listItem.position]
             val entryName = itemEntry.path.name
-            when {
-                itemEntry.isSymbolicLink -> {
+
+            when (itemEntry.type) {
+                EntryType.Symlink -> {
                     if (itemEntry.isDirectory)
-                        listItemLabel.label = "[[⇥$entryName]]"
+                        listItemLabel.label = "[[⇥ $entryName]]"
                     else
                         listItemLabel.label = "⇥ $entryName"
                     listItemLabel.addCssClass("symlink")
                 }
 
-                itemEntry.isDirectory -> {
-                    listItemLabel.addCssClass("directory")
-                    listItemLabel.label = "[[$entryName]]"
+                EntryType.Directory -> listItemLabel.apply {
+                    label = "[[$entryName]]"
+                    addCssClass("directory")
                 }
 
-                itemEntry.isRegularFile -> {
-                    listItemLabel.label = entryName
-                    listItemLabel.addCssClass("file")
+                EntryType.Regular -> listItemLabel.apply {
+                    label = entryName
+                    addCssClass("file")
                 }
 
-                else -> {
-                    listItemLabel.label = entryName
-                    listItemLabel.addCssClass("unknown")
+                null -> listItemLabel.apply {
+                    label = entryName
+                    addCssClass("unknown")
                 }
+
+                else -> TODO()
             }
+
+//            when {
+//                itemEntry.isSymbolicLink -> {
+//                    if (itemEntry.isDirectory)
+//                        listItemLabel.label = "[[⇥$entryName]]"
+//                    else
+//                        listItemLabel.label = "⇥ $entryName"
+//                    listItemLabel.addCssClass("symlink")
+//                }
+//
+//                itemEntry.isDirectory -> {
+//                    listItemLabel.addCssClass("directory")
+//                    listItemLabel.label = "[[$entryName]]"
+//                }
+//
+//                itemEntry.isRegularFile -> {
+//                    listItemLabel.label = entryName
+//                    listItemLabel.addCssClass("file")
+//                }
+//
+//                else -> {
+//                    listItemLabel.label = entryName
+//                    listItemLabel.addCssClass("unknown")
+//                }
+//            }
             check(listItemLabel.cssClasses.size <= 1) { "Can't have more than one class set" }
         }
     }

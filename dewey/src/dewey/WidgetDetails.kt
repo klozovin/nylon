@@ -3,10 +3,9 @@ package dewey
 import org.gnome.gtk.Box
 import org.gnome.gtk.Label
 import org.gnome.gtk.Orientation
-import java.nio.file.Path
-import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
 import kotlin.io.path.readSymbolicLink
+import dewey.FilesystemNavigator.Entry.Type as EntryType
 
 class WidgetDetails : Box(Orientation.HORIZONTAL, 8) {
     private val prefix = Label("✕").apply { addCssClass("prefix") }
@@ -38,30 +37,27 @@ class WidgetDetails : Box(Orientation.HORIZONTAL, 8) {
         extra.label = ""
     }
 
-    fun update(path: Path, attributes: PosixFileAttributes) {
-        // MAYBE: Clear (reset to default?) before every update?
-        prefix.label = when {
-            attributes.isSymbolicLink -> "l"
-            attributes.isDirectory -> "d"
-            attributes.isRegularFile -> "-"
-            else -> "-"
+    fun update(entry: FilesystemNavigator.Entry) {
+        // Permissions string [rwx]
+        prefix.label = when (entry.type) {
+            EntryType.Directory -> "d"
+            EntryType.Regular -> "-"
+            EntryType.Symlink -> "l"
+            EntryType.Other -> "-"
+            else -> TODO("${entry.path}")
         }
+        permissions.label = PosixFilePermissions.toString(entry.permissions!!)
+        owner.label = entry.owner!!.name
+        group.label = entry.group!!.name
 
-        permissions.label = PosixFilePermissions.toString(attributes.permissions())
-        owner.label = attributes.owner().name
-        group.label = attributes.group().name
+        // Size of entry
+        val sizeSuffix = if (entry.type == EntryType.Regular) "B" else ""
+        size.label = "${entry.attributes!!.size()}$sizeSuffix"
 
-        val sizeSuffix = if (!attributes.isDirectory) "B" else ""
-        size.label = "${attributes.size()}$sizeSuffix"
+        // Last modification time
+        modifiedAt.label = entry.attributes.lastModifiedTime().toString()
 
-        modifiedAt.label = attributes.lastModifiedTime().toString()
-
-        if (attributes.isSymbolicLink)
-            extra.label = "⇥ ${path.readSymbolicLink()}"
-        else
-            extra.label = ""
-
-        // TODO: move somewhere else
-        assert(PosixFilePermissions.toString(attributes.permissions()) == posixPermissionsToString(attributes.permissions()))
+        // If symlink, it's target
+        extra.label = if (entry.type == EntryType.Symlink) "⇥ ${entry.path.readSymbolicLink()}" else ""
     }
 }

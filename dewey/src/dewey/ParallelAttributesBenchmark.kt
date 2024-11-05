@@ -16,21 +16,51 @@ import kotlin.io.path.readAttributes
 @Warmup(iterations = 4)
 @Measurement(iterations = 8, time = 1, timeUnit = TimeUnit.SECONDS)
 open class ReadFilesAttributesBenchmark {
-    var directoryList = Path.of("/usr/lib").listDirectoryEntries()
+    val path = Path.of("/usr/lib")
+    val directoryList = path.listDirectoryEntries()
 
-    @Benchmark
-    fun serialReadAttributes(): List<PosixFileAttributes> {
-        val attributesList = directoryList.stream().map {
-            it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
-        }.collect(Collectors.toList())
-        return attributesList
-    }
-
-    @Benchmark
+    //    @Benchmark
+//    fun serialReadAttributes(): List<PosixFileAttributes> {
+//        val attributesList = directoryList.stream().map {
+//            it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
+//        }.collect(Collectors.toList())
+//        return attributesList
+//    }
+//
+//    @Benchmark
     fun parallelStreamReadAttributes(): List<PosixFileAttributes> {
         val attributesList = directoryList.parallelStream().map {
             it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
         }.collect(Collectors.toList())
         return attributesList
+    }
+
+    //    @Benchmark
+//    fun entriesInPathNavigator(): List<PathNavigator.Entry> {
+//        val attributesList = directoryList.parallelStream().map {
+//            it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
+//        }.toList()
+//
+//        val pairs = (directoryList zip attributesList).map(
+//            PathNavigator::Entry
+//        )
+//        return pairs
+//    }
+
+    @Benchmark
+    fun listDirectoryEntiresAndGetAttributes(): List<Pair<Path, PosixFileAttributes>> {
+        val entries = path.listDirectoryEntries()
+        val attributes = entries.parallelStream().map {
+            it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
+        }.toList()
+        val pairs = (entries zip attributes)
+        return pairs
+    }
+
+    @Benchmark
+    fun usePathNavigator(): FilesystemNavigator {
+        val pn = FilesystemNavigator()
+        pn.navigateTo(path)
+        return pn
     }
 }
