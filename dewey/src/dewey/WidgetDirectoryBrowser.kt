@@ -5,7 +5,6 @@ import org.gnome.gdk.Gdk
 import org.gnome.gdk.ModifierType
 import org.gnome.gtk.*
 import java.nio.file.Path
-import java.nio.file.attribute.PosixFileAttributes
 import kotlin.io.path.name
 import dewey.FilesystemNavigator.Entry.Type as EntryType
 
@@ -73,22 +72,16 @@ class WidgetDirectoryBrowser(path: Path) {
             Gdk.KEY_F5 -> reloadDirectory()
             Gdk.KEY_F6 -> showChangeDirectoryDialog()
 
-            Gdk.KEY_Left, Gdk.KEY_j -> navigateToParent()
-            Gdk.KEY_Right, Gdk.KEY_l -> directoryListWidget.emitActivate(state.selectionModel.selected)
+            Gdk.KEY_Left, Gdk.KEY_j -> openParentDirectory()
+            Gdk.KEY_Right, Gdk.KEY_l -> openSelectedEntry()
         }
         return false
     }
 
     private fun openSelectedEntry() {
-
+        openEntry(state.selectedEntry)
     }
 
-    /**
-     * Opens an entry:
-     * - Directory : change to it, list its contents
-     * - Executable : try to run it?
-     * - File : try to open it using a default program?
-     */
     private fun openEntry(entry: FilesystemNavigator.Entry) {
         when (entry.type) {
             EntryType.Regular -> openFile(entry)
@@ -100,6 +93,14 @@ class WidgetDirectoryBrowser(path: Path) {
     private fun openDirectory(entry: FilesystemNavigator.Entry) {
         println("Opening [${entry.path.name}]")
         navigateTo(entry.path)
+    }
+
+    /**
+     * Go up in directory hierarchy.
+     */
+    private fun openParentDirectory() {
+        val parent = pathNavigator.target.path.parent ?: return // Do nothing when currently in root (/)
+        navigateTo(parent)
     }
 
     private fun openFile(entry: FilesystemNavigator.Entry) {
@@ -120,6 +121,7 @@ class WidgetDirectoryBrowser(path: Path) {
 
     // ------------------------------------------------------------------------ //
 
+
     /**
      * Go to new directory and show its contents.
      */
@@ -135,6 +137,10 @@ class WidgetDirectoryBrowser(path: Path) {
         // TODO: State could mark this on startup so that we don't iterate twice over the directory list
         //       -- move it to new FilesystemNavigator class
         pathNavigator.navigateTo(target) // TODO: handle errors here
+        // TODO: Continue here, we should not be able to CD into this
+
+
+
         state = CurrentDirectoryState()
         directoryListWidget.model = state.selectionModel
 
@@ -171,15 +177,6 @@ class WidgetDirectoryBrowser(path: Path) {
             currentPathAndSelectionWidget.updateFocused(null)
             selectedItemDetails.clear()
         }
-    }
-
-
-    /**
-     * Go up in directory hierarchy.
-     */
-    private fun navigateToParent() {
-        val parent = pathNavigator.target.path.parent ?: return // Do nothing when currently in root (/)
-        navigateTo(parent)
     }
 
     /**
@@ -248,13 +245,6 @@ class WidgetDirectoryBrowser(path: Path) {
 
         val selectedItem: Path
             get() = pathNavigator.target.entries!![selectionModel.selected].path
-
-        val selectedItemAttributes: PosixFileAttributes
-            get() = pathNavigator.target.entries!![selectionModel.selected].attributes!!
-
-        init {
-            println("Creating [CurrentDirectoryState]")
-        }
     }
 
     /**
@@ -318,31 +308,6 @@ class WidgetDirectoryBrowser(path: Path) {
 
                 else -> TODO()
             }
-
-//            when {
-//                itemEntry.isSymbolicLink -> {
-//                    if (itemEntry.isDirectory)
-//                        listItemLabel.label = "[[⇥$entryName]]"
-//                    else
-//                        listItemLabel.label = "⇥ $entryName"
-//                    listItemLabel.addCssClass("symlink")
-//                }
-//
-//                itemEntry.isDirectory -> {
-//                    listItemLabel.addCssClass("directory")
-//                    listItemLabel.label = "[[$entryName]]"
-//                }
-//
-//                itemEntry.isRegularFile -> {
-//                    listItemLabel.label = entryName
-//                    listItemLabel.addCssClass("file")
-//                }
-//
-//                else -> {
-//                    listItemLabel.label = entryName
-//                    listItemLabel.addCssClass("unknown")
-//                }
-//            }
             check(listItemLabel.cssClasses.size <= 1) { "Can't have more than one class set" }
         }
     }
