@@ -5,7 +5,7 @@ import org.gnome.gtk.Label
 import org.gnome.gtk.Orientation
 import java.nio.file.attribute.PosixFilePermissions
 import kotlin.io.path.readSymbolicLink
-import dewey.FilesystemNavigator.Entry.Type as EntryType
+import dewey.FilesystemNavigator.EntryType as EntryType
 
 class WidgetDetails : Box(Orientation.HORIZONTAL, 8) {
     private val prefix = Label("✕").apply { addCssClass("prefix") }
@@ -28,16 +28,16 @@ class WidgetDetails : Box(Orientation.HORIZONTAL, 8) {
     }
 
     fun clear() {
-        prefix.label = "✕"
-        permissions.label = "✕"
-        owner.label = "✕"
-        group.label = "✕"
-        size.label = "✕"
-        modifiedAt.label = "✕"
+        prefix.label = "—"
+        permissions.label = "—"
+        owner.label = "—"
+        group.label = "—"
+        size.label = "—"
+        modifiedAt.label = "—"
         extra.label = ""
     }
 
-    fun update(entry: FilesystemNavigator.Entry) {
+    fun update(entry: FilesystemNavigator.EntryFull) {
         // Permissions string [rwx]
         prefix.label = when (entry.type) {
             EntryType.Directory -> "d"

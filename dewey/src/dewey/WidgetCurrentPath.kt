@@ -24,6 +24,6 @@ class WidgetCurrentPath : Box(Orientation.HORIZONTAL, 4) {
 
     fun updateFocused(path: Path?) {
         // path = null for empty directories, so there's nothing to focus on
-        focused.label = path?.fileName?.pathString ?: "✕"
+        focused.label = path?.fileName?.pathString ?: "—"
     }
 }
