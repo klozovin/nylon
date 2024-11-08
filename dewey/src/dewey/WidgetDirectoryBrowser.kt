@@ -234,9 +234,6 @@ class WidgetDirectoryBrowser(path: Path) {
 
     //
 
-    /**
-     * Handle keyboard shortcuts in browser.
-     */
     private fun keyPressHandler(keyVal: Int, keyCode: Int, modifierTypes: MutableSet<ModifierType>?): Boolean {
         when (keyVal) {
             // TODO: extract to function
@@ -302,18 +299,18 @@ class WidgetDirectoryBrowser(path: Path) {
         //
         // Models, selection, factories used for: regular listing, restricted listing, empty/inaccessible/etc
         //
-        val itemFactoryEmpty = ItemFactoryEmtpy()
+        val itemFactoryEmpty = ItemFactoryEmptyDirectory()
         val listModelEmpty = StringList<StringObject>(arrayOf("empty"))
         val selectionModelEmpty = NoSelection<StringObject>(listModelEmpty)
 
         // Limited
-        val itemFactoryLimited = ItemFactoryLimited()
+        val itemFactoryLimited = ItemFactoryRestrictedDirectory()
         var listModelLimited = ListIndexModel.newInstance(0)
         val selectionModelLimited =
             SingleSelection<ListIndexModel.ListIndex>(listModelLimited).apply { canUnselect = false }
 
         // Regular ListView
-        val itemFactoryRegular = ItemFactoryRegular()
+        val itemFactoryRegular = ItemFactoryRegularDirectory()
         val onActivateSignalConnection = directoryListWidget.onActivate(::activateHandler)
         var listModelRegular = ListIndexModel.newInstance(0)
 
@@ -369,18 +366,28 @@ class WidgetDirectoryBrowser(path: Path) {
         }
     }
 
-    inner class ItemFactoryEmtpy : SignalListItemFactory() {
+    //
+    // Item Factories
+    //
+
+    abstract class BaseItemFactory: SignalListItemFactory() {
         init {
             onSetup { setup(it as ListItem) }
             onBind { bind(it as ListItem) }
         }
 
-        private fun setup(listItem: ListItem) {
-            val label = Label("✕").apply { halign = Align.START }
-            listItem.child = label
+        open fun setup(listItem: ListItem) {
+            listItem.child = Label("✕").apply { halign = Align.START }
         }
+        abstract fun bind(listItem: ListItem)
+    }
 
-        private fun bind(listItem: ListItem) {
+    /**
+     * Used when there's only one item in the directory listing, but that item is not a directory entry, instead it's
+     * a marker: empty directory, access denied, etc.
+     */
+    inner class ItemFactoryEmptyDirectory : BaseItemFactory() {
+        override fun bind(listItem: ListItem) {
             val child = listItem.child as Label
             val item = listItem.item as StringObject
             child.cssClasses = emptyArray()
@@ -390,18 +397,11 @@ class WidgetDirectoryBrowser(path: Path) {
     }
 
 
-    inner class ItemFactoryLimited : SignalListItemFactory() {
-        init {
-            onSetup { setup(it as ListItem) }
-            onBind { bind(it as ListItem) }
-        }
-
-        private fun setup(listItem: ListItem) {
-            val label = Label("✕").apply { halign = Align.START }
-            listItem.child = label
-        }
-
-        private fun bind(listItem: ListItem) {
+    /**
+     * Showing a directory with [rw-] permissions. Can only show paths, no entry details.
+     */
+    inner class ItemFactoryRestrictedDirectory : BaseItemFactory() {
+        override fun bind(listItem: ListItem) {
             val listItemLabel = listItem.child as Label
             listItemLabel.cssClasses = emptyArray()
             when (val target = pathNavigator.target) {
@@ -411,9 +411,7 @@ class WidgetDirectoryBrowser(path: Path) {
                         label = "% ${itemEntry.name}"
                         addCssClass("nonxdirentry")
                     }
-
                 }
-
                 else -> error("Should be unreachable")
             }
             check(listItemLabel.cssClasses.size <= 1) { "Can't have more than one class set" }
@@ -422,24 +420,10 @@ class WidgetDirectoryBrowser(path: Path) {
 
 
     /**
-     * Creates and updates rows in virtualized ListView control.
+     * Showing a regular directory with [rwx] permissions. Can get full details about entries.
      */
-    inner class ItemFactoryRegular : SignalListItemFactory() {
-        init {
-            onSetup { setup(it as ListItem) }
-            onBind { bind(it as ListItem) }
-        }
-
-        private fun setup(listItem: ListItem) {
-            val label = Label("✕").apply { halign = Align.START }
-            listItem.child = label
-        }
-
-        private fun bindNotAccessible(model: StringObject, label: Label) {
-
-        }
-
-        private fun bind(listItem: ListItem) {
+    inner class ItemFactoryRegularDirectory : BaseItemFactory() {
+        override fun bind(listItem: ListItem) {
             val listItemLabel = listItem.child as Label
             val item = listItem.item as ListIndexModel.ListIndex
 
@@ -494,7 +478,6 @@ class WidgetDirectoryBrowser(path: Path) {
     }
 
     companion object {
-
         /**
          * Have to do it by setting to null first, otherwise there's a race condition.
          */
