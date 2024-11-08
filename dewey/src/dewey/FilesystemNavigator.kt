@@ -148,7 +148,7 @@ class FilesystemNavigator {
 
 
     sealed class BaseTarget(val entry: EntryFull) {
-
+        open val isEmpty get() = true
         val path get() = entry.path
 
         class TargetInvalid(entry: EntryFull, val error: Error) : BaseTarget(entry) {
@@ -167,7 +167,7 @@ class FilesystemNavigator {
         class TargetPathsOnly(entry: EntryFull, val entries: List<EntryBasic>) : BaseTarget(entry) {
             // TODO: Maybe don't copy paste these properties?
             val count get() = entries.size
-            val isEmpty get() = entries.isEmpty()
+            override val isEmpty get() = entries.isEmpty()
             val isNotEmpty get() = entries.isNotEmpty()
         }
 
@@ -175,7 +175,7 @@ class FilesystemNavigator {
         class TargetFull(entry: EntryFull, val entries: List<EntryFull>) : BaseTarget(entry) {
 
             val count get() = entries.size
-            val isEmpty get() = entries.isEmpty()
+            override val isEmpty get() = entries.isEmpty()
             val isNotEmpty get() = entries.isNotEmpty()
 
             // TODO: Move up to another common abstract base class? Both Full and PathOnly should have this function

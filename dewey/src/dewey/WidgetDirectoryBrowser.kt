@@ -95,31 +95,95 @@ class WidgetDirectoryBrowser(path: Path) {
 
         when (val target = pathNavigator.target) {
             is TargetFull -> {
-                listViewState.update(target)
-                scrollTo(0)
+
+                // Update ListView
+                // TODO: Delete?
+//                listViewState.update(target)
+
+                // Update current path (top)
                 currentPathAndSelectionWidget.updateTargetPath(target.path)
+
                 if (target.isNotEmpty) {
-                    currentPathAndSelectionWidget.updateFocused(listViewState.selectedItem) // TODO: just use item || entry
+
+                    // Update ListView
+                    listViewState.listModelRegular = ListIndexModel.newInstance(target.count)
+                    listViewState.selectionModelRegular.model = listViewState.listModelRegular
+                    listViewState.currentSelectionModel = listViewState.selectionModelRegular
+
+                    directoryListWidget.setModelAndFactory(
+                        listViewState.selectionModelRegular,
+                        listViewState.itemFactoryRegular
+                    )
+                    listViewState.onActivateSignalConnection.unblock() // TODO: Maybe not needed any more, delete
+
+                    // Update current path (top)
+                    // TODO: Move up, but for that have to rejiggle dependencies
+                    currentPathAndSelectionWidget.updateFocused(target.entries[listViewState.selectedItemIdx].path) // TODO: just use item || entry
+
+                    // Update entry details (bottom)
                     selectedItemDetails.update(listViewState.selectedEntry)
-                } else {
-                    currentPathAndSelectionWidget.clearFocused() // TODO: use clearFocused()
+
+                    scrollTo(0) // TODO: Instead of this, set from history
+                }
+                // Showing an empty directory
+                else {
+                    // Update current path (top): CWD path remains the same, target gets cleared in an empty dir.
+                    currentPathAndSelectionWidget.clearFocused()
+
+                    // Update entry listing (middle): set to emtpy item factory
+                    val model = StringList<StringObject>().apply { append("empty directory") }
+                    val selection = NoSelection<GObject>(model)
+                    directoryListWidget.setModelAndFactory(selection, listViewState.itemFactoryEmpty)
+                    listViewState.onActivateSignalConnection.block() // TODO: Maybe delete
+
+                    // Update entry details (bottom): nothing to show, clear it
                     selectedItemDetails.clear()
                 }
             }
 
             is TargetPathsOnly -> {
-                listViewState.update(target)
-                scrollTo(0) // TODO: Scroll to remembered
+
+                // TODO: delete
+//                listViewState.update(target)
+
+
+//                scrollTo(0) // TODO: Scroll to remembered
+
                 currentPathAndSelectionWidget.updateTargetPath(target.path)
+
                 if (target.isNotEmpty) {
-                    val selectedItem = target.entries[listViewState.selectionModelLimited.selected]
-                    currentPathAndSelectionWidget.updateFocused(selectedItem.path)
-                    selectedItemDetails.clear()
-                } else {
-                    currentPathAndSelectionWidget.clearFocused()
+                    // Update ListView
+                    listViewState.listModelLimited = ListIndexModel.newInstance(target.count)
+                    // TODO: Selection model has to be created first, then scrolled to, then remove updates from here
+                    //       instead update from selection changed handler
+                    listViewState.selectionModelLimited.model = listViewState.listModelLimited
+                    listViewState.currentSelectionModel = listViewState.selectionModelLimited
+                    directoryListWidget.setModelAndFactory(
+                        listViewState.selectionModelLimited,
+                        listViewState.itemFactoryLimited
+                    )
+                    listViewState.onActivateSignalConnection.block()
+
+                    // Update current path (top)
+                    currentPathAndSelectionWidget.updateFocused(target.entries[listViewState.selectionModelLimited.selected].path)
+
+                    // Update entry details (bottom): can't show anything in restricted directory
                     selectedItemDetails.clear()
                 }
-                // disable actdivation, events, selection, only back should work
+                // Showing an empty directory
+                else {
+                    // Update current path (top)
+                    currentPathAndSelectionWidget.clearFocused()
+
+                    listViewState.onActivateSignalConnection.block() // TODO: Delete maybe?
+                    val model = StringList<StringObject>().apply { append("empty restricted directory") }
+                    val selection = NoSelection<GObject>(model)
+                    directoryListWidget.setModelAndFactory(selection, listViewState.itemFactoryEmpty)
+
+                    // Update entry details (bottom): clear
+                    selectedItemDetails.clear()
+
+                }
             }
 
             is FilesystemNavigator.BaseTarget.TargetNotAccessible -> {
@@ -254,14 +318,30 @@ class WidgetDirectoryBrowser(path: Path) {
     private fun selectionChangedHandler(position: Int, items: Int) {
         println("Selection change handler called")
         // Check if inside empty-directory: ListView is not empty, but that item doesn't represent a real dir/file.
-        if (pathNavigator.targetFull.isEmpty) {
-            currentPathAndSelectionWidget.clearFocused()
-            selectedItemDetails.clear()
-            return
+        val selectedIdx = listViewState.selectedItemIdx
+
+        when (val target = pathNavigator.target) {
+            is TargetFull -> {
+                if (target.isEmpty) {
+                    currentPathAndSelectionWidget.clearFocused()
+                    selectedItemDetails.clear()
+                } else {
+                    // Update: current path / item name, bottom info
+                    currentPathAndSelectionWidget.updateFocused(listViewState.selectedItem)
+                    selectedItemDetails.update(listViewState.selectedEntry)
+
+                }
+            }
+
+            is TargetPathsOnly -> {
+                currentPathAndSelectionWidget.updateFocused(target.entries[selectedIdx].path)
+            }
+
+
+            is FilesystemNavigator.BaseTarget.TargetInvalid -> TODO()
+            is FilesystemNavigator.BaseTarget.TargetNotAccessible -> TODO()
         }
-        // Update: current path / item name, bottom info
-        currentPathAndSelectionWidget.updateFocused(listViewState.selectedItem)
-        selectedItemDetails.update(listViewState.selectedEntry)
+
     }
 
     /**
@@ -296,12 +376,16 @@ class WidgetDirectoryBrowser(path: Path) {
     //
 
     inner class ListViewState {
+
+        // TODO: Remove later
+        lateinit var currentSelectionModel: SingleSelection<ListIndexModel.ListIndex>
+
         //
         // Models, selection, factories used for: regular listing, restricted listing, empty/inaccessible/etc
         //
         val itemFactoryEmpty = ItemFactoryEmptyDirectory()
-        val listModelEmpty = StringList<StringObject>(arrayOf("empty"))
-        val selectionModelEmpty = NoSelection<StringObject>(listModelEmpty)
+//        val listModelEmpty = StringList<StringObject>(arrayOf("empty"))
+//        val selectionModelEmpty = NoSelection<StringObject>(listModelEmpty)
 
         // Limited
         val itemFactoryLimited = ItemFactoryRestrictedDirectory()
@@ -324,7 +408,7 @@ class WidgetDirectoryBrowser(path: Path) {
 
 
         val selectedItemIdx: Int
-            get() = selectionModelRegular.selected
+            get() = currentSelectionModel.selected
 
         val selectedEntry: FilesystemNavigator.EntryFull
             get() = (pathNavigator.target as TargetFull).entries[selectionModelRegular.selected]
@@ -335,42 +419,42 @@ class WidgetDirectoryBrowser(path: Path) {
         /**
          * Called when showing a regular directory with full permissions
          */
-        fun update(target: TargetFull) {
-            if (target.isNotEmpty) {
-                listModelRegular = ListIndexModel.newInstance(target.count)
-                selectionModelRegular.model = listModelRegular
-                directoryListWidget.setModelAndFactory(selectionModelRegular, itemFactoryRegular)
-                onActivateSignalConnection.unblock()
-            } else {
-                onActivateSignalConnection.block()
-                directoryListWidget.setModelAndFactory(selectionModelEmpty, itemFactoryEmpty)
-            }
-        }
+//        fun update(target: TargetFull) {
+//            if (target.isNotEmpty) {
+//                listModelRegular = ListIndexModel.newInstance(target.count)
+//                selectionModelRegular.model = listModelRegular
+//                directoryListWidget.setModelAndFactory(selectionModelRegular, itemFactoryRegular)
+//                onActivateSignalConnection.unblock()
+//            } else {
+//                onActivateSignalConnection.block()
+//                directoryListWidget.setModelAndFactory(selectionModelEmpty, itemFactoryEmpty)
+//            }
+//        }
 
         /**
          * Called when showing a [rw-] directory, we can only list paths and nothing else
          */
-        fun update(target: TargetPathsOnly) {
-            println("TARGET: ${target.isNotEmpty}")
-            println("IVEGOT THIS: ${target.entries}")
-            if (target.isNotEmpty) {
-                listModelLimited = ListIndexModel.newInstance(target.count)
-                selectionModelLimited.model = listModelLimited
-                directoryListWidget.setModelAndFactory(selectionModelLimited, itemFactoryLimited)
-                onActivateSignalConnection.block()
-            } else {
-                onActivateSignalConnection.block()
-                directoryListWidget.setModelAndFactory(selectionModelEmpty, itemFactoryEmpty)
-            }
-
-        }
+//        fun update(target: TargetPathsOnly) {
+//            println("TARGET: ${target.isNotEmpty}")
+//            println("IVEGOT THIS: ${target.entries}")
+//            if (target.isNotEmpty) {
+//                listModelLimited = ListIndexModel.newInstance(target.count)
+//                selectionModelLimited.model = listModelLimited
+//                directoryListWidget.setModelAndFactory(selectionModelLimited, itemFactoryLimited)
+//                onActivateSignalConnection.block()
+//            } else {
+//                onActivateSignalConnection.block()
+//                directoryListWidget.setModelAndFactory(selectionModelEmpty, itemFactoryEmpty)
+//            }
+//
+//        }
     }
 
     //
     // Item Factories
     //
 
-    abstract class BaseItemFactory: SignalListItemFactory() {
+    abstract class BaseItemFactory : SignalListItemFactory() {
         init {
             onSetup { setup(it as ListItem) }
             onBind { bind(it as ListItem) }
@@ -379,6 +463,7 @@ class WidgetDirectoryBrowser(path: Path) {
         open fun setup(listItem: ListItem) {
             listItem.child = Label("✕").apply { halign = Align.START }
         }
+
         abstract fun bind(listItem: ListItem)
     }
 
@@ -412,6 +497,7 @@ class WidgetDirectoryBrowser(path: Path) {
                         addCssClass("nonxdirentry")
                     }
                 }
+
                 else -> error("Should be unreachable")
             }
             check(listItemLabel.cssClasses.size <= 1) { "Can't have more than one class set" }
