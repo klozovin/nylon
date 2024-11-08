@@ -17,13 +17,16 @@ class WidgetCurrentPath : Box(Orientation.HORIZONTAL, 4) {
         append(focused)
     }
 
-    fun updateCurrent(path: Path) {
+    fun updateTargetPath(path: Path) {
         // Don't show double "//" when showing the root filesystem.
         current.label = "${path.pathString}${if (path.parent != null) "/" else ""}"
     }
 
-    fun updateFocused(path: Path?) {
-        // path = null for empty directories, so there's nothing to focus on
-        focused.label = path?.fileName?.pathString ?: "—"
+    fun updateFocused(path: Path) {
+        focused.label = path.fileName?.pathString ?: "—"
+    }
+
+    fun clearFocused() {
+        focused.label = "—"
     }
 }

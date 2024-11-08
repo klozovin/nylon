@@ -60,7 +60,7 @@ class FilesystemNavigator {
      * @throws PathIsNotDirectoryException
      * @throws DirectoryChangedWhileListingException
      */
-    private fun tryCreateNewTarget(targetPath: Path): BaseTarget {
+    fun tryCreateNewTarget(targetPath: Path): BaseTarget {
 
         /**
          * Try reading attributes. Possible ways to fail:
@@ -164,7 +164,12 @@ class FilesystemNavigator {
         open class TargetNotAccessible(entry: EntryFull) : BaseTarget(entry)
 
         // [rw-]
-        class TargetPathsOnly(entry: EntryFull, val entries: List<EntryBasic>) : BaseTarget(entry)
+        class TargetPathsOnly(entry: EntryFull, val entries: List<EntryBasic>) : BaseTarget(entry) {
+            // TODO: Maybe don't copy paste these properties?
+            val count get() = entries.size
+            val isEmpty get() = entries.isEmpty()
+            val isNotEmpty get() = entries.isNotEmpty()
+        }
 
         // [rwx]
         class TargetFull(entry: EntryFull, val entries: List<EntryFull>) : BaseTarget(entry) {

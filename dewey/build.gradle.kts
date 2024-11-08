@@ -18,7 +18,7 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlin", "kotlin-reflect", "2.0.21")
     implementation("org.jetbrains.kotlinx", "kotlinx-benchmark-runtime", "0.4.12")
-    implementation("io.github.jwharm.javagi", "gtk", "0.10.2")
+    implementation("io.github.jwharm.javagi", "gtk", "0.11.0")
 }
 
 sourceSets.main {
@@ -39,8 +39,6 @@ application {
         "--enable-preview",
         "--enable-native-access=ALL-UNNAMED",
     )
-//        "-Djava.library.path=/usr/lib",
-//        "-Dforeign.restricted=permit",
 }
 
 

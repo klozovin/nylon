@@ -6,18 +6,21 @@ import org.gnome.glib.Type
 import org.gnome.gobject.GObject
 import java.lang.foreign.MemorySegment
 
-class UnitListModel(addres: MemorySegment) : ListModel, GObject(addres) {
-    var size: Int = 0
 
-    companion object {
-        fun newInstance(count: Int): UnitListModel {
-            val model = newInstance<UnitListModel>(gtype)
-            model.size = count
-            return model
-        }
 
-        val gtype = Types.register<UnitListModel, ObjectClass>(UnitListModel::class.java)
-    }
+
+class UnitListModel<T: GObject>(addres: MemorySegment) : ListModel<T>, GObject(addres) {
+    override var size: Int = 0
+
+//    companion object {
+//        fun<T: GObject> newInstance(count: Int): UnitListModel<T> {
+//            val model = newInstance<UnitListModel<T>>(gtype)
+//            model.size = count
+//            return model
+//        }
+//
+//        val gtype: Type<T: GObject> = Types.register<UnitListModel<T>, ObjectClass>(UnitListModel::class.java)
+//    }
 
 }
 
@@ -37,3 +40,4 @@ class UnitIndex(address: MemorySegment) : GObject(address) {
         }
     }
 }
+
