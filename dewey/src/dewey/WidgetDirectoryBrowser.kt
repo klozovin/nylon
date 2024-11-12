@@ -1,8 +1,7 @@
 package dewey
 
-import dewey.FilesystemNavigator.BaseTarget.TargetFull
-import dewey.FilesystemNavigator.BaseTarget.TargetPathsOnly
-import dewey.FilesystemNavigator.EntryType
+import dewey.FilesystemNavigator.BaseTarget.*
+import dewey.FilesystemNavigator.Entry.Type
 import io.github.jwharm.javagi.gio.ListIndexModel
 import org.gnome.gdk.Gdk
 import org.gnome.gdk.ModifierType
@@ -64,37 +63,19 @@ class WidgetDirectoryBrowser(path: Path) {
     }
 
     init {
-        // TODO: maybe better to use navigator here to get to path, then have a pure UI function that reads target
-        //       and populates the list view
-        // TODO: Set the factory depending on the kind of dir user opened at startup
-//        directoryListWidget.factory = itemFactoryRegular
-        openDirectory(FilesystemNavigator.EntryFull.of(path))
+        pathNavigator.navigateTo(path)
+        updateDirectoryList()
     }
 
-    private fun openEntry(entry: FilesystemNavigator.EntryFull) {
-        when (entry.type) {
-            EntryType.Regular -> openFile(entry)
-            EntryType.Directory -> openDirectory(entry)
-            EntryType.Symlink -> {
-                when (entry.linksToType()) {
-                    EntryType.Directory -> openDirectory(entry)
-                    else -> println("Don't know what to do with link: [${entry.path}]")
-                }
-            }
-
-            else -> println("Don't know what to do with [${entry.path.name}]")
-        }
-    }
-
-    private fun openDirectory(entry: FilesystemNavigator.EntryFull) {
-        println("Opening [${entry.path.name}]")
+    private fun updateDirectoryList() {
+        println("Opening [${pathNavigator.target.entry.name}]")
 
         // TODO: Selection history for easier navigation
 
-        pathNavigator.navigateTo(entry.path) // TODO: do this somewhere else, this function should just update UI
+//        pathNavigator.navigateTo(targetPath.path) // TODO: do this somewhere else, this function should just update UI
 
         when (val target = pathNavigator.target) {
-            is TargetFull -> {
+            is TargetRegular -> {
 
                 // Update ListView
                 // TODO: Delete?
@@ -141,7 +122,7 @@ class WidgetDirectoryBrowser(path: Path) {
                 }
             }
 
-            is TargetPathsOnly -> {
+            is Restricted -> {
 
                 // TODO: delete
 //                listViewState.update(target)
@@ -186,16 +167,58 @@ class WidgetDirectoryBrowser(path: Path) {
                 }
             }
 
-            is FilesystemNavigator.BaseTarget.TargetNotAccessible -> {
-                println("target not accessible")
+            is Unreadable -> {
+                currentPathAndSelectionWidget.updateTargetPath(target.path)
+
+                val model = StringList<StringObject>().apply { append("directory not readable") }
+                val selection = NoSelection<GObject>(model)
+                directoryListWidget.setModelAndFactory(selection, listViewState.itemFactoryEmpty)
+                listViewState.onActivateSignalConnection.block()
+
+                selectedItemDetails.clear()
             }
 
-            is FilesystemNavigator.BaseTarget.TargetInvalid -> TODO()
+            is Invalid -> {
+                when (target.error) {
+                    Invalid.Error.PathDoesNotExist -> {
+                        currentPathAndSelectionWidget.updateTargetPath(target.path)
+                        currentPathAndSelectionWidget.clearFocused()
+
+                        listViewState.onActivateSignalConnection.block()
+                        val model = StringList<StringObject>().apply { append("directory does not exist") }
+                        val selection = NoSelection<GObject>(model)
+                        directoryListWidget.setModelAndFactory(selection, listViewState.itemFactoryEmpty)
+
+                        selectedItemDetails.clear()
+                    }
+                    Invalid.Error.PathIsNotDirectory -> TODO()
+                    Invalid.Error.ChangedWhileListing -> TODO()
+                }
+            }
         }
+    }
 
+    private fun openEntry(entry: FilesystemNavigator.Entry.EntryFull) {
+        when (entry.type) {
+            Type.Regular -> openFile(entry)
+            Type.Directory -> {
+                pathNavigator.navigateTo(entry.path)
+                updateDirectoryList()
+            }
 
-        // TODO: Delete this, keep only this function
-//        navigateTo(entry.path)
+            Type.Symlink -> {
+                when (entry.linksToType()) {
+                    Type.Directory -> {
+                        pathNavigator.navigateTo(entry.path)
+                        updateDirectoryList()
+                    }
+
+                    else -> println("Don't know what to do with link: [${entry.path}]")
+                }
+            }
+
+            else -> println("Don't know what to do with [${entry.path.name}]")
+        }
     }
 
     /**
@@ -204,10 +227,10 @@ class WidgetDirectoryBrowser(path: Path) {
     private fun openParentDirectory() {
         // TODO: This lists directory contents twice (openDirectory() does it again)
         pathNavigator.navigateToParent()
-        openDirectory(pathNavigator.target.entry)
+        updateDirectoryList()
     }
 
-    private fun openFile(entry: FilesystemNavigator.EntryFull) {
+    private fun openFile(entry: FilesystemNavigator.Entry.EntryFull) {
         println("Opening [${entry.path.name}]")
     }
 
@@ -321,7 +344,7 @@ class WidgetDirectoryBrowser(path: Path) {
         val selectedIdx = listViewState.selectedItemIdx
 
         when (val target = pathNavigator.target) {
-            is TargetFull -> {
+            is TargetRegular -> {
                 if (target.isEmpty) {
                     currentPathAndSelectionWidget.clearFocused()
                     selectedItemDetails.clear()
@@ -329,17 +352,16 @@ class WidgetDirectoryBrowser(path: Path) {
                     // Update: current path / item name, bottom info
                     currentPathAndSelectionWidget.updateFocused(listViewState.selectedItem)
                     selectedItemDetails.update(listViewState.selectedEntry)
-
                 }
             }
 
-            is TargetPathsOnly -> {
+            is Restricted -> {
                 currentPathAndSelectionWidget.updateFocused(target.entries[selectedIdx].path)
             }
 
 
-            is FilesystemNavigator.BaseTarget.TargetInvalid -> TODO()
-            is FilesystemNavigator.BaseTarget.TargetNotAccessible -> TODO()
+            is Invalid -> TODO()
+            is Unreadable -> TODO()
         }
 
     }
@@ -351,10 +373,10 @@ class WidgetDirectoryBrowser(path: Path) {
     // TODO Join these two functions, should be one place where item gets activated
     private fun openSelectedListViewItem() {
         when (val target = pathNavigator.target) {
-            is TargetFull -> if (target.isNotEmpty) openEntry(target.entries[listViewState.selectionModelRegular.selected])
-            is TargetPathsOnly -> return
-            is FilesystemNavigator.BaseTarget.TargetNotAccessible -> TODO()
-            is FilesystemNavigator.BaseTarget.TargetInvalid -> TODO()
+            is TargetRegular -> if (target.isNotEmpty) openEntry(target.entries[listViewState.selectionModelRegular.selected])
+            is Restricted -> return
+            is Unreadable -> return
+            is Invalid -> TODO()
         }
     }
 
@@ -368,6 +390,8 @@ class WidgetDirectoryBrowser(path: Path) {
 
         // TODO: Handle invalid list items here? (empty dir, no-execute dir, etc?)
         val activatedEntry = pathNavigator.targetFull.entries[activatedIdx]
+        // TODO: When unified selectionmodel:  check(activatedIdx == selectionModel.selected)
+        //       also, stop blocking this event, too fiddly
         openEntry(activatedEntry)
     }
 
@@ -410,8 +434,8 @@ class WidgetDirectoryBrowser(path: Path) {
         val selectedItemIdx: Int
             get() = currentSelectionModel.selected
 
-        val selectedEntry: FilesystemNavigator.EntryFull
-            get() = (pathNavigator.target as TargetFull).entries[selectionModelRegular.selected]
+        val selectedEntry: FilesystemNavigator.Entry.EntryFull
+            get() = (pathNavigator.target as TargetRegular).entries[selectionModelRegular.selected]
 
         val selectedItem: Path
             get() = pathNavigator.targetFull.entries[selectionModelRegular.selected].path
@@ -490,11 +514,11 @@ class WidgetDirectoryBrowser(path: Path) {
             val listItemLabel = listItem.child as Label
             listItemLabel.cssClasses = emptyArray()
             when (val target = pathNavigator.target) {
-                is TargetPathsOnly -> {
+                is Restricted -> {
                     val itemEntry = target.entries[listItem.position]
                     listItemLabel.apply {
                         label = "% ${itemEntry.name}"
-                        addCssClass("nonxdirentry")
+                        addCssClass("restricted")
                     }
                 }
 
@@ -534,25 +558,25 @@ class WidgetDirectoryBrowser(path: Path) {
 
             val itemEntry = pathNavigator.targetFull.entries[listItem.position]
             when (itemEntry.type) {
-                EntryType.Symlink -> {
+                Type.Symlink -> {
                     listItemLabel.label = when (itemEntry.linksToType()) {
-                        EntryType.Directory -> "[[⇥ ${itemEntry.name}]]"
+                        Type.Directory -> "[[⇥ ${itemEntry.name}]]"
                         else -> "⇥ ${itemEntry.name}"
                     }
                     listItemLabel.addCssClass("symlink")
                 }
 
-                EntryType.Directory -> listItemLabel.apply {
+                Type.Directory -> listItemLabel.apply {
                     label = "[[${itemEntry.name}]]"
                     addCssClass("directory")
                 }
 
-                EntryType.Regular -> listItemLabel.apply {
+                Type.Regular -> listItemLabel.apply {
                     label = itemEntry.name
                     addCssClass("file")
                 }
 
-                EntryType.Other -> listItemLabel.apply {
+                Type.Other -> listItemLabel.apply {
                     label = itemEntry.name
                     addCssClass("unknown")
                 }

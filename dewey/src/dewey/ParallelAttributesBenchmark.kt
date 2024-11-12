@@ -17,7 +17,7 @@ import kotlin.io.path.readAttributes
 @Measurement(iterations = 8, time = 1, timeUnit = TimeUnit.SECONDS)
 open class ReadFilesAttributesBenchmark {
     val path = Path.of("/usr/lib")
-    val directoryList = path.listDirectoryEntries()
+    val directoryEntries = path.listDirectoryEntries()
 
     //    @Benchmark
 //    fun serialReadAttributes(): List<PosixFileAttributes> {
@@ -29,7 +29,7 @@ open class ReadFilesAttributesBenchmark {
 //
 //    @Benchmark
     fun parallelStreamReadAttributes(): List<PosixFileAttributes> {
-        val attributesList = directoryList.parallelStream().map {
+        val attributesList = directoryEntries.parallelStream().map {
             it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
         }.collect(Collectors.toList())
         return attributesList
@@ -47,7 +47,7 @@ open class ReadFilesAttributesBenchmark {
 //        return pairs
 //    }
 
-    @Benchmark
+//    @Benchmark
     fun listDirectoryEntiresAndGetAttributes(): List<Pair<Path, PosixFileAttributes>> {
         val entries = path.listDirectoryEntries()
         val attributes = entries.parallelStream().map {
@@ -58,9 +58,40 @@ open class ReadFilesAttributesBenchmark {
     }
 
     @Benchmark
-    fun usePathNavigator(): FilesystemNavigator {
-        val pn = FilesystemNavigator()
-        pn.navigateTo(path)
-        return pn
+    fun sortDirectoryInPlace(): List<PosixFileAttributes> {
+        val attributes = directoryEntries
+            .parallelStream()
+            .map { it.readAttributes<PosixFileAttributes>() }
+            .collect(Collectors.toList())
+        attributes.sortBy { it.isDirectory }
+        return attributes
+    }
+
+    @Benchmark
+    fun sortDirectoryInStream(): List<PosixFileAttributes> {
+        val attributes = directoryEntries
+            .parallelStream()
+            .map { it.readAttributes<PosixFileAttributes>() }
+            .sorted { x, y ->
+                when {
+                    x.isDirectory && y.isDirectory -> 0
+                    x.isDirectory && !y.isDirectory -> -1
+                    !x.isDirectory && y.isDirectory -> 1
+                    !x.isDirectory && !y.isDirectory -> 0
+                    else -> error("Unreachable")
+                }
+            }
+            .collect(Collectors.toList())
+        return attributes
+    }
+
+    @Benchmark
+    fun sortDirectoryNewList(): List<PosixFileAttributes> {
+        val attributes = directoryEntries
+            .parallelStream()
+            .map { it.readAttributes<PosixFileAttributes>() }
+            .toList()
+            .sortedBy { it.isDirectory }
+        return attributes
     }
 }

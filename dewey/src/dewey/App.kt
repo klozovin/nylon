@@ -28,6 +28,9 @@ val styleCss = """
         color: #000000;
         font-style: italic;
     }
+    .restricted {
+        color: #6b6b6b;
+    }
     
     box.cwd {
         color: #00ff00;
