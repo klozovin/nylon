@@ -2,9 +2,12 @@ package dewey
 
 import dewey.BaseDirectoryEntry.DirectoryEntry
 import java.nio.file.*
+import java.nio.file.attribute.GroupPrincipal
 import java.nio.file.attribute.PosixFileAttributes
-import kotlin.io.path.listDirectoryEntries
-import kotlin.io.path.readAttributes
+import java.nio.file.attribute.PosixFilePermission
+import java.nio.file.attribute.UserPrincipal
+import kotlin.io.path.*
+import kotlin.reflect.KClass
 
 /**
 
@@ -15,32 +18,31 @@ import kotlin.io.path.readAttributes
 # List directory contents
 
 - syscall
-    - openat(2): O_RDONLY? O_NONBLOCK? O_CLOEXEC?
-    - getdents(2): call repeatedly until returns zero/null
+- openat(2): O_RDONLY? O_NONBLOCK? O_CLOEXEC?
+- getdents(2): call repeatedly until returns zero/null
 - libc
-    - opendir(3)
-    - readdir(3)
-    - closedir(3)
+- opendir(3)
+- readdir(3)
+- closedir(3)
 
 
 # File attributes
 
 - BasicFileAttributes
-  - lastModified
-  - lastAccess
-  - creationTime
-  - isDirectory
-  - isRegularFile
-  - isSymbolicLink
-  - isOther
-  - size
-  - PosixFileAttributes
-    - owner
-    - group
-    - permissions (PosixFilePermissions)
-      - OWNER_READ, OWNER_WRITE, OWNER_EXECUTE, ...
+- lastModified
+- lastAccess
+- creationTime
+- isDirectory
+- isRegularFile
+- isSymbolicLink
+- isOther
+- size
+- PosixFileAttributes
+- owner
+- group
+- permissions (PosixFilePermissions)
+- OWNER_READ, OWNER_WRITE, OWNER_EXECUTE, ...
  */
-
 
 
 // --------------------------------------------------------------------------------------------- //
@@ -53,25 +55,84 @@ sealed class BaseDirectoryEntry {
         fun of(path: Path) =
             RestrictedEntry(path)
 
-        fun of(path: Path, attrs: PosixFileAttributes): DirectoryEntry =
-            when {
-                attrs.isRegularFile -> File(path)
-                attrs.isDirectory -> Directory(path)
-                attrs.isSymbolicLink -> Symlink(path)
-                attrs.isOther -> Other(path)
-                else -> error("Unreachable")
+        fun of(path: Path, attrs: PosixFileAttributes): DirectoryEntry {
+            val constructor = when {
+                attrs.isRegularFile -> ::File
+                attrs.isDirectory -> ::Directory
+                attrs.isSymbolicLink -> ::Symlink
+                attrs.isOther -> ::Other
+                else -> error("UNREACHABLE")
             }
+            return constructor(path, attrs.owner(), attrs.group(), attrs, attrs.permissions())
+        }
     }
 
-    data class RestrictedEntry(val path: Path) : BaseDirectoryEntry()
+    data class RestrictedEntry(
+        val path: Path
+    ) : BaseDirectoryEntry()
 
-    sealed class DirectoryEntry : BaseDirectoryEntry()
+    sealed class DirectoryEntry(
+        open val path: Path,
+        open val owner: UserPrincipal,
+        open val group: GroupPrincipal,
+        open val attributes: PosixFileAttributes,
+        open val permissions: Set<PosixFilePermission>
+    ) : BaseDirectoryEntry() {
+        //
+    }
 }
 
-data class File(val path: Path) : DirectoryEntry()
-data class Directory(val path: Path) : DirectoryEntry()
-data class Symlink(val path: Path) : DirectoryEntry()
-data class Other(val path: Path) : DirectoryEntry() // TODO: Delete. Used because Java can't check for other file types
+data class File(
+    override val path: Path,
+    override val owner: UserPrincipal,
+    override val group: GroupPrincipal,
+    override val attributes: PosixFileAttributes,
+    override val permissions: Set<PosixFilePermission>
+) : DirectoryEntry(path, owner, group, attributes, permissions)
+
+data class Directory(
+    override val path: Path,
+    override val owner: UserPrincipal,
+    override val group: GroupPrincipal,
+    override val attributes: PosixFileAttributes,
+    override val permissions: Set<PosixFilePermission>
+) : DirectoryEntry(path, owner, group, attributes, permissions)
+
+data class Symlink(
+    override val path: Path,
+    override val owner: UserPrincipal,
+    override val group: GroupPrincipal,
+    override val attributes: PosixFileAttributes,
+    override val permissions: Set<PosixFilePermission>
+) : DirectoryEntry(path, owner, group, attributes, permissions) {
+
+    fun linksToType(): String {
+        // TODO: Horrible
+        return when {
+            path.isDirectory() -> "d"
+            path.isRegularFile() -> "f"
+            path.isSymbolicLink() -> "l"
+            else -> TODO()
+        }
+    }
+
+    // TODO: Does this even work? Horrible as well
+    fun linksToClass(): KClass<out DirectoryEntry> {
+        return when {
+            path.isDirectory() -> Directory::class
+            path.isRegularFile() -> File::class
+            else -> TODO()
+        }
+    }
+}
+
+data class Other( // TODO: Delete. Used because Java can't check for other file types
+    override val path: Path,
+    override val owner: UserPrincipal,
+    override val group: GroupPrincipal,
+    override val attributes: PosixFileAttributes,
+    override val permissions: Set<PosixFilePermission>
+) : DirectoryEntry(path, owner, group, attributes, permissions)
 
 
 // --------------------------------------------------------------------------------------------- //
@@ -86,8 +147,16 @@ sealed class DirectoryListingResult {
         }
     }
 
-    data class Listing(val entries: List<DirectoryEntry>) : DirectoryListingResult()
-    data class RestrictedListing(val entries: List<BaseDirectoryEntry.RestrictedEntry>) : DirectoryListingResult()
+    data class Listing(val entries: List<DirectoryEntry>) : DirectoryListingResult() {
+        val count = entries.size
+        val isEmpty = entries.isEmpty()
+        val isNotEmpty = entries.isNotEmpty()
+    }
+
+    data class RestrictedListing(val entries: List<BaseDirectoryEntry.RestrictedEntry>) : DirectoryListingResult() {
+        val count = entries.size
+        val isNotEmpty = entries.isNotEmpty()
+    }
 }
 
 
@@ -110,7 +179,7 @@ fun readDirectory(path: Path): DirectoryListingResult {
                         BaseDirectoryEntry.of(it, attributes)
                     }
                     .toList()
-                    .sortedByDescending { it is DirectoryEntry }
+                    .sortedBy { it !is Directory }
                 return DirectoryListingResult.Listing(directoryEntries)
             } catch (e: AccessDeniedException) {
                 // TODO: Possible race condition: this can be raised in two ways:
@@ -136,13 +205,20 @@ fun readDirectory(path: Path): DirectoryListingResult {
 
 
 class FilesystemNavigatorMax {
+    lateinit var workingPath: Path
     lateinit var working: DirectoryListingResult
 
     fun navigateTo(path: Path) {
         working = readDirectory(path)
+        workingPath = path
+    }
+
+    fun navigateToParent() {
+        val parent = workingPath.parent ?: return
+        working = readDirectory(parent)
+        workingPath = parent
     }
 }
-
 
 
 // --------------------------------------------------------------------------------------------- //

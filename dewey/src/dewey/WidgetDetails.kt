@@ -5,7 +5,6 @@ import org.gnome.gtk.Label
 import org.gnome.gtk.Orientation
 import java.nio.file.attribute.PosixFilePermissions
 import kotlin.io.path.readSymbolicLink
-import dewey.FilesystemNavigator.Entry as EntryType
 
 class WidgetDetails : Box(Orientation.HORIZONTAL, 8) {
     private val prefix = Label("✕").apply { addCssClass("prefix") }
@@ -37,36 +36,26 @@ class WidgetDetails : Box(Orientation.HORIZONTAL, 8) {
         extra.label = ""
     }
 
-    fun update(entry: FilesystemNavigator.Entry.EntryFull) {
+    fun update(entry: BaseDirectoryEntry.DirectoryEntry) {
         // Permissions string [rwx]
-        prefix.label = when (entry.type) {
-
-//            Entry.Type.Directory -> "d"
-//            Entry.Type.Regular -> "-"
-//            Entry.Type.Symlink -> "l"
-//            Entry.Type.Other -> "-"
-            FilesystemNavigator.Entry.Type.Block -> TODO()
-            FilesystemNavigator.Entry.Type.Character -> TODO()
-            FilesystemNavigator.Entry.Type.Directory -> "d"
-            FilesystemNavigator.Entry.Type.Pipe -> TODO()
-            FilesystemNavigator.Entry.Type.Regular -> "-"
-            FilesystemNavigator.Entry.Type.Socket -> TODO()
-            FilesystemNavigator.Entry.Type.Symlink -> "l"
-            FilesystemNavigator.Entry.Type.Other -> "-"
-            else -> TODO("${entry.path}")
+        prefix.label = when (entry) {
+            is Directory -> "d"
+            is File -> "-"
+            is Other -> "-"
+            is Symlink -> "l"
         }
-        permissions.label = PosixFilePermissions.toString(entry.permissions!!)
-        owner.label = entry.owner!!.name
-        group.label = entry.group!!.name
+        permissions.label = PosixFilePermissions.toString(entry.permissions)
+        owner.label = entry.owner.name
+        group.label = entry.group.name
 
         // Size of entry
-        val sizeSuffix = if (entry.type == FilesystemNavigator.Entry.Type.Regular) "B" else ""
-        size.label = "${entry.attributes!!.size()}$sizeSuffix"
+        val sizeSuffix = if (entry is File) "B" else ""
+        size.label = "${entry.attributes.size()}$sizeSuffix"
 
         // Last modification time
         modifiedAt.label = entry.attributes.lastModifiedTime().toString()
 
         // If symlink, it's target
-        extra.label = if (entry.type == FilesystemNavigator.Entry.Type.Symlink) "⇥ ${entry.path.readSymbolicLink()}" else ""
+        extra.label = if (entry is Symlink) "⇥ ${entry.path.readSymbolicLink()}" else ""
     }
 }

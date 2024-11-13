@@ -1,6 +1,3 @@
-import org.gradle.launcher.daemon.protocol.Build
-import org.jetbrains.kotlin.config.ApiVersion
-import org.jetbrains.kotlin.config.LanguageVersion
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
@@ -26,6 +23,10 @@ sourceSets.main {
 }
 
 benchmark.targets.register("main")
+
+java {
+    targetCompatibility = JavaVersion.VERSION_22
+}
 
 kotlin.compilerOptions {
     languageVersion = KotlinVersion.KOTLIN_2_0
