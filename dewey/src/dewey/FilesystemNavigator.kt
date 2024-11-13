@@ -1,220 +1,265 @@
 package dewey
 
+import dewey.BaseDirectoryEntry.DirectoryEntry
 import java.nio.file.*
+import java.nio.file.attribute.GroupPrincipal
 import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermission
-import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
-import java.nio.file.attribute.PosixFilePermission.OWNER_READ
+import java.nio.file.attribute.UserPrincipal
 import java.util.logging.Logger
 import kotlin.io.path.*
+import kotlin.reflect.KClass
 
-val LOG: Logger = Logger.getLogger(FilesystemNavigator::class.qualifiedName)
 
-/*
+val LOG: Logger = Logger.getLogger(FilesystemNavigatorMax::class.qualifiedName)
 
-Possible states:
-- Valid path
-    - Directory with items
-    - Empty directory
-    - No permission to list
+/**
 
-- Invalid path (directory not existing)
+# Naming
 
-:THINK: Should it be possible to create a PathNavigator with invalid target?
-:TODO: Find all possible error states, how to represent them and recover if possible?
-:TODO: Should we keep focus history here or in the widget?
+- directory, file, symlink, entries (directory contents), block, character, pipe
+
+# List directory contents
+
+- syscall
+- openat(2): O_RDONLY? O_NONBLOCK? O_CLOEXEC?
+- getdents(2): call repeatedly until returns zero/null
+- libc
+- opendir(3)
+- readdir(3)
+- closedir(3)
+
+
+# File attributes
+
+- BasicFileAttributes
+- lastModified
+- lastAccess
+- creationTime
+- isDirectory
+- isRegularFile
+- isSymbolicLink
+- isOther
+- size
+- PosixFileAttributes
+- owner
+- group
+- permissions (PosixFilePermissions)
+- OWNER_READ, OWNER_WRITE, OWNER_EXECUTE, ...
  */
 
-class FilesystemNavigator {
 
-    lateinit var target: BaseTarget
+// --------------------------------------------------------------------------------------------- //
 
-    @Deprecated("Immediately")
-    val targetFull get() = target as BaseTarget.TargetRegular
+// TODO: Is it okay to use data classes everywhere?
 
-    // TODO: Delete
-    fun setTargetTo(newTarget: BaseTarget) {
-        LOG.info("Setting FilesystemNavigator.target to [${newTarget.path}]")
-        target = newTarget
+sealed class BaseDirectoryEntry {
+
+    companion object {
+
+        fun of(path: Path) =
+            RestrictedEntry(path)
+
+        fun of(path: Path, attrs: PosixFileAttributes): DirectoryEntry {
+            val constructor = when {
+                attrs.isRegularFile -> ::File
+                attrs.isDirectory -> ::Directory
+                attrs.isSymbolicLink -> ::Symlink
+                attrs.isOther -> ::Other
+                else -> error("UNREACHABLE")
+            }
+            return constructor(path, attrs.owner(), attrs.group(), attrs, attrs.permissions())
+        }
     }
 
+    data class RestrictedEntry(
+        val path: Path
+    ) : BaseDirectoryEntry()
+
+    sealed class DirectoryEntry(
+        open val path: Path,
+        open val owner: UserPrincipal,      // TODO: Remove, use .attributes.owner
+        open val group: GroupPrincipal,     // TODO: Remove, use .attributes.group
+        open val attributes: PosixFileAttributes,
+        open val permissions: Set<PosixFilePermission>
+    ) : BaseDirectoryEntry() {
+        //
+    }
+}
+
+data class File(
+    override val path: Path,
+    override val owner: UserPrincipal,
+    override val group: GroupPrincipal,
+    override val attributes: PosixFileAttributes,
+    override val permissions: Set<PosixFilePermission>
+) : DirectoryEntry(path, owner, group, attributes, permissions)
+
+data class Directory(
+    override val path: Path,
+    override val owner: UserPrincipal,
+    override val group: GroupPrincipal,
+    override val attributes: PosixFileAttributes,
+    override val permissions: Set<PosixFilePermission>
+) : DirectoryEntry(path, owner, group, attributes, permissions)
+
+data class Symlink(
+    override val path: Path,
+    override val owner: UserPrincipal,
+    override val group: GroupPrincipal,
+    override val attributes: PosixFileAttributes,
+    override val permissions: Set<PosixFilePermission>
+) : DirectoryEntry(path, owner, group, attributes, permissions) {
+
+    fun linksToType(): String {
+        // TODO: Horrible
+        return when {
+            path.isDirectory() -> "d"
+            path.isRegularFile() -> "f"
+            path.isSymbolicLink() -> "l"
+            else -> TODO()
+        }
+    }
+
+    // TODO: Does this even work? Horrible as well
+    fun linksToClass(): KClass<out DirectoryEntry> {
+        return when {
+            path.isDirectory() -> Directory::class
+            path.isRegularFile() -> File::class
+            else -> TODO()
+        }
+    }
+}
+
+data class Other( // TODO: Delete. Used because Java can't check for other file types
+    override val path: Path,
+    override val owner: UserPrincipal,
+    override val group: GroupPrincipal,
+    override val attributes: PosixFileAttributes,
+    override val permissions: Set<PosixFilePermission>
+) : DirectoryEntry(path, owner, group, attributes, permissions)
+
+
+// --------------------------------------------------------------------------------------------- //
+
+sealed class DirectoryListingResult {
+
+    // TODO: Add field for directory DirectoryEntry
+    data class Listing(val entries: List<DirectoryEntry>) : DirectoryListingResult() {
+        val count = entries.size
+        val isEmpty = entries.isEmpty()
+        val isNotEmpty = entries.isNotEmpty()
+    }
+
+    data class RestrictedListing(val entries: List<BaseDirectoryEntry.RestrictedEntry>) : DirectoryListingResult() {
+        val count = entries.size
+        val isNotEmpty = entries.isNotEmpty()
+    }
+
+    data class Error(val err: Type) : DirectoryListingResult() {
+        enum class Type {
+            AccessDenied,
+            PathNonExistent,
+            PathNotDirectory,
+            ChangedWhileReading,
+        }
+    }
+}
+
+
+fun readDirectory(path: Path): DirectoryListingResult {
+    try {
+        val dirAttributes = path.readAttributes<PosixFileAttributes>()
+        val dirPermissions = dirAttributes.permissions()
+
+        println("Reading: [${path}]")
+        println("Attributes: $dirAttributes")
+        println("Permissions: $dirPermissions")
+
+        try {
+            val entries = path.listDirectoryEntries()
+            try {
+                val directoryEntries = entries
+                    .parallelStream()
+                    .map { entryPath ->
+                        // TODO: Resolve symlinks here: first read with NOFOLLOW, then follow and see where it points to
+                        val attributes = entryPath.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS)
+                        BaseDirectoryEntry.of(entryPath, attributes)
+                    }
+                    .toList()
+                    .sortedBy { it !is Directory }
+
+                // MUST check this!
+                // We differentiate regular/restricted directories by the exception thrown when trying to read
+                // attributes of its entries. When the directory is empty, there's no opportunity for the exception to
+                // get thrown, so have to do it like this.
+                if (directoryEntries.isNotEmpty()) {
+                    // Found directory entries => directory is not empty, and is +r+x (otherwise we would be in a catch
+                    // clause).
+                    require(path.isReadable() && path.isExecutable())
+                    return DirectoryListingResult.Listing(directoryEntries)
+                } else {
+                    // Directory is empty, but is it +r+x or +r-x?
+                    require(path.isReadable())
+                    return if (path.isExecutable())
+                        DirectoryListingResult.Listing(emptyList())
+                    else
+                        DirectoryListingResult.RestrictedListing(emptyList())
+                }
+            } catch (e: AccessDeniedException) {
+                // TODO: Possible race condition: This exception can be thrown in two ways:
+                //       1. listing a -x directory, ok handled here
+                //       2. directory permissions get changed to -r while listing, not handled (should return CWR err)
+                //          Possible fix: re-listDirectoryEntries? or retry this entire function? stackoverflow? test?
+                require(!path.isExecutable())
+                val restrictedEntries = entries.map { BaseDirectoryEntry.of(it) }
+                return DirectoryListingResult.RestrictedListing(restrictedEntries)
+            } catch (e: NoSuchFileException) {
+                return DirectoryListingResult.Error(DirectoryListingResult.Error.Type.ChangedWhileReading)
+            }
+        } catch (e: NotDirectoryException) {
+            return DirectoryListingResult.Error(DirectoryListingResult.Error.Type.PathNotDirectory)
+        } catch (e: AccessDeniedException) {
+            require(!path.isReadable())
+            println("Access denied to: <target>")
+            return DirectoryListingResult.Error(DirectoryListingResult.Error.Type.AccessDenied)
+        }
+    } catch (e: AccessDeniedException) {
+        println("Access denied to: <target.parent>")
+        return DirectoryListingResult.Error(DirectoryListingResult.Error.Type.AccessDenied)
+    } catch (e: NoSuchFileException) {
+        return DirectoryListingResult.Error(DirectoryListingResult.Error.Type.PathNonExistent)
+    }
+}
+
+// --------------------------------------------------------------------------------------------- //
+
+
+class FilesystemNavigatorMax {
+    lateinit var workingPath: Path
+    lateinit var working: DirectoryListingResult
+
     fun navigateTo(path: Path) {
-        setTargetTo(tryCreateNewTarget(path))
+        working = readDirectory(path)
+        workingPath = path
     }
 
     fun navigateToParent() {
-        LOG.info("Parent of <${target.path}> is [${target.path.parent}], doing nothing")
-        if (target.path.parent == null)
-            return // Skip when can no longer go up the tree
-
-        navigateTo(target.path.parent)
+        val parent = workingPath.parent ?: return
+        working = readDirectory(parent)
+        workingPath = parent
     }
 
     fun reload() {
-        setTargetTo(tryCreateNewTarget(target.path))
+        working = readDirectory(workingPath)
     }
-
-    fun tryCreateNewTarget(targetPath: Path): BaseTarget {
-        try {
-            val targetDirAttributes = targetPath.readAttributes<PosixFileAttributes>()
-            val targetDirPermissions = targetDirAttributes.permissions()
-            val targetDirEntry = Entry.EntryFull.of(targetPath, targetDirAttributes)
-            try {
-                val newTarget = when {
-                    //
-                    // Regular directory [r*x]: can list entries, can fetch attributes for entries.
-                    //
-                    targetDirPermissions.containsAll(listOf(OWNER_READ, OWNER_EXECUTE)) -> {
-                        val dirPathEntries = targetPath.listDirectoryEntries()
-                        val entryAttributes = dirPathEntries
-                            .parallelStream()
-                            .map { it.readAttributes<PosixFileAttributes>(LinkOption.NOFOLLOW_LINKS) }
-                            .toList()
-                        val entries = (dirPathEntries zip entryAttributes)
-                            // TODO: Maybe run in parallel?
-                            .map { (path, attrs) -> Entry.EntryFull.of(path, attrs) }
-                            .sortedByDescending { it.path.isDirectory() }
-                        BaseTarget.TargetRegular(targetDirEntry, entries)
-                    }
-
-                    //
-                    // Can-read directory [r*-]: just list entries, but can't fetch any info about them
-                    // (not even filetype).
-                    //
-                    targetDirPermissions.contains(OWNER_READ) -> {
-                        val entries = targetPath.listDirectoryEntries().map { Entry.EntryBasic(it) }
-                        BaseTarget.Restricted(targetDirEntry, entries)
-                    }
-
-                    //
-                    // Can execute dir [-*x]: can access files inside by direct path, can add files to it.
-                    //
-                    targetDirPermissions.contains(OWNER_EXECUTE) -> {
-                        BaseTarget.Unreadable(targetDirEntry)
-                    }
-
-                    //
-                    // No read/execute permission, can't do anything with it.
-                    //
-                    else -> {
-                        BaseTarget.Unreadable(targetDirEntry)
-                    }
-                }
-                return newTarget
-            } catch (e: AccessDeniedException) {
-                return BaseTarget.Invalid(Entry.EntryBasic(targetPath), BaseTarget.Invalid.Error.ChangedWhileListing)
-            } catch (e: NoSuchFileException) {
-                return BaseTarget.Invalid(Entry.EntryBasic(targetPath), BaseTarget.Invalid.Error.ChangedWhileListing)
-            }
-        } catch (e: NoSuchFileException) {
-            return BaseTarget.Invalid(Entry.EntryBasic(targetPath), BaseTarget.Invalid.Error.PathDoesNotExist)
-        } catch (e: NotDirectoryException) {
-            // TODO: List parent directory, select the file - maybe useful as a file picker later
-            error("Unreachable")
-        }
-    }
+}
 
 
-    sealed class BaseTarget(open val entry: Entry) {
-        open val isEmpty get() = true
-        val path get() = entry.path
+// --------------------------------------------------------------------------------------------- //
 
-        /**
-         * Directory does not exist, or is not a directory, or changed while listing
-         */
-        class Invalid(override val entry: Entry.EntryBasic, val error: Error) : BaseTarget(entry) {
-            enum class Error {
-                PathDoesNotExist,
-                PathIsNotDirectory,
-                ChangedWhileListing,
-            }
-        }
-
-        // TODO: Maybe differentiate these two?
-        /**
-         * Directory can't be read: [-w-], [-wx]
-         */
-        class Unreadable(entry: Entry.EntryFull) : BaseTarget(entry)
-
-        // [rw-]
-        class Restricted(entry: Entry.EntryFull, val entries: List<Entry.EntryBasic>) : BaseTarget(entry) {
-            // TODO: Maybe don't copy paste these properties?
-            val count get() = entries.size
-            override val isEmpty get() = entries.isEmpty()
-            val isNotEmpty get() = entries.isNotEmpty()
-        }
-
-        // +r +x
-        class TargetRegular(entry: Entry.EntryFull, val entries: List<Entry.EntryFull>) : BaseTarget(entry) {
-
-            val count get() = entries.size
-            override val isEmpty get() = entries.isEmpty()
-            val isNotEmpty get() = entries.isNotEmpty()
-
-            // TODO: Move up to another common abstract base class? Both Full and PathOnly should have this function
-            fun indexOf(path: Path): Int = entries.indexOfFirst { it.path == path }
-        }
-    }
-
-
-    sealed class Entry(val path: Path) {
-        val name get() = path.name
-
-        enum class Type {
-            Block,
-            Character,
-            Directory,
-            Pipe,
-            Regular,
-            Socket,
-            Symlink,
-
-            Other, // TODO: Delete, here only because Java can't identify files types besides
-                   //       Regular, Directory, Symlink
-        }
-
-
-        class EntryBasic(path: Path) : Entry(path)
-
-
-        class EntryFull(path: Path, val type: Type, val attributes: PosixFileAttributes) : Entry(path) {
-            val owner = attributes.owner()
-            val group = attributes.group()
-
-            val permissions: Set<PosixFilePermission> = attributes.permissions()
-
-            // BUG: Doesn't behave the same as path.isDirectory on symlinks, normalize that
-            val isDirectory get() = attributes.isDirectory
-
-            //        val isDirectory1 get() = Files.isDirectory()
-
-            val isReadable get() = permissions.contains(OWNER_READ)
-
-            fun linksToType(): Type {
-                require(type == Type.Symlink)
-                return when {
-                    path.isDirectory() -> Type.Directory
-                    path.isRegularFile() -> Type.Regular
-                    path.isSymbolicLink() -> Type.Symlink
-                    else -> TODO()
-                }
-            }
-
-            companion object {
-                fun of(path: Path): EntryFull =
-                    of(path, path.readAttributes<PosixFileAttributes>())
-
-                fun of(path: Path, attributes: PosixFileAttributes): EntryFull {
-                    // TODO: What about other file types?
-                    val entryType = when {
-                        attributes.isDirectory -> Type.Directory
-                        attributes.isRegularFile -> Type.Regular
-                        attributes.isSymbolicLink -> Type.Symlink
-                        else -> TODO()
-                    }
-                    return EntryFull(path, entryType, attributes)
-                }
-            }
-        }
-    }
+fun main(args: Array<String>) {
+    val targetDirectory = args.getOrElse(0) { "." }
+    val entries = readDirectory(Path.of(targetDirectory))
+    println(entries)
 }
