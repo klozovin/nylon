@@ -39,10 +39,11 @@ class WidgetDetails : Box(Orientation.HORIZONTAL, 8) {
     fun update(entry: BaseDirectoryEntry.DirectoryEntry) {
         // Permissions string [rwx]
         prefix.label = when (entry) {
-            is Directory -> "d"
-            is File -> "-"
+            is Directory -> "/"
+            is File -> "-" // TODO: add "*" if executables
+            is Symlink -> "@"
             is Other -> "-"
-            is Symlink -> "l"
+            // TODO: The rest, | -> pipe, = -> socket,
         }
         permissions.label = PosixFilePermissions.toString(entry.permissions)
         owner.label = entry.owner.name

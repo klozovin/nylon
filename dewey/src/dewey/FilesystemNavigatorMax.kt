@@ -180,12 +180,29 @@ fun readDirectory(path: Path): DirectoryListingResult {
                     }
                     .toList()
                     .sortedBy { it !is Directory }
-                return DirectoryListingResult.Listing(directoryEntries)
+
+                // MUST check this!
+                // We differentiate regular/restricted directories by the exception thrown when trying to read
+                // attributes of its entries. When the directory is empty, there's no opportunity for the exception to
+                // get thrown, so have to do it like this.
+                if (directoryEntries.isNotEmpty()) {
+                    // Found directory entries => directory is not empty, and is +r+x (otherwise we would be in a catch
+                    // clause.
+                    require(path.isReadable() && path.isExecutable())
+                    return DirectoryListingResult.Listing(directoryEntries)
+                } else {
+                    // Directory is empty, but is it +r+x or +r-x?
+                    require(path.isReadable())
+                    if (path.isExecutable())
+                        return DirectoryListingResult.Listing(emptyList())
+                    else
+                        return DirectoryListingResult.RestrictedListing(emptyList())
+                }
             } catch (e: AccessDeniedException) {
-                // TODO: Possible race condition: this can be raised in two ways:
-                //       1. listing a -x directory, handled here
+                // TODO: Possible race condition: This exception can be thrown in two ways:
+                //       1. listing a -x directory, ok handled here
                 //       2. directory permissions get changed to -r while listing, not handled (should return CWR err)
-                //          Possible fix: re-listDirectoryEntries? or retry this entire function? stackoverflow?
+                //          Possible fix: re-listDirectoryEntries? or retry this entire function? stackoverflow? test?
                 val restrictedEntries = entries.map { BaseDirectoryEntry.of(it) }
                 return DirectoryListingResult.RestrictedListing(restrictedEntries)
             } catch (e: NoSuchFileException) {
@@ -193,8 +210,13 @@ fun readDirectory(path: Path): DirectoryListingResult {
             }
         } catch (e: NotDirectoryException) {
             return DirectoryListingResult.Error(DirectoryListingResult.Error.Type.PathNotDirectory)
+        } catch (e: AccessDeniedException) {
+            require(!path.isReadable())
+            println("Access denied to: <target>")
+            return DirectoryListingResult.Error(DirectoryListingResult.Error.Type.AccessDenied)
         }
     } catch (e: AccessDeniedException) {
+        println("Access denied to: <target.parent>")
         return DirectoryListingResult.Error(DirectoryListingResult.Error.Type.AccessDenied)
     } catch (e: NoSuchFileException) {
         return DirectoryListingResult.Error(DirectoryListingResult.Error.Type.PathNonExistent)
@@ -217,6 +239,10 @@ class FilesystemNavigatorMax {
         val parent = workingPath.parent ?: return
         working = readDirectory(parent)
         workingPath = parent
+    }
+
+    fun reload() {
+        working = readDirectory(workingPath)
     }
 }
 
