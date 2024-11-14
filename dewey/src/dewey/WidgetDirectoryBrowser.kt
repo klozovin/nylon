@@ -47,10 +47,9 @@ class WidgetDirectoryBrowser(path: Path) {
             require(directoryListWidget.model == listViewSelection)
             return listViewSelection.selectedItem.index
         }
-    val listViewOnActivateSignalConnection: SignalConnection<ListView.ActivateCallback>
     val directoryListWidget = ListView(null, null).apply {
         addController(eventController)
-        this@WidgetDirectoryBrowser.listViewOnActivateSignalConnection = onActivate(::activateHandler)
+        onActivate(::activateHandler)
     }
 
     // Scroll container for the listing
@@ -95,14 +94,11 @@ class WidgetDirectoryBrowser(path: Path) {
                     val model = ListIndexModel.newInstance(cwd.count)
                     directoryListWidget.setModelSelectionFactory(model, listViewSelection, itemFactory)
 
-                    listViewOnActivateSignalConnection.unblock() // TODO: Maybe not needed any more, delete
-
                     // Update current path (top)
                     // TODO: Move up, but for that have to rejiggle dependencies
                     currentPathAndSelectionWidget.updateFocused(cwd.entries[selectedItemIdx].path) // TODO: just use item || entry
 
                     // Update entry details (bottom)
-
                     selectedItemDetails.update(cwd.entries[selectedItemIdx])
 
                     scrollTo(0) // TODO: Instead of this, set from history
@@ -116,7 +112,6 @@ class WidgetDirectoryBrowser(path: Path) {
                     val model = StringList<StringObject>().apply { append("empty directory") }
                     val selection = NoSelection<GObject>(model)
                     directoryListWidget.setSelectionAndFactory(selection, itemFactoryEmpty)
-                    listViewOnActivateSignalConnection.block() // TODO: Maybe delete
 
                     // Update entry details (bottom): nothing to show, clear it
                     selectedItemDetails.clear()
@@ -132,7 +127,6 @@ class WidgetDirectoryBrowser(path: Path) {
                     //       instead update from selection changed handler
                     val model = ListIndexModel.newInstance(cwd.count)
                     directoryListWidget.setModelSelectionFactory(model, listViewSelection, itemFactoryRestricted)
-                    listViewOnActivateSignalConnection.block()
                     // MUST scrollTo only after setting model/factory (breaks if going from a restricted to regular directory)
                     scrollTo(0) // TODO: Scroll to remembered
 
@@ -148,7 +142,6 @@ class WidgetDirectoryBrowser(path: Path) {
                     // Update current path (top)
                     currentPathAndSelectionWidget.clearFocused()
 
-                    listViewOnActivateSignalConnection.block() // TODO: Delete maybe?
                     val model = StringList<StringObject>().apply { append("empty restricted directory") }
                     val selection = NoSelection<GObject>(model)
                     directoryListWidget.setSelectionAndFactory(selection, itemFactoryEmpty)
@@ -167,7 +160,6 @@ class WidgetDirectoryBrowser(path: Path) {
                         val model = StringList<StringObject>().apply { append("access denied") }
                         val selection = NoSelection<GObject>(model)
                         directoryListWidget.setSelectionAndFactory(selection, itemFactoryEmpty)
-                        listViewOnActivateSignalConnection.block()
 
                         selectedItemDetails.clear()
                     }
@@ -176,7 +168,6 @@ class WidgetDirectoryBrowser(path: Path) {
                         currentPathAndSelectionWidget.updateTargetPath(pathNavigator.workingPath)
                         currentPathAndSelectionWidget.clearFocused()
 
-                        listViewOnActivateSignalConnection.block()
                         val model = StringList<StringObject>().apply { append("directory does not exist") }
                         val selection = NoSelection<GObject>(model)
                         directoryListWidget.setSelectionAndFactory(selection, itemFactoryEmpty)
@@ -234,9 +225,10 @@ class WidgetDirectoryBrowser(path: Path) {
             modal = true
             onInputReceive { maybePath ->
                 println("Maybe we should navigate to...? $maybePath")
-                navigateTo(maybePath)
+                pathNavigator.navigateTo(maybePath)
+                updateDirectoryList()
             }
-//            transientFor = this@DirectoryBrowser.directoryListWidget.root as Window
+            transientFor = this@WidgetDirectoryBrowser.directoryListWidget.root as Window
         }
         dialog.present()
     }
@@ -313,9 +305,8 @@ class WidgetDirectoryBrowser(path: Path) {
 
     private fun keyPressHandler(keyVal: Int, keyCode: Int, modifierTypes: MutableSet<ModifierType>?): Boolean {
         when (keyVal) {
-            // TODO: extract to function
-            Gdk.KEY_i -> if (selectedItemIdx > 0) scrollTo(selectedItemIdx - 1)
-            Gdk.KEY_k -> if (selectedItemIdx < listViewSelection.nItems - 1) scrollTo(selectedItemIdx + 1)
+            Gdk.KEY_i -> selectionUp()
+            Gdk.KEY_k -> selectionDown()
 
             Gdk.KEY_F5 -> reloadDirectory()
             Gdk.KEY_F6 -> showChangeDirectoryDialog()
@@ -325,6 +316,9 @@ class WidgetDirectoryBrowser(path: Path) {
         }
         return false
     }
+
+    private fun activateHandler(activatedIdx: Int) =
+        openSelectedListViewItem()
 
     private fun selectionChangedHandler(position: Int, items: Int) {
         when (val target = pathNavigator.working) {
@@ -353,18 +347,20 @@ class WidgetDirectoryBrowser(path: Path) {
     }
 
     /**
-     * Handle activating an item in the browser.
+     * Perform default action (open) on selected item.
      */
-
-    // TODO Join these two functions, should be one place where item gets activated
     private fun openSelectedListViewItem() {
         when (val target = pathNavigator.working) {
-            is DirectoryListingResult.Listing -> if (target.isNotEmpty) openEntry(target.entries[listViewSelection.selected])
+            is DirectoryListingResult.Listing -> {
+                check(directoryListWidget.model == listViewSelection)
+                if (target.isNotEmpty) openEntry(target.entries[listViewSelection.selected])
+            }
+
             is DirectoryListingResult.RestrictedListing -> return
             is DirectoryListingResult.Error -> {
                 when (target.err) {
                     DirectoryListingResult.Error.Type.AccessDenied -> return
-                    DirectoryListingResult.Error.Type.PathNonExistent -> TODO()
+                    DirectoryListingResult.Error.Type.PathNonExistent -> return
                     DirectoryListingResult.Error.Type.PathNotDirectory -> TODO()
                     DirectoryListingResult.Error.Type.ChangedWhileReading -> TODO()
                 }
@@ -372,26 +368,16 @@ class WidgetDirectoryBrowser(path: Path) {
         }
     }
 
-    private fun activateHandler(activatedIdx: Int) {
-        println("activatedIdx: ${activatedIdx}")
-        // Empty directory, nothing to activate, there's a dummy element in ListView (hacky?)
-        // TODO: Can't activate entry in a [rw-] directory
+    private fun selectionUp() {
+        if (directoryListWidget.model is NoSelection)
+            return
+        if (selectedItemIdx > 0) scrollTo(selectedItemIdx - 1)
+    }
 
-//        if (pathNavigator.targetFull.isEmpty)
-//            error("Unreachable")
-
-
-        // TODO: Handle invalid list items here? (empty dir, no-execute dir, etc?)
-        when (val target = pathNavigator.working) {
-            is DirectoryListingResult.Listing -> {
-                val activated = target.entries[activatedIdx]
-                openEntry(activated)
-            }
-
-            else -> error("UNREACHABLE")
-        }
-        // TODO: When unified selectionmodel:  check(activatedIdx == selectionModel.selected)
-        //       also, stop blocking this event, too fiddly
+    private fun selectionDown() {
+        if (directoryListWidget.model is NoSelection)
+            return
+        if (selectedItemIdx < listViewSelection.nItems - 1) scrollTo(selectedItemIdx + 1)
     }
 
     abstract class BaseItemFactory : SignalListItemFactory() {
@@ -399,6 +385,7 @@ class WidgetDirectoryBrowser(path: Path) {
             onSetup { setup(it as ListItem) }
             onBind { bind(it as ListItem) }
         }
+
         open fun setup(listItem: ListItem) {
             listItem.child = Label("✕").apply { halign = Align.START }
         }
