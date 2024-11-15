@@ -1,7 +1,6 @@
 package dewey
 
 import io.github.jwharm.javagi.gio.ListIndexModel
-import io.github.jwharm.javagi.gobject.SignalConnection
 import org.gnome.gdk.Gdk
 import org.gnome.gdk.ModifierType
 import org.gnome.gio.ListModel
@@ -14,25 +13,20 @@ import kotlin.io.path.pathString
 
 class WidgetDirectoryBrowser(path: Path) {
 
-    val pathNavigator = FilesystemNavigatorMax()
-
-    /**
-     * For a given directory, remember the last selected item when the user navigated away from it. Used for easier
-     * movement through the file system.
-     */
-    private val directorySelectionHistory: MutableMap<Path, Path> = mutableMapOf()
+    val pathNavigator = FilesystemNavigator()
+    val selectionHistory = SelectionHistory()
 
     private val eventController = EventControllerKey().apply {
         onKeyPressed(::keyPressHandler)
     }
 
     //
-    // Top: Show current directory and selected item
+    // TOP: Show current directory and selected item
     //
     val currentPathAndSelectionWidget = WidgetCurrentPath()
 
     //
-    // Middle: List of directories/files in the current directory
+    // MIDDLE: List of directories/files in the current directory
     //
     val itemFactory = ItemFactoryRegularDirectory()
     val itemFactoryEmpty = ItemFactoryEmptyDirectory()
@@ -59,7 +53,7 @@ class WidgetDirectoryBrowser(path: Path) {
     }
 
     //
-    // Bottom: Details about the selected item (directory/file)
+    // BOTTOM: Details about the selected item (directory/file)
     //
     val selectedItemDetails = WidgetDetails()
 
@@ -74,8 +68,7 @@ class WidgetDirectoryBrowser(path: Path) {
     }
 
     init {
-        pathNavigator.navigateTo(path)
-        updateDirectoryList()
+        todoChangeWorkingDirectory(path)
     }
 
     private fun updateDirectoryList() {
@@ -101,8 +94,18 @@ class WidgetDirectoryBrowser(path: Path) {
                     // Update entry details (bottom)
                     selectedItemDetails.update(cwd.entries[selectedItemIdx])
 
-                    scrollTo(0) // TODO: Instead of this, set from history
+                    val previouslySelected = selectionHistory.getSelected(forDirectory = pathNavigator.workingPath)
+                    if (previouslySelected != null) {
+                        val idxSelected = cwd.entries.indexOfFirst { it.path == previouslySelected }
+                        if (idxSelected != -1)
+                            directoryListWidget.focusAndSelectTo(idxSelected)
+                        else
+                            println("Previously selected entry no longer exists in this directory")
+                    } else {
+                        directoryListWidget.focusAndSelectTo(0)
+                    }
                 }
+
                 // Showing an empty directory
                 else {
                     // Update current path (top): CWD path remains the same, target gets cleared in an empty dir.
@@ -127,9 +130,9 @@ class WidgetDirectoryBrowser(path: Path) {
                     //       instead update from selection changed handler
                     val model = ListIndexModel.newInstance(cwd.count)
                     directoryListWidget.setModelSelectionFactory(model, listViewSelection, itemFactoryRestricted)
-                    // MUST scrollTo only after setting model/factory (breaks if going from a restricted to regular directory)
-                    scrollTo(0) // TODO: Scroll to remembered
 
+                    // MUST scrollTo only after setting model/factory (breaks if going from a restricted to regular directory)
+                    directoryListWidget.focusAndSelectTo(0) // TODO: Remove, set from history
 
                     // Update current path (top)
                     currentPathAndSelectionWidget.updateFocused(cwd.entries[listViewSelection.selected].path)
@@ -183,36 +186,14 @@ class WidgetDirectoryBrowser(path: Path) {
         }
     }
 
-    private fun openEntry(entry: BaseDirectoryEntry.DirectoryEntry) {
-        when (entry) {
-            is File -> openFile(entry)
-            is Directory -> {
-                pathNavigator.navigateTo(entry.path)
-                updateDirectoryList()
-            }
-
-            is Symlink -> {
-                when (entry.linksToType()) {
-                    "d" -> {
-                        pathNavigator.navigateTo(entry.path)
-                        updateDirectoryList()
-                    }
-
-                    else -> println("Don't know what to do with link: [${entry.path}]")
-                }
-            }
-
-            else -> println("Don't know what to do with [${entry.path.name}]")
-        }
-    }
-
     private fun openFile(entry: File) {
         println("Opening [${entry.path.name}]")
     }
 
     private fun openParentDirectory() {
-        pathNavigator.navigateToParent()
-        updateDirectoryList()
+        pathNavigator.workingPath.parent?.let {
+            todoChangeWorkingDirectory(it)
+        }
     }
 
     private fun reloadDirectory() {
@@ -235,73 +216,54 @@ class WidgetDirectoryBrowser(path: Path) {
 
     // ------------------------------------------------------------------------ //
 
+    /**
+     * Perform default action (open) on selected item.
+     */
+    private fun openSelectedListViewItem() {
+        val workingDir = pathNavigator.working
+        if (workingDir !is DirectoryListingResult.Listing) return
+        if (workingDir.isEmpty) return
 
-    // TODO: Delete
-    private fun navigateTo(target: Path) {
-        println("Navigating to directory: ${target}")
-
-        /*
-
-        // Still have the old state and Path, save it now
-        if (::listViewState.isInitialized && !pathNavigator.targetFull.isEmpty)
-            directorySelectionHistory[pathNavigator.target.path] = listViewState.selectedItem
-//            directorySelectionHistory.addAll(arrayOf(state.selectedItem, state.path))
-         */
-
-
-        // TODO: State could mark this on startup so that we don't iterate twice over the directory list
-        //       -- move it to new FilesystemNavigator class
-        pathNavigator.navigateTo(target) // TODO: handle errors here
-        // TODO: Continue here, we should not be able to CD into this
-
-
-//        listViewState = ListViewState()
-        directoryListWidget.model = listViewSelection
-
-        // Restore previous selection in this directory.
-        directorySelectionHistory.get(pathNavigator.workingPath)?.let { savedSelection ->
-            // There was previously saved selection, but that doesn't mean this Path still exists. It could've been
-            // deleted or renamed while we were showing another directory. If the previously saved selection doesn't
-            // exist in the current directory listing, delete it.
-
-            /*
-
-            val idxSelectedPath = pathNavigator.targetFull.indexOf(savedSelection)
-            if (idxSelectedPath != -1) {
-                // Found it, move the ListView selection *and* focus to it.
-                scrollTo(idxSelectedPath)
-            } else {
-                // Item was saved, but it's no longer in the directory. Clear it.
-                directorySelectionHistory.remove(savedSelection)
+        when (val selectedItem = workingDir.entries[selectedItemIdx]) {
+            is Directory -> todoChangeWorkingDirectory(selectedItem.path)
+            is Symlink -> {
+                if (selectedItem.linksToType() == "d")
+                    todoChangeWorkingDirectory(selectedItem.path)
             }
-             */
 
-
+            is File -> println("Not yet implemented...")
+            is Other -> println("Not yet implemented...")
         }
-
-        // Update top and bottom widgets
-        // TODO: move this to some common function set selected
-        currentPathAndSelectionWidget.updateTargetPath(pathNavigator.workingPath)
-
-        /*
-        // Current directory is NOT empty
-        if (!pathNavigator.targetFull.isEmpty) {
-            currentPathAndSelectionWidget.updateFocused(listViewState.selectedItem)
-
-            // TODO back here
-            if (listViewState.selectedEntry.type != null)
-                selectedItemDetails.update(listViewState.selectedEntry)
-            else
-                selectedItemDetails.clear()
-        } else {
-            // Current directory empty: clear info at bottom, and selected in path on top
-            currentPathAndSelectionWidget.clearFocused()
-            selectedItemDetails.clear()
-        }
-         */
     }
 
-    //
+    /**
+     * Centralise in one place
+     */
+    private fun todoChangeWorkingDirectory(dir: Path) {
+
+        // TODO: Works only for changing into parent or immediate child.
+        // Save selection for the old directory listing
+        if (pathNavigator.isInitialized) when (val cwd = pathNavigator.working) {
+            is DirectoryListingResult.Listing -> {
+                selectionHistory.update(
+                    forDirectory = pathNavigator.workingPath,
+                    selection = cwd.entries[selectedItemIdx].path
+                )
+            }
+
+            is DirectoryListingResult.RestrictedListing ->
+                selectionHistory.update(
+                    forDirectory = pathNavigator.workingPath,
+                    selection = cwd.entries[selectedItemIdx].path
+                )
+
+            else -> {}
+        }
+
+        pathNavigator.navigateTo(dir)
+        updateDirectoryList()
+        // Restore selection for this new directory listing
+    }
 
     private fun keyPressHandler(keyVal: Int, keyCode: Int, modifierTypes: MutableSet<ModifierType>?): Boolean {
         when (keyVal) {
@@ -346,38 +308,14 @@ class WidgetDirectoryBrowser(path: Path) {
         }
     }
 
-    /**
-     * Perform default action (open) on selected item.
-     */
-    private fun openSelectedListViewItem() {
-        when (val target = pathNavigator.working) {
-            is DirectoryListingResult.Listing -> {
-                check(directoryListWidget.model == listViewSelection)
-                if (target.isNotEmpty) openEntry(target.entries[listViewSelection.selected])
-            }
-
-            is DirectoryListingResult.RestrictedListing -> return
-            is DirectoryListingResult.Error -> {
-                when (target.err) {
-                    DirectoryListingResult.Error.Type.AccessDenied -> return
-                    DirectoryListingResult.Error.Type.PathNonExistent -> return
-                    DirectoryListingResult.Error.Type.PathNotDirectory -> TODO()
-                    DirectoryListingResult.Error.Type.ChangedWhileReading -> TODO()
-                }
-            }
-        }
-    }
-
     private fun selectionUp() {
-        if (directoryListWidget.model is NoSelection)
-            return
-        if (selectedItemIdx > 0) scrollTo(selectedItemIdx - 1)
+        if (directoryListWidget.model is NoSelection) return
+        if (selectedItemIdx > 0) directoryListWidget.focusAndSelectTo(selectedItemIdx - 1)
     }
 
     private fun selectionDown() {
-        if (directoryListWidget.model is NoSelection)
-            return
-        if (selectedItemIdx < listViewSelection.nItems - 1) scrollTo(selectedItemIdx + 1)
+        if (directoryListWidget.model is NoSelection) return
+        if (selectedItemIdx < listViewSelection.nItems - 1) directoryListWidget.focusAndSelectTo(selectedItemIdx + 1)
     }
 
     abstract class BaseItemFactory : SignalListItemFactory() {
@@ -482,9 +420,6 @@ class WidgetDirectoryBrowser(path: Path) {
         }
     }
 
-    private fun scrollTo(idx: Int) =
-        directoryListWidget.scrollTo(idx, setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT), null)
-
     companion object {
         /**
          * Have to do it by setting to null first, otherwise there's a race condition.
@@ -510,6 +445,10 @@ class WidgetDirectoryBrowser(path: Path) {
             }
             this.model = selection
             this.factory = factory
+        }
+
+        fun ListView.focusAndSelectTo(idx: Int) {
+            scrollTo(idx, setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT), null)
         }
     }
 }

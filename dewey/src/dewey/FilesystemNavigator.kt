@@ -11,7 +11,7 @@ import kotlin.io.path.*
 import kotlin.reflect.KClass
 
 
-val LOG: Logger = Logger.getLogger(FilesystemNavigatorMax::class.qualifiedName)
+val LOG: Logger = Logger.getLogger(FilesystemNavigator::class.qualifiedName)
 
 /**
 
@@ -33,19 +33,19 @@ val LOG: Logger = Logger.getLogger(FilesystemNavigatorMax::class.qualifiedName)
 # File attributes
 
 - BasicFileAttributes
-- lastModified
-- lastAccess
-- creationTime
-- isDirectory
-- isRegularFile
-- isSymbolicLink
-- isOther
-- size
-- PosixFileAttributes
-- owner
-- group
-- permissions (PosixFilePermissions)
-- OWNER_READ, OWNER_WRITE, OWNER_EXECUTE, ...
+  - lastModified
+  - lastAccess
+  - creationTime
+  - isDirectory
+  - isRegularFile
+  - isSymbolicLink
+  - isOther
+  - size
+  - PosixFileAttributes
+    - owner
+    - group
+    - permissions (PosixFilePermissions)
+      - OWNER_READ, OWNER_WRITE, OWNER_EXECUTE, ...
  */
 
 
@@ -235,9 +235,11 @@ fun readDirectory(path: Path): DirectoryListingResult {
 // --------------------------------------------------------------------------------------------- //
 
 
-class FilesystemNavigatorMax {
+class FilesystemNavigator {
     lateinit var workingPath: Path
     lateinit var working: DirectoryListingResult
+
+    val isInitialized get() = ::working.isInitialized
 
     fun navigateTo(path: Path) {
         working = readDirectory(path)
