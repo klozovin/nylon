@@ -236,21 +236,23 @@ fun readDirectory(path: Path): DirectoryListingResult {
 
 
 class FilesystemNavigator {
+    var previousWorkingPath: Path? = null
     lateinit var workingPath: Path
     lateinit var working: DirectoryListingResult
 
     val isInitialized get() = ::working.isInitialized
 
     fun navigateTo(path: Path) {
+        if (::workingPath.isInitialized) previousWorkingPath = workingPath
         working = readDirectory(path)
         workingPath = path
     }
 
-    fun navigateToParent() {
-        val parent = workingPath.parent ?: return
-        working = readDirectory(parent)
-        workingPath = parent
-    }
+//    fun navigateToParent() {
+//        val parent = workingPath.parent ?: return
+//        working = readDirectory(parent)
+//        workingPath = parent
+//    }
 
     fun reload() {
         working = readDirectory(workingPath)

@@ -34,15 +34,11 @@ class ChangeDirectoryDialog : Window() {
                 close()
                 callback(entryPath)
             } else
-                println("Error: Tried to cd into non existent directory.")
+                println("Error: Tried to cd into non-existent directory.")
         }
     }
 
     init {
-//        directoryPathInput.onActivate {
-//            println("activated")
-//            close()
-//        }
         child = directoryPathInput
     }
 }
