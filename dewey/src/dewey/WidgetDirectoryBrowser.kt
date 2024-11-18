@@ -329,15 +329,19 @@ class WidgetDirectoryBrowser(path: Path) {
          * When going "up the filesystem tree", child directory we came from should be preselected. Check if this is the
          * case, and if so return that child's Path.
          */
-        fun pathOfChildIfNavigatingUp(): Path? =
+        private fun pathOfChildIfNavigatingUp(): Path? =
             pathNavigator.previousWorking?.let { prevWorkingPath ->
-                if (pathNavigator.working.path == prevWorkingPath.parent) prevWorkingPath
-                else null
+                if (pathNavigator.working.path.isParentOf(prevWorkingPath))
+                    prevWorkingPath
+                else
+                    null
             }
 
         fun restoreForCurrent() {
-            // Either, restore what was selected, or if going up to parent directory, select the child we came from.
-            val pathToPreselect = getSelected(pathNavigator.working.path) ?: pathOfChildIfNavigatingUp()
+            // Preselect one of:
+            // 1. child directory, if moving up the filesystem tree
+            // 2. previously selected entry
+            val pathToPreselect = pathOfChildIfNavigatingUp() ?: previouslySelected(pathNavigator.working.path)
 
             if (pathToPreselect == null) {
                 directoryListWidget.focusAndSelectTo(0)
@@ -376,7 +380,7 @@ class WidgetDirectoryBrowser(path: Path) {
             history[forDirectory] = selection
         }
 
-        private fun getSelected(forDirectory: Path): Path? {
+        private fun previouslySelected(forDirectory: Path): Path? {
             println("getSelected: $forDirectory")
             return history[forDirectory]
         }
@@ -515,5 +519,8 @@ class WidgetDirectoryBrowser(path: Path) {
         fun ListView.focusAndSelectTo(idx: Int) {
             scrollTo(idx, setOf(ListScrollFlags.FOCUS, ListScrollFlags.SELECT), null)
         }
+
+        private fun Path.isParentOf(path: Path): Boolean =
+            this == path.parent
     }
 }
