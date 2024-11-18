@@ -200,13 +200,12 @@ class WidgetDirectoryBrowser(path: Path) {
     private fun showChangeDirectoryDialog() {
         val dialog = ChangeDirectoryDialog().apply {
             modal = true
-            onInputReceive { maybePath ->
-                println("Maybe we should navigate to...? $maybePath")
-                todoChangeWorkingDirectory(maybePath)
+            onInputReceive { path ->
+                todoChangeWorkingDirectory(path)
             }
             transientFor = this@WidgetDirectoryBrowser.directoryListWidget.root as Window
+            present()
         }
-        dialog.present()
     }
 
     // ------------------------------------------------------------------------ //
@@ -233,6 +232,7 @@ class WidgetDirectoryBrowser(path: Path) {
 
     /**
      * Centralise in one place
+     * TODO: Better name
      */
     private fun todoChangeWorkingDirectory(dir: Path) {
         selectionHistory.saveForCurrent()
