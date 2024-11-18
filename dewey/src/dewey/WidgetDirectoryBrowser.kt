@@ -1,5 +1,6 @@
 package dewey
 
+import dewey.fsnav.*
 import io.github.jwharm.javagi.gio.ListIndexModel
 import org.gnome.gdk.Gdk
 import org.gnome.gdk.ModifierType
@@ -8,7 +9,7 @@ import org.gnome.gobject.GObject
 import org.gnome.gtk.*
 import java.nio.file.Path
 import kotlin.io.path.name
-import kotlin.io.path.pathString
+import dewey.fsnav.DirectoryListingResult as DirectoryListing
 
 
 class WidgetDirectoryBrowser(path: Path) {
@@ -72,12 +73,12 @@ class WidgetDirectoryBrowser(path: Path) {
     }
 
     private fun updateDirectoryList() {
-        println("Showing contents for directory: [${pathNavigator.workingPath.pathString}]")
+        println("Showing contents for directory: [${pathNavigator.working.path}]")
         when (val cwd = pathNavigator.working) {
-            is DirectoryListingResult.Listing -> {
+            is DirectoryListing.Listing -> {
 
                 // Update current path (top)
-                currentPathAndSelectionWidget.updateTargetPath(pathNavigator.workingPath) // TODO: move to listing class
+                currentPathAndSelectionWidget.updateTargetPath(pathNavigator.working.path) // TODO: move to listing class
 
                 if (cwd.isNotEmpty) {
                     val model = ListIndexModel.newInstance(cwd.count)
@@ -106,8 +107,8 @@ class WidgetDirectoryBrowser(path: Path) {
                 }
             }
 
-            is DirectoryListingResult.RestrictedListing -> {
-                currentPathAndSelectionWidget.updateTargetPath(pathNavigator.workingPath)
+            is DirectoryListing.RestrictedListing -> {
+                currentPathAndSelectionWidget.updateTargetPath(pathNavigator.working.path)
 
                 if (cwd.isNotEmpty) {
                     // Update ListView
@@ -136,10 +137,10 @@ class WidgetDirectoryBrowser(path: Path) {
                 }
             }
 
-            is DirectoryListingResult.Error -> {
+            is DirectoryListing.Error -> {
                 when (cwd.err) {
-                    DirectoryListingResult.Error.Type.AccessDenied -> {
-                        currentPathAndSelectionWidget.updateTargetPath(pathNavigator.workingPath)
+                    DirectoryListing.Error.Type.AccessDenied -> {
+                        currentPathAndSelectionWidget.updateTargetPath(pathNavigator.working.path)
                         currentPathAndSelectionWidget.clearFocused()
 
                         val model = StringList<StringObject>().apply { append("access denied") }
@@ -149,8 +150,8 @@ class WidgetDirectoryBrowser(path: Path) {
                         selectedItemDetails.clear()
                     }
 
-                    DirectoryListingResult.Error.Type.PathNonExistent -> {
-                        currentPathAndSelectionWidget.updateTargetPath(pathNavigator.workingPath)
+                    DirectoryListing.Error.Type.PathNonExistent -> {
+                        currentPathAndSelectionWidget.updateTargetPath(pathNavigator.working.path)
                         currentPathAndSelectionWidget.clearFocused()
 
                         val model = StringList<StringObject>().apply { append("directory does not exist") }
@@ -161,8 +162,19 @@ class WidgetDirectoryBrowser(path: Path) {
 
                     }
 
-                    DirectoryListingResult.Error.Type.PathNotDirectory -> TODO()
-                    DirectoryListingResult.Error.Type.ChangedWhileReading -> TODO()
+                    DirectoryListing.Error.Type.PathNotDirectory -> {
+                        // TODO: Is this the best way to handle it? - We should never have to be in this (.PND) code path!
+                        currentPathAndSelectionWidget.updateTargetPath(pathNavigator.working.path.parent) /// TODO: Is this the best way?
+                        currentPathAndSelectionWidget.updateFocused(pathNavigator.working.path)
+
+                        val model = StringList<StringObject>().apply { append("Given path is not a directory") }
+                        val selection = NoSelection<GObject>(model)
+                        directoryListWidget.setSelectionAndFactory(selection, itemFactoryEmpty)
+
+                        selectedItemDetails.clear()
+                    }
+
+                    DirectoryListing.Error.Type.ChangedWhileReading -> TODO()
                 }
             }
         }
@@ -173,14 +185,14 @@ class WidgetDirectoryBrowser(path: Path) {
     }
 
     private fun openParentDirectory() {
-        pathNavigator.workingPath.parent?.let {
+        pathNavigator.working.path.parent?.let {
             todoChangeWorkingDirectory(it)
         }
     }
 
     private fun reloadDirectory() {
         // TODO: Is this the best way to do it, feels weird?
-        todoChangeWorkingDirectory(pathNavigator.workingPath)
+        todoChangeWorkingDirectory(pathNavigator.working.path)
 //        pathNavigator.reload()
 //        updateDirectoryList()
     }
@@ -204,7 +216,7 @@ class WidgetDirectoryBrowser(path: Path) {
      */
     private fun openSelectedListViewItem() {
         val workingDir = pathNavigator.working
-        if (workingDir !is DirectoryListingResult.Listing) return
+        if (workingDir !is DirectoryListing.Listing) return
         if (workingDir.isEmpty) return
 
         when (val selectedItem = workingDir.entries[selectedItemIdx]) {
@@ -227,7 +239,6 @@ class WidgetDirectoryBrowser(path: Path) {
         pathNavigator.navigateTo(dir)
         updateDirectoryList()
         selectionHistory.restoreForCurrent()
-        // Restore selection for this new directory listing
     }
 
     private fun keyPressHandler(keyVal: Int, keyCode: Int, modifierTypes: MutableSet<ModifierType>?): Boolean {
@@ -249,7 +260,7 @@ class WidgetDirectoryBrowser(path: Path) {
 
     private fun selectionChangedHandler(position: Int, items: Int) {
         when (val target = pathNavigator.working) {
-            is DirectoryListingResult.Listing -> {
+            is DirectoryListing.Listing -> {
                 val selectedItem = target.entries[selectedItemIdx]
                 if (target.isNotEmpty) {
                     currentPathAndSelectionWidget.updateFocused(selectedItem.path)
@@ -260,7 +271,7 @@ class WidgetDirectoryBrowser(path: Path) {
                 }
             }
 
-            is DirectoryListingResult.RestrictedListing -> {
+            is DirectoryListing.RestrictedListing -> {
                 val selectedItem = target.entries[selectedItemIdx]
                 if (target.isNotEmpty)
                     currentPathAndSelectionWidget.updateFocused(selectedItem.path)
@@ -269,7 +280,7 @@ class WidgetDirectoryBrowser(path: Path) {
                 selectedItemDetails.clear()
             }
 
-            is DirectoryListingResult.Error -> error("UNREACHABLE")
+            is DirectoryListing.Error -> error("UNREACHABLE")
         }
     }
 
@@ -302,28 +313,31 @@ class WidgetDirectoryBrowser(path: Path) {
             if (!pathNavigator.isInitialized) return
 
             when (val cwd = pathNavigator.working) {
-                is DirectoryListingResult.Listing ->
+                is DirectoryListing.Listing ->
                     if (cwd.isNotEmpty)
-                        update(pathNavigator.workingPath, cwd.entries[selectedItemIdx].path)
+                        update(pathNavigator.working.path, cwd.entries[selectedItemIdx].path)
 
-                is DirectoryListingResult.RestrictedListing ->
+                is DirectoryListing.RestrictedListing ->
                     if (cwd.isNotEmpty)
-                        update(pathNavigator.workingPath, cwd.entries[selectedItemIdx].path)
+                        update(pathNavigator.working.path, cwd.entries[selectedItemIdx].path)
 
-                is DirectoryListingResult.Error -> {}
+                is DirectoryListing.Error -> {}
             }
         }
 
-        // TODO: Saner name
-        fun getForParent(): Path? =
-            pathNavigator.previousWorkingPath?.let { pwp ->
-                if (pwp.parent == pathNavigator.workingPath) pwp
+        /**
+         * When going "up the filesystem tree", child directory we came from should be preselected. Check if this is the
+         * case, and if so return that child's Path.
+         */
+        fun pathOfChildIfNavigatingUp(): Path? =
+            pathNavigator.previousWorking?.let { prevWorkingPath ->
+                if (pathNavigator.working.path == prevWorkingPath.parent) prevWorkingPath
                 else null
             }
 
         fun restoreForCurrent() {
             // Either, restore what was selected, or if going up to parent directory, select the child we came from.
-            val pathToPreselect = getSelected(pathNavigator.workingPath) ?: getForParent()
+            val pathToPreselect = getSelected(pathNavigator.working.path) ?: pathOfChildIfNavigatingUp()
 
             if (pathToPreselect == null) {
                 directoryListWidget.focusAndSelectTo(0)
@@ -331,28 +345,29 @@ class WidgetDirectoryBrowser(path: Path) {
             }
 
             when (val cwd = pathNavigator.working) {
-                is DirectoryListingResult.Listing -> {
+                is DirectoryListing.Listing -> {
                     val idxSelected = cwd.entries.indexOfFirst { it.path == pathToPreselect }
                     if (idxSelected != -1)
                         directoryListWidget.focusAndSelectTo(idxSelected)
                     else {
-                        println("Previously selected entry [${pathToPreselect}] no longer exists in directory [${pathNavigator.workingPath}]")
+                        println("Previously selected entry [${pathToPreselect}] no longer exists in directory [${pathNavigator.working.path}]")
                         directoryListWidget.focusAndSelectTo(0)
-                        history.remove(pathNavigator.workingPath)
+                        history.remove(pathNavigator.working.path)
                     }
                 }
 
-                is DirectoryListingResult.RestrictedListing -> {
+                is DirectoryListing.RestrictedListing -> {
                     val idxSelected = cwd.entries.indexOfFirst { it.path == pathToPreselect }
                     if (idxSelected != -1)
                         directoryListWidget.focusAndSelectTo(idxSelected)
                     else {
-                        println("Previously selected entry [${pathToPreselect}] no longer exists in directory [${pathNavigator.workingPath}]")
+                        println("Previously selected entry [${pathToPreselect}] no longer exists in directory [${pathNavigator.working.path}]")
                         directoryListWidget.focusAndSelectTo(0)
+                        history.remove(pathNavigator.working.path)
                     }
                 }
 
-                is DirectoryListingResult.Error -> {}
+                is DirectoryListing.Error -> {}
             }
         }
 
@@ -404,7 +419,7 @@ class WidgetDirectoryBrowser(path: Path) {
             val listItemLabel = listItem.child as Label
             listItemLabel.cssClasses = emptyArray()
             when (val target = pathNavigator.working) {
-                is DirectoryListingResult.RestrictedListing -> {
+                is DirectoryListing.RestrictedListing -> {
                     val itemEntry = target.entries[listItem.position]
                     listItemLabel.apply {
                         label = "% ${itemEntry.path.name}"
@@ -429,7 +444,7 @@ class WidgetDirectoryBrowser(path: Path) {
             // Clear all CSS classes from the Label (because virtualized ListView)
             listItemLabel.cssClasses = emptyArray()
 
-            val cwd = pathNavigator.working as DirectoryListingResult.Listing
+            val cwd = pathNavigator.working as DirectoryListing.Listing
 
             check(item.index == listItem.position)
             when (val itemEntry = cwd.entries[listItem.position]) {

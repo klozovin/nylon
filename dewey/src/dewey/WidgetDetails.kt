@@ -1,5 +1,6 @@
 package dewey
 
+import dewey.fsnav.*
 import org.gnome.gtk.Box
 import org.gnome.gtk.Label
 import org.gnome.gtk.Orientation
