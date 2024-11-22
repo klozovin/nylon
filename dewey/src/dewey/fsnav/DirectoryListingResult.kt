@@ -4,6 +4,7 @@ import dewey.fsnav.BaseDirectoryEntry.DirectoryEntry
 import dewey.fsnav.BaseDirectoryEntry.RestrictedEntry
 import java.nio.file.Path
 
+
 sealed class DirectoryListingResult(
     open val path: Path
 ) {
