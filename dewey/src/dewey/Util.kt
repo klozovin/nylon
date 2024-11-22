@@ -1,6 +1,7 @@
 package dewey
 
 import java.nio.file.attribute.PosixFilePermission
+import kotlin.IllegalStateException
 
 fun posixPermissionsToString(permissions: Set<PosixFilePermission>): String {
     val permissionsOrdered = arrayOf(
@@ -27,3 +28,5 @@ fun posixPermissionsToString(permissions: Set<PosixFilePermission>): String {
 
     return permissionStringBuilder.toString()
 }
+
+fun unreachable(): Nothing = throw IllegalStateException("Unreachable code path")

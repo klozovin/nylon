@@ -78,7 +78,7 @@ open class ReadFilesAttributesBenchmark {
                     x.isDirectory && !y.isDirectory -> -1
                     !x.isDirectory && y.isDirectory -> 1
                     !x.isDirectory && !y.isDirectory -> 0
-                    else -> error("Unreachable")
+                    else -> unreachable()
                 }
             }
             .collect(Collectors.toList())

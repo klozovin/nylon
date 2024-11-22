@@ -40,10 +40,11 @@ class SubjectDelegate<T : Any>(initial: T? = null) {
 
     init {
         variable = initial
-        if (variable != null) {
+        if (initial != null) {
             subject.onNext(initial)
         }
     }
+
 
     operator fun getValue(thisRef: Any?, property: KProperty<*>): T {
         return variable!!
@@ -66,7 +67,7 @@ class SubjectDelegate<T : Any>(initial: T? = null) {
 /**
  * Can be null, use Maybe to interop with RxJava.
  */
-class NullableSubjectDelegateMaybe<T : Any>(initial: T? = null) {
+class NullableSubjectDelegate<T : Any>(initial: T? = null) {
 
     val observable get() = subject
 
@@ -93,7 +94,7 @@ class NullableSubjectDelegateMaybe<T : Any>(initial: T? = null) {
     companion object {
         fun <V : Any> KMutableProperty0<V?>.asObservable(): Observable<Maybe<V>> {
             this.isAccessible = true
-            val delegate = this.getDelegate() as NullableSubjectDelegateMaybe<V>
+            val delegate = this.getDelegate() as NullableSubjectDelegate<V>
             return delegate.observable
         }
     }
@@ -127,27 +128,3 @@ class NullableSubjectDelegateOptional<T : Any> {
         }
     }
 }
-
-
-/*
-
-
-Usecase1
-
-class Usecase1 {
-    var selectedItem: DirectoryEntry
-}
-use1 = Usecase1
-use1.selectedItem = blabha
-
-=====================
-
-class Usecase2 {
-    val selectedItem: ObservableWrapper<DirectoryEntry>
-}
-
-use2 = Usecase2
-use2.selectedItem() // invoke operator overload
-
-
- */

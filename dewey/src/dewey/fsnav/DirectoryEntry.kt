@@ -1,6 +1,7 @@
 package dewey.fsnav
 
 import dewey.fsnav.BaseDirectoryEntry.DirectoryEntry
+import dewey.unreachable
 import java.nio.file.Path
 import java.nio.file.attribute.GroupPrincipal
 import java.nio.file.attribute.PosixFileAttributes
@@ -11,17 +12,17 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.isSymbolicLink
 import kotlin.reflect.KClass
 
-sealed class BaseDirectoryEntry {
+sealed interface BaseDirectoryEntry {
 
     data class RestrictedEntry(
         val path: Path
-    ) : BaseDirectoryEntry()
+    ) : BaseDirectoryEntry
 
     sealed class DirectoryEntry(
         open val path: Path,
         open val attributes: PosixFileAttributes,
         open val permissions: Set<PosixFilePermission>
-    ) : BaseDirectoryEntry() {
+    ) : BaseDirectoryEntry {
         val owner: UserPrincipal get() = attributes.owner()
         val group: GroupPrincipal get() = attributes.group()
     }
@@ -37,7 +38,7 @@ sealed class BaseDirectoryEntry {
                 attrs.isDirectory -> ::Directory
                 attrs.isSymbolicLink -> ::Symlink
                 attrs.isOther -> ::Other
-                else -> error("UNREACHABLE")
+                else -> unreachable()
             }
             return constructor(path, attrs)
         }
