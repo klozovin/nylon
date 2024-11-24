@@ -51,7 +51,10 @@ class WidgetDetails : Box(Orientation.HORIZONTAL, 8) {
             is Other -> "-"
             // TODO: The rest, | -> pipe, = -> socket,
         }
-        permissions.label = PosixFilePermissions.toString(entry.permissions)
+        permissions.label = PosixFilePermissions
+            .toString(entry.permissions)
+            .chunked(3)
+            .joinToString(separator = ".")
         owner.label = entry.owner.name
         group.label = entry.group.name
 
