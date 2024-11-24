@@ -264,50 +264,40 @@ class WidgetDirectoryBrowser(path: Path) {
 
 
     /**
-     * When leaving a directory, save the currently focused entry, ie its path
+     * When navigating the filesystem, preselect entries for easier navigation. Preselect either:
      *
-     * For a given directory, remember the last selected item when the user navigated away from it. Used for easier
-     * movement through the file system.
+     * 1) if navigating to parent directory, child we came from
+     * 2) last selected entry
      *
-     *  When jumping to distant directory, add paths in-between
      */
     inner class SelectionHistory {
 
         private val history: MutableMap<Path, Path> = mutableMapOf()
 
+        /**
+         * Save currently selected entry.
+         */
         fun saveForCurrent() {
             if (!pathNavigator.isInitialized) return
 
             when (val cwd = pathNavigator.working) {
                 is DirectoryListing.Listing ->
                     if (cwd.isNotEmpty)
-                        update(pathNavigator.working.path, cwd.entries[selectedItemIdx].path)
+                        history[pathNavigator.working.path] = cwd.entries[selectedItemIdx].path
 
                 is DirectoryListing.RestrictedListing ->
                     if (cwd.isNotEmpty)
-                        update(pathNavigator.working.path, cwd.entries[selectedItemIdx].path)
+                        history[pathNavigator.working.path] = cwd.entries[selectedItemIdx].path
 
                 is DirectoryListing.Error -> {}
             }
         }
 
         /**
-         * When going "up the filesystem tree", child directory we came from should be preselected. Check if this is the
-         * case, and if so return that child's Path.
+         * Preselect the entry (child entry or previously selected).
          */
-        private fun pathOfChildIfNavigatingUp(): Path? =
-            pathNavigator.previousWorking?.let { prevWorkingPath ->
-                if (pathNavigator.working.path.isParentOf(prevWorkingPath))
-                    prevWorkingPath
-                else
-                    null
-            }
-
         fun restoreForCurrent() {
-            // Preselect one of:
-            // 1. child directory, if moving up the filesystem tree
-            // 2. previously selected entry
-            val pathToPreselect = pathOfChildIfNavigatingUp() ?: previouslySelected(pathNavigator.working.path)
+            val pathToPreselect = pathOfChildIfNavigatingUp() ?: history[pathNavigator.working.path]
 
             if (pathToPreselect == null) {
                 directoryListWidget.focusAndSelectTo(0)
@@ -341,16 +331,17 @@ class WidgetDirectoryBrowser(path: Path) {
             }
         }
 
-        private fun update(forDirectory: Path, selection: Path) {
-            println("Update: $forDirectory, $selection")
-            history[forDirectory] = selection
-        }
-
-        private fun previouslySelected(forDirectory: Path): Path? {
-            println("getSelected: $forDirectory")
-            return history[forDirectory]
-        }
-
+        /**
+         * When going "up the filesystem tree", child directory we came from should be preselected. Check if this is the
+         * case, and if so return that child's Path.
+         */
+        private fun pathOfChildIfNavigatingUp(): Path? =
+            pathNavigator.previousWorking?.let { prevWorkingPath ->
+                if (pathNavigator.working.path.isParentOf(prevWorkingPath))
+                    prevWorkingPath
+                else
+                    null
+            }
     }
 
     abstract class BaseItemFactory : SignalListItemFactory() {
