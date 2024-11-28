@@ -2,7 +2,7 @@
 
 lib="wlroots-0.18"
 libDir="/usr/include/wlroots-0.18"
-output="generated/main/java"
+output="src/generated/java"
 
 #<editor-fold desc="xkbcommon">
 

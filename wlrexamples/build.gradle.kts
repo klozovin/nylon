@@ -10,8 +10,10 @@ repositories {
     mavenCentral()
 }
 
-sourceSets.main {
-    java.srcDir("generated/main/java")
+sourceSets.create("generated")
+
+dependencies {
+    implementation(sourceSets.named("generated").get().output)
 }
 
 java {
@@ -25,16 +27,8 @@ kotlin.compilerOptions {
     jvmTarget = JvmTarget.JVM_22
 }
 
-//tasks.withType<JavaCompile> {
-//    options.compilerArgs.addAll(
-//        listOf(
-//            "--enable-preview"
-//        )
-//    )
-//}
-
 application {
-    mainClass.set("helloworld.HelloWorldKt")
+    mainClass.set("MainKt")
     applicationDefaultJvmArgs = listOf(
         "--enable-preview",
         "--enable-native-access", "ALL-UNNAMED",
