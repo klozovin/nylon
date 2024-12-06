@@ -39,4 +39,8 @@ public final class Log {
             invoker.apply(verbosity.getConstant(), arena.allocateFrom(message));
         }
     }
+
+    public static void logInfo(String message) {
+        log(Importance.INFO, message);
+    }
 }

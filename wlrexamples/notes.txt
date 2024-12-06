@@ -1,4 +1,79 @@
 
+struct wlr_backend {
+  const struct wlr_backend_impl *impl;
+
+  struct
+    struct wl_signal destroy;
+    struct wl_signal new_input;
+    struct wl_signal new_output;
+  } events;
+}
+
+
+
+
+
+struct wl_signal {
+  struct wl_list    listener_list;
+}
+
+struct wl_list {
+  struct wl_list    *prev;
+  struct wl_list    *next;
+}
+
+// Handler, callback for wayland signal. Get added with wl_signal_add
+struct wl_listener
+  struct wl_list    link;
+  wl_notify_func_t  notify;
+
+wl_signal_add(struct wl_signal *signal, struct wl_listener *listener) {
+  wl_list_insert(signal->listener_list.prev, &listener->link);
+}
+
+wl_list_insert_list(struct wl_list *list, struct wl_list *other);
+
+
+
+
+struct wlr_backend {
+  const struct wlr_backend_impl *impl;
+
+  struct {
+    struct wl_signal destroy
+    struct wl_signal new_input
+    struct wl_signal new_output
+  } events
+}
+
+
+
+
+
+
+Proxy Ptr classes to create
+
+- Wayland
+    - Display()
+        - create()
+        - getEventLoop(this)
+    - Signal()
+        add()
+
+    - Listener()
+        new()
+
+- wlroots.Backend()
+    - autocreate(eventLoop)
+    - events.new_output -> wlr_output
+- wlroots.Renderer()
+    - autocreate(backend)
+- wlroots.Allocator()
+    - autocreate(backend, renderer)
+
+
+
+
 
 ### simple.c
 ------------
@@ -36,6 +111,8 @@
     - func wl_display_get_event_loop(display: stct wl_display*): stct wl_event_loop*
     - func wl_display_terminate(display: wl_display*)
     - func wl_event_loop
+
+    - stct wl_signal { listener_list: wl_list }
     - static inline func wl_signal_add()
 
 * wlr/render/allocator.h
@@ -84,3 +161,28 @@
     - func wlr_backend_start(backend: stct wlr_backend*)
     - func wlr_backend_destroy(backend: stct wlr_backend*)
     - func wlr_backend_autocreate(loop: stct wl_event_loop)
+
+
+
+ ### wl_list ###
+
+ #if __STDC_VERSION__ >= 202311L
+    #define WL_TYPEOF(expr) typeof(expr)
+ #else
+    #define WL_TYPEOF(expr) __typeof__(expr)
+ #endif
+
+
+ #define wl_list_for_each(pos, head, member)
+   for (pos = wl_container_of((head)->next, pos, member);  \
+        &pos->member != (head);          \
+        pos = wl_container_of(pos->member.next, pos, member))
+
+
+#define wl_container_of(ptr, sample, member)
+  (WL_TYPEOF(sample))((char *)(ptr) - offsetof(WL_TYPEOF(*sample), member))
+
+offsetof - The macro offsetof expands to an integral constant expression
+            of type std::size_t, the value of which is the offset, in bytes,
+            from the beginning of an object of specified type to its
+            specified subobject, including padding bits if any.
