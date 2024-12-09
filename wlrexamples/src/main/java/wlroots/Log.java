@@ -43,4 +43,8 @@ public final class Log {
     public static void logInfo(String message) {
         log(Importance.INFO, message);
     }
+
+    public static void logError(String message) {
+        log(Importance.ERROR, message);
+    }
 }
