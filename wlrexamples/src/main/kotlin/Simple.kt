@@ -1,24 +1,42 @@
 import wayland.*
+import wayland.server_h.wl_display_create
+import wayland.server_h.wl_display_get_event_loop
+import wayland.wl_list
+import wayland.wl_listener
+import wayland.wl_notify_func_t
+import wayland.wl_signal
 import wlroots.Log
 import wlroots.backend_h.*
 import wlroots.render.allocator_h
 import wlroots.render.wlr_renderer_h
-import wlroots.types.wlr_output_h
+import wlroots.types.*
+import wlroots.types.wlr_input_device_h.WLR_INPUT_DEVICE_KEYBOARD
+import wlroots.types.wlr_keyboard_h_1.wlr_keyboard_set_keymap
 import wlroots.util.log_h.WLR_DEBUG
 import wlroots.util.log_h.wlr_log_init
 import wlroots.wlr_backend
 import wlroots.wlr_output
 import wlroots.wlr_output_state
+import xkb.xkbcommon_h
+import xkb.xkbcommon_h.*
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
+import java.lang.foreign.MemorySegment.NULL
 import kotlin.system.exitProcess
 
 val arena: Arena = Arena.global()
 
 object State {
+    // struct wl_display *display;
+    lateinit var display: MemorySegment
+
+    // struct wlr_renderer *renderer;
     lateinit var renderer: MemorySegment
+
+    // struct wlr_allocator *allocator;
     lateinit var allocator: MemorySegment
-    var lastFrame: Long = 0
+
+    var lastFrame: Long = System.nanoTime()
 }
 
 object Output {
@@ -32,21 +50,31 @@ object Output {
     lateinit var destroy: MemorySegment
 }
 
-object Keyboard
+object Keyboard {
+    // struct wlr_keyboard *wlr_keyboard;
+    lateinit var keyboard: MemorySegment
+
+    // struct wl_listener key;
+    lateinit var key: MemorySegment
+
+    // struct wl_listener destroy;
+    lateinit var destroy: MemorySegment
+}
 
 
 fun main() {
 
     // wlr_log_init(WLR_DEBUG, NULL);
-    wlr_log_init(WLR_DEBUG(), MemorySegment.NULL)
+    wlr_log_init(WLR_DEBUG(), NULL)
 
     // struct wl_display *display = wl_display_create();
-    val displayPtr = server_h.wl_display_create()
+    val displayPtr = wl_display_create()
+    State.display = displayPtr
 
     // 	struct wlr_backend *backend = wlr_backend_autocreate(wl_display_get_event_loop(display), NULL);
     val backendPtr = wlr_backend_autocreate(
-        server_h.wl_display_get_event_loop(displayPtr),
-        MemorySegment.NULL
+        wl_display_get_event_loop(displayPtr),
+        NULL
     )
 
     // state.renderer = wlr_renderer_autocreate(backend);
@@ -63,25 +91,17 @@ fun main() {
         newOutputListenerPtr
     )
 
-    TODO()
     // wl_signal_add(&backend->events.new_input, &state.new_input);
     // state.new_input.notify = new_input_notify;
+    val newInputListenerPtr = wl_listener.allocate(arena)
+    wl_listener.notify(newInputListenerPtr, wl_notify_func_t.allocate(::newInputNotify, arena))
+    wl_signal_add(
+        wlr_backend.events.new_input(wlr_backend.events(backendPtr)),
+        newInputListenerPtr
+    )
 
-    TODO()
     // clock_gettime(CLOCK_MONOTONIC, &state.last_frame);
-
-
-    /*
-
-    // Signal #2 handler: wlr_backend.events.new_input -> wlr_input_device
-    val backend_events_newInput_Ptr = wlr_backend.events.new_input(backendPtr)
-
-    val newInputListenerPtr = wlroots.wl_listener.allocate(arena)
-    val newInputNotifyCallbackPtr = wl_notify_func_t.allocate(::newInputNotify, arena)
-    wl_listener.notify(newInputListenerPtr, newInputNotifyCallbackPtr)
-
-    wl_signal_add(backend_events_newInput_Ptr, newInputListenerPtr)
-     */
+    State.lastFrame = System.nanoTime()
 
     // if (!wlr_backend_start(backend)) {
     //     wlr_log(WLR_ERROR, "Failed to start backend");
@@ -122,7 +142,7 @@ fun wl_signal_add(signalPtr: MemorySegment, listenerPtr: MemorySegment) {
 
 /**
  * ```
- * static void new_output_notify(struct wl_listener *listener, void *data) {
+ * static void new_output_notify(struct wl_listener *listener, void *data)
  * ```
  *
  * @param [outputPtr]: wlr_output*
@@ -140,20 +160,13 @@ fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
     // sample_output->frame.notify = output_frame_notify;
     Output.frame = wl_listener.allocate(arena)
     wl_listener.notify(Output.frame, wl_notify_func_t.allocate(::outputFrameNotify, arena))
-    wl_signal_add(
-        wlr_output.events.destroy(wlr_output.events(outputPtr)),
-        Output.frame
-    )
+    wl_signal_add(wlr_output.events.frame(wlr_output.events(outputPtr)), Output.frame)
 
     // wl_signal_add(&output->events.destroy, &sample_output->destroy);
     // sample_output->destroy.notify = output_remove_notify;
     Output.destroy = wl_listener.allocate(arena)
     wl_listener.notify(Output.destroy, wl_notify_func_t.allocate(::outputRemoveNotify, arena))
-    wl_signal_add(
-        wlr_output.events.destroy(wlr_output.events(outputPtr)),
-        Output.destroy
-    )
-
+    wl_signal_add(wlr_output.events.destroy(wlr_output.events(outputPtr)), Output.destroy)
 
     // struct wlr_output_state state;
     val statePtr = wlr_output_state.allocate(arena)
@@ -166,7 +179,7 @@ fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
 
     // if (mode != NULL)
     //     wlr_output_state_set_mode(&state, mode);
-    if (modePtr != MemorySegment.NULL)
+    if (modePtr != NULL)
         wlr_output_state_set_mode(statePtr, modePtr)
 
     // wlr_output_commit_state(output, &state);
@@ -176,16 +189,116 @@ fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
     wlr_output_state_finish(statePtr)
 }
 
+/**
+ * ```
+ * static void new_input_notify(struct wl_listener *listener, void *data)
+ * ```
+ */
+fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
 
-fun newInputNotify(listnerPtr: MemorySegment, dataPtr: MemorySegment) {
-    // dataPtr -> wlr_input_device*
-    TODO()
+    // struct wlr_input_device *device = data;
+    // struct sample_state *sample = wl_container_of(listener, sample, new_input);
+
+    // switch (device->type) {
+    // case WLR_INPUT_DEVICE_KEYBOARD:;
+
+
+    if (wlr_input_device.type(inputDevicePtr) == WLR_INPUT_DEVICE_KEYBOARD()) {
+        // struct sample_keyboard *keyboard = calloc(1, sizeof(*keyboard));
+
+        // keyboard->wlr_keyboard = wlr_keyboard_from_input_device(device);
+        Keyboard.keyboard = wlr_keyboard_h.wlr_keyboard_from_input_device(inputDevicePtr)
+
+        // keyboard->sample = sample;
+
+        // wl_signal_add(&device->events.destroy, &keyboard->destroy);
+        // keyboard->destroy.notify = keyboard_destroy_notify;
+        Keyboard.destroy = wl_listener.allocate(arena)
+        wl_listener.notify(Keyboard.destroy, wl_notify_func_t.allocate(::keyboardDestroyNotify, arena))
+        wl_signal_add(
+            wlr_input_device.events.destroy(wlr_input_device.events(inputDevicePtr)),
+            Keyboard.destroy
+        )
+
+        // wl_signal_add(&keyboard->wlr_keyboard->events.key, &keyboard->key);
+        // keyboard->key.notify = keyboard_key_notify;
+        Keyboard.key = wl_listener.allocate(arena)
+        wl_listener.notify(Keyboard.key, wl_notify_func_t.allocate(::keyboardKeyNotify, arena))
+        wl_signal_add(
+            wlr_keyboard.events.key(wlr_keyboard.events(Keyboard.keyboard)),
+            Keyboard.key
+        )
+
+        // struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+        val xkbContextPtr = xkb_context_new(XKB_CONTEXT_NO_FLAGS())
+
+        // if (!context) {
+        //      wlr_log(WLR_ERROR, "Failed to create XKB context");
+        //      exit(1);
+        // }
+        if (xkbContextPtr == NULL) {
+            Log.logError("Failed to create XKB context")
+            exitProcess(1)
+        }
+
+        // struct xkb_keymap *keymap = xkb_keymap_new_from_names(context, NULL, XKB_KEYMAP_COMPILE_NO_FLAGS);
+        val xkbKeymapPtr = xkb_keymap_new_from_names(xkbContextPtr, NULL, XKB_KEYMAP_COMPILE_NO_FLAGS())
+
+        // if (!keymap) {
+        //     wlr_log(WLR_ERROR, "Failed to create XKB keymap");
+        //     exit(1);
+        // }
+        if (xkbKeymapPtr == NULL) {
+            Log.logError("Failed to create XKB keymap")
+            exitProcess(1)
+        }
+
+        // wlr_keyboard_set_keymap(keyboard->wlr_keyboard, keymap);
+        wlr_keyboard_set_keymap(Keyboard.keyboard, xkbKeymapPtr)
+
+        // xkb_keymap_unref(keymap);
+        xkb_keymap_unref(xkbKeymapPtr)
+
+        // xkb_context_unref(context);
+        xkb_context_unref(xkbContextPtr)
+    }
 }
 
-
 fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
-    TODO()
+//    TODO()
+//    wl_display_terminate(State.display)
+}
 
+fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEvent: MemorySegment) {
+    // struct sample_keyboard *keyboard = wl_container_of(listener, keyboard, key);
+    // struct sample_state *sample = keyboard->sample;
+    // struct wlr_keyboard_key_event *event = data;
+
+    // uint32_t keycode = event->keycode + 8;
+    val keycode = wlr_keyboard_key_event.keycode(keyboardKeyEvent) + 8
+
+    // const xkb_keysym_t *syms;
+    val symsPtr = arena.allocate(xkbcommon_h.C_POINTER)
+
+    // int nsyms = xkb_state_key_get_syms(keyboard->wlr_keyboard->xkb_state, keycode, &syms);
+    val nsyms = xkb_state_key_get_syms(wlr_keyboard.xkb_state(Keyboard.keyboard), keycode, symsPtr)
+
+    // for (int i = 0; i < nsyms; i++) {
+    //     xkb_keysym_t sym = syms[i];
+    //     if (sym == XKB_KEY_Escape) {
+    //         wl_display_terminate(sample->display);
+    //     }
+    // }
+    for (i in 0..<nsyms) {
+        val sym = symsPtr.get(xkbcommon_h.C_POINTER, i.toLong()).get(xkb_keysym_t, 0)
+        if (sym == XKB_KEY_Escape()) {
+            wl_display_terminate(State.display)
+        }
+    }
+}
+
+fun keyboardDestroyNotify(listener: MemorySegment, data: MemorySegment) {
+    TODO()
 }
 
 fun outputRemoveNotify(listener: MemorySegment, data: MemorySegment) {

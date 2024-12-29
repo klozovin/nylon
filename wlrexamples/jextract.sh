@@ -5,11 +5,9 @@ libDir="/usr/include/wlroots-0.18"
 output="src/generated/java"
 
 #<editor-fold desc="xkbcommon">
-
-#jextract --library "xkbcommon" --output $output \
-#    --target-package xcb                    \
-#    "/usr/include/xkbcommon/xkbcommon.h"
-
+jextract --library "xkbcommon" --output $output \
+    --target-package xkb                        \
+    "/usr/include/xkbcommon/xkbcommon.h"
 #</editor-fold>
 
 #<editor-fold desc="wayland-server">

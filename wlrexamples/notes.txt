@@ -138,6 +138,17 @@ struct wlr_output {
 };
 
 
+struct wlr_input_device {
+	enum wlr_input_device_type type;
+	char *name; // may be NULL
+
+	struct {
+		struct wl_signal destroy;
+	} events;
+
+	void *data;
+};
+
 
 struct wl_signal {
   struct wl_list    listener_list;
