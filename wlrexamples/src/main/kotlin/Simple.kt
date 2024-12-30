@@ -24,7 +24,9 @@ import java.lang.foreign.MemorySegment
 import java.lang.foreign.MemorySegment.NULL
 import kotlin.system.exitProcess
 
+
 val arena: Arena = Arena.global()
+
 
 object State {
     // struct wl_display *display;
@@ -36,7 +38,14 @@ object State {
     // struct wlr_allocator *allocator;
     lateinit var allocator: MemorySegment
 
-    var lastFrame: Long = System.nanoTime()
+    // struct timespec last_frame;
+    var lastFrame: Long = 0
+
+    // float color[4];
+    val color = floatArrayOf(1.0f, 0.0f, 0.0f, 1.0f)
+
+    // int dec;
+    var dec: Int = 0
 }
 
 object Output {
@@ -72,10 +81,7 @@ fun main() {
     State.display = displayPtr
 
     // 	struct wlr_backend *backend = wlr_backend_autocreate(wl_display_get_event_loop(display), NULL);
-    val backendPtr = wlr_backend_autocreate(
-        wl_display_get_event_loop(displayPtr),
-        NULL
-    )
+    val backendPtr = wlr_backend_autocreate(wl_display_get_event_loop(displayPtr), NULL)
 
     // state.renderer = wlr_renderer_autocreate(backend);
     // state.allocator = wlr_allocator_autocreate(backend, state.renderer);
@@ -101,7 +107,7 @@ fun main() {
     )
 
     // clock_gettime(CLOCK_MONOTONIC, &state.last_frame);
-    State.lastFrame = System.nanoTime()
+    State.lastFrame = System.currentTimeMillis()
 
     // if (!wlr_backend_start(backend)) {
     //     wlr_log(WLR_ERROR, "Failed to start backend");
@@ -265,8 +271,77 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
 }
 
 fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
-//    TODO()
-//    wl_display_terminate(State.display)
+    // struct sample_output *sample_output = wl_container_of(listener, sample_output, frame);
+    // struct sample_state *sample = sample_output->sample;
+    // struct wlr_output *wlr_output = sample_output->output;
+
+    // struct timespec now;
+    // clock_gettime(CLOCK_MONOTONIC, &now);
+    val now = System.currentTimeMillis()
+
+    // long ms = (now.tv_sec - sample->last_frame.tv_sec) * 1000 + (now.tv_nsec - sample->last_frame.tv_nsec) / 1000000;
+    val ms = now - State.lastFrame
+
+    // int inc = (sample->dec + 1) % 3;
+    val inc = (State.dec + 1) % 3
+
+    // sample->color[inc] += ms / 2000.0f;
+    // sample->color[sample->dec] -= ms / 2000.0f;
+    State.color[inc] += ms / 2000.0f
+    State.color[State.dec] -= ms / 2000.0f
+
+    // if (sample->color[sample->dec] < 0.0f) {
+    //     sample->color[inc] = 1.0f;
+    //     sample->color[sample->dec] = 0.0f;
+    //     sample->dec = inc;
+    // }
+    if (State.color[State.dec] < 0.0f) {
+        State.color[inc] = 1.0f
+        State.color[State.dec] = 0.0f
+        State.dec = inc
+    }
+
+    // struct wlr_output_state state;
+    // wlr_output_state_init(&state);
+    val state = wlr_output_state.allocate(arena)
+    wlr_output_state_init(state)
+
+    // struct wlr_render_pass *pass = wlr_output_begin_render_pass(wlr_output, &state, NULL);
+    val pass = wlr_output_begin_render_pass(Output.output, state, NULL, NULL) // DANGER
+
+    // wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
+    //     .box = { .width = wlr_output->width, .height = wlr_output->height },
+    //     .color = {
+    //          .r = sample->color[0],
+    //          .g = sample->color[1],
+    //          .b = sample->color[2],
+    //          .a = sample->color[3],
+    //      },
+    // });
+    wlr_render_pass_add_rect(pass, wlr_render_rect_options.allocate(arena).also { rectPtr ->
+        wlr_render_rect_options.box(rectPtr).let { boxPtr ->
+            wlr_box.width(boxPtr, wlr_output.width(Output.output))
+            wlr_box.height(boxPtr, wlr_output.height(Output.output))
+        }
+        wlroots.wlr_render_rect_options.color(rectPtr).let { colorPtr ->
+            wlr_render_color.r(colorPtr, State.color[0])
+            wlr_render_color.g(colorPtr, State.color[1])
+            wlr_render_color.b(colorPtr, State.color[2])
+            wlr_render_color.a(colorPtr, State.color[3])
+        }
+    })
+
+    // wlr_render_pass_submit(pass);
+    wlr_render_pass_submit(pass)
+
+    // wlr_output_commit_state(wlr_output, &state);
+    wlr_output_commit_state(Output.output, state)
+
+    // wlr_output_state_finish(&state);
+    wlr_output_state_finish(state)
+
+    // sample->last_frame = now;
+    State.lastFrame = now
 }
 
 fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEvent: MemorySegment) {
