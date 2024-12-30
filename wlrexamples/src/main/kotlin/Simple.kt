@@ -52,7 +52,9 @@ object Output {
     // struct wlr_output *output;
     lateinit var output: MemorySegment
 
-    // struct wl_listener frame;
+    /**
+     *  struct wl_listener frame;
+     */
     lateinit var frame: MemorySegment
 
     // struct wl_listener destroy;
@@ -60,13 +62,19 @@ object Output {
 }
 
 object Keyboard {
-    // struct wlr_keyboard *wlr_keyboard;
+    /**
+     * ```struct wlr_keyboard *wlr_keyboard;```
+     */
     lateinit var keyboard: MemorySegment
 
-    // struct wl_listener key;
+    /**
+     * ```struct wl_listener key;```
+     */
     lateinit var key: MemorySegment
 
-    // struct wl_listener destroy;
+    /**
+     * ```struct wl_listener destroy;```
+     */
     lateinit var destroy: MemorySegment
 }
 
@@ -195,6 +203,7 @@ fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
     wlr_output_state_finish(statePtr)
 }
 
+
 /**
  * ```
  * static void new_input_notify(struct wl_listener *listener, void *data)
@@ -270,6 +279,7 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
     }
 }
 
+
 fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
     // struct sample_output *sample_output = wl_container_of(listener, sample_output, frame);
     // struct sample_state *sample = sample_output->sample;
@@ -344,6 +354,7 @@ fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
     State.lastFrame = now
 }
 
+
 fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEvent: MemorySegment) {
     // struct sample_keyboard *keyboard = wl_container_of(listener, keyboard, key);
     // struct sample_state *sample = keyboard->sample;
@@ -372,10 +383,29 @@ fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEvent: MemorySegment) 
     }
 }
 
+
 fun keyboardDestroyNotify(listener: MemorySegment, data: MemorySegment) {
-    TODO()
+    // struct sample_keyboard *keyboard = wl_container_of(listener, keyboard, destroy);
+
+    // wl_list_remove(&keyboard->destroy.link);
+    // wl_list_remove(&keyboard->key.link);
+    wl_list_remove(wl_listener.link(Keyboard.destroy))
+    wl_list_remove(wl_listener.link(Keyboard.key))
+
+    // free(keyboard);
 }
 
+
 fun outputRemoveNotify(listener: MemorySegment, data: MemorySegment) {
-    TODO()
+    // struct sample_output *sample_output = wl_container_of(listener, sample_output, destroy);
+
+    // wlr_log(WLR_DEBUG, "Output removed");
+    Log.logDebug("Output removed")
+
+    // wl_list_remove(&sample_output->frame.link);
+    // wl_list_remove(&sample_output->destroy.link);
+    wl_list_remove(wl_listener.link(Output.frame))
+    wl_list_remove(wl_listener.link(Output.destroy))
+
+    // free(sample_output);
 }

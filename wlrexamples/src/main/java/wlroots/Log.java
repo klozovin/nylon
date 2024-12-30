@@ -1,4 +1,5 @@
 package wlroots;
+import org.jetbrains.annotations.NotNull;
 import wlroots.util.log_h;
 
 import java.lang.foreign.Arena;
@@ -22,8 +23,8 @@ public final class Log {
                 case IMPORTANCE_LAST -> log_h.WLR_LOG_IMPORTANCE_LAST();
             };
         }
-    }
 
+    }
     /**
      * {@snippet lang=c :
      * void wlr_log_init(enum wlr_log_importance verbosity, wlr_log_func_t callback)
@@ -46,5 +47,9 @@ public final class Log {
 
     public static void logError(String message) {
         log(Importance.ERROR, message);
+    }
+
+    public static void logDebug(String message) {
+        log(Importance.DEBUG, message);
     }
 }
