@@ -28,7 +28,7 @@ kotlin.compilerOptions {
 }
 
 application {
-    mainClass.set("SimpleKt")
+    mainClass.set("wrap.SimpleKt")
     applicationDefaultJvmArgs = listOf(
         "--enable-preview",
         "--enable-native-access", "ALL-UNNAMED",
