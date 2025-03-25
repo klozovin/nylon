@@ -1,21 +1,26 @@
 package wlroots.wlr;
 
 import wayland.server.EventLoop;
+import wayland.server.Signal;
 import wlroots.backend_h;
+import wlroots.wlr.types.Output;
 import wlroots.wlr_backend;
-import wrap.Output;
 
 import java.lang.foreign.MemorySegment;
 import java.util.function.Consumer;
 
-public class Backend {
+
+public final class Backend {
 
     public final MemorySegment backendPtr;
-    public final Events events;
+//    public final MemorySegment eventsPtr;
+//    public final Events events;
 
     public Backend(MemorySegment backendPtr) {
         this.backendPtr = backendPtr;
-        this.events = new Events(wlr_backend.events(backendPtr), null, null, null);
+//        this.eventsPtr = wlr_backend.events(backendPtr);
+//        this.events = new Events(wlr_backend.events(backendPtr));
+
     }
 
     public boolean start() {
@@ -33,44 +38,62 @@ public class Backend {
         return new Backend(backendPtr);
     }
 
-    abstract class Signal<T> {
-        // maybe as interface?
-        // wl_signal wrapper
-        // put wl_signal_add here
+    //
+    // Helper classes for nicer events API (wl_signal, wl_listener)
+    //
 
-        public final MemorySegment signalPtr;
-
-        public Signal(MemorySegment signalPtr) {
-            this.signalPtr = signalPtr;
-        }
-
-        abstract void add(Consumer<T> callback);
-    }
-
-    class NewOutputSignal extends Signal<Output> {
-
-        public NewOutputSignal(MemorySegment signalPtr) {
-            super(signalPtr);
-        }
-
-        @Override
-        public void add(Consumer<Output> callback) {
-//            super.add(callback);
-            // wl_signal_add this.signalptr
-        }
-    }
-
-    class Events {
+    public final static class Events {
         public final MemorySegment eventsPtr;
-        public final Signal destroy;
-        public final Signal newInput;
-        public final Signal newOutput;
 
-        Events(MemorySegment eventsPtr, Signal destroy, Signal newInput, Signal newOutput) {
+//        public final Signal<InputDevice> newInput;
+        public final Signal<Output> newOutput;
+//        public final Signal<Void> destroy;
+
+        Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
-            this.destroy = destroy;
-            this.newInput = newInput;
-            this.newOutput = newOutput;
+
+//            this.newInput = new Signal<>(wlr_backend.events.new_input(eventsPtr), InputDevice::new) {
+//                @Override
+//                public void add(Consumer<InputDevice> callback) {
+//                    super.add(callback);
+//                }
+//            };
+
+            try {
+
+
+                this.newOutput = new Signal<Output>(wlr_backend.events.new_output(eventsPtr), Output.class.getConstructor(MemorySegment.class)) {
+                    @Override
+                    public void add(Consumer<Output> callback) {
+                        super.add(callback);
+                    }
+                };
+
+
+
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+
+//            this.destroy = new Signal<>(wlr_backend.events.destroy(eventsPtr)) {
+//                @Override
+//                public void add(Consumer<Void> callback) {
+//                    super.add(callback);
+//                }
+//            };
         }
     }
+
+//    public static class NewOutputSignal extends Signal<Output> {
+//
+//        public NewOutputSignal(MemorySegment signalPtr) {
+//            super(signalPtr);
+//        }
+//
+//        @Override
+//        public void add(Consumer<Output> callback) {
+//            super.add(callback);
+//            // wl_signal_add this.signalptr
+//        }
+//    }
 }

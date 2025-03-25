@@ -1,6 +1,7 @@
+package wrap
+
 import wlroots.Log
 import wlroots.Version
-
 
 fun main() {
     Log.init(Log.Importance.DEBUG)

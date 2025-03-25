@@ -353,6 +353,9 @@ fun main() {
     val display = Display.create()
     val backend = Backend.autocreate(display.eventLoop, NULL)
 
+    State.displayW = display
+    State.display = display.displayPtr
+
     State.rendererW = Renderer.autocreate(backend)
     State.allocatorW = Allocator.autocreate(backend, State.rendererW)
 
@@ -361,10 +364,6 @@ fun main() {
     val newOutputListenerPtr = wl_listener.allocate(arena)
     wl_listener.notify(newOutputListenerPtr, wl_notify_func_t.allocate(::newOutputNotify, arena))
     wl_signal_add(wlr_backend.events.new_output(wlr_backend.events(backend.backendPtr)), newOutputListenerPtr)
-
-    // TODO: API should look like this
-    // backend.events.newOutput.add(::someCallbackFunction)
-    // fun someCallbackFunction(output: Output)
 
     // wl_signal_add(&backend->events.new_input, &state.new_input);
     // state.new_input.notify = new_input_notify;

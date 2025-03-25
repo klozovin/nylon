@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
     application
-    kotlin("jvm") version "2.1.0"
+    kotlin("jvm") version "2.1.20"
 }
 
 repositories {
@@ -30,6 +30,7 @@ kotlin.compilerOptions {
 application {
     mainClass.set("wrap.SimpleKt")
     applicationDefaultJvmArgs = listOf(
+        "-ea",
         "--enable-preview",
         "--enable-native-access", "ALL-UNNAMED",
         "--enable-native-access=ALL-UNNAMED",
