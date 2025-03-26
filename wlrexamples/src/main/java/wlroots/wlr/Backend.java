@@ -1,8 +1,12 @@
 package wlroots.wlr;
 
+import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import wayland.server.EventLoop;
 import wayland.server.Signal;
 import wlroots.backend_h;
+import wlroots.wlr.backend.Session;
 import wlroots.wlr.types.Output;
 import wlroots.wlr_backend;
 
@@ -10,17 +14,18 @@ import java.lang.foreign.MemorySegment;
 import java.util.function.Consumer;
 
 
+/// A backend provides a set of input and output devices.
+///
+/// Buffer capabilities and features can change over the lifetime of a backend, for instance when a
+/// child backend is added to a multi-backend.
 public final class Backend {
+    public final @NonNull MemorySegment backendPtr;
+    public final @NonNull Events events;
 
-    public final MemorySegment backendPtr;
-//    public final MemorySegment eventsPtr;
-//    public final Events events;
-
-    public Backend(MemorySegment backendPtr) {
+    public Backend(@NonNull MemorySegment backendPtr) {
+        assert backendPtr != MemorySegment.NULL;
         this.backendPtr = backendPtr;
-//        this.eventsPtr = wlr_backend.events(backendPtr);
-//        this.events = new Events(wlr_backend.events(backendPtr));
-
+        this.events = new Events(wlr_backend.events(backendPtr));
     }
 
     public boolean start() {
@@ -31,12 +36,28 @@ public final class Backend {
         backend_h.wlr_backend_destroy(backendPtr);
     }
 
-    public static Backend autocreate(EventLoop eventLoop, MemorySegment sessionPtr) {
-        // TODO: wrap sessionPtr in object
+    /// Automatically initializes the most suitable backend given the environment. Will always
+    /// return a multi-backend. The backend is created but not started. Returns NULL on failure.
+    ///
+    /// If session_ptr is not NULL, it's populated with the session which has been created with the
+    /// backend, if any.
+    ///
+    /// The multi-backend will be destroyed if one of the primary underlying backends is destroyed
+    /// (e.g. if the primary DRM device is unplugged).
+    ///
+    /// `struct wlr_backend *wlr_backend_autocreate(​struct wl_event_loop *loop, struct wlr_session **session_ptr);`
+    public static @Nullable Backend autocreate(@NonNull EventLoop eventLoop, @Nullable Session session) {
+        var sessionPtr = switch (session) {
+            case null -> MemorySegment.NULL;
+            case Session s -> s.sessionPtr;
+        };
         var backendPtr = backend_h.wlr_backend_autocreate(eventLoop.eventLoopPtr, sessionPtr);
         assert backendPtr != null;
-        assert backendPtr != MemorySegment.NULL;
-        return new Backend(backendPtr);
+
+        if (backendPtr != MemorySegment.NULL)
+            return new Backend(backendPtr);
+        else
+            return null;
     }
 
     //
@@ -44,44 +65,25 @@ public final class Backend {
     //
 
     public final static class Events {
-        public final MemorySegment eventsPtr;
+        public final @NonNull MemorySegment eventsPtr;
+        public final @NonNull Signal<Output> newOutput;
 
-//        public final Signal<InputDevice> newInput;
-        public final Signal<Output> newOutput;
+        //        public final Signal<InputDevice> newInput;
 //        public final Signal<Void> destroy;
 
-        Events(MemorySegment eventsPtr) {
+        Events(@NotNull MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
 
-//            this.newInput = new Signal<>(wlr_backend.events.new_input(eventsPtr), InputDevice::new) {
-//                @Override
-//                public void add(Consumer<InputDevice> callback) {
-//                    super.add(callback);
-//                }
-//            };
-
             try {
-
-
                 this.newOutput = new Signal<Output>(wlr_backend.events.new_output(eventsPtr), Output.class.getConstructor(MemorySegment.class)) {
                     @Override
                     public void add(Consumer<Output> callback) {
                         super.add(callback);
                     }
                 };
-
-
-
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException(e);
             }
-
-//            this.destroy = new Signal<>(wlr_backend.events.destroy(eventsPtr)) {
-//                @Override
-//                public void add(Consumer<Void> callback) {
-//                    super.add(callback);
-//                }
-//            };
         }
     }
 

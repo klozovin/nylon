@@ -202,7 +202,7 @@ fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
     wl_signal_add(wlr_output.events.destroy(wlr_output.events(outputPtr)), Output.destroy)
 
     // TODO: Maybe use confined Arena?
-    val outputState = OutputState.create(autoArena)
+    val outputState = OutputState.allocate(autoArena)
     outputState.init()
     outputState.setEnabled(true)
     Output.outputW.preferredMode()?.let { preferredOutputMode ->
@@ -326,12 +326,9 @@ fun main() {
     Log.init(Log.Importance.DEBUG)
 
     State.display = Display.create()
-    val backend = Backend.autocreate(State.display.eventLoop, MemorySegment.NULL)
+    val backend = Backend.autocreate(State.display.eventLoop, null) ?: exitProcess(1)
     State.renderer = Renderer.autocreate(backend)
     State.allocator = Allocator.autocreate(backend, State.renderer)
-
-    if (backend.backendPtr == MemorySegment.NULL)
-        exitProcess(1)
 
     // wl_signal_add(&backend->events.new_output, &state.new_output);
     // state.new_output.notify = new_output_notify;

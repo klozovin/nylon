@@ -1,58 +1,69 @@
 package wayland.server;
 
-import wayland.*;
+import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
+import wayland.wl_list;
+import wayland.wl_listener;
+import wayland.wl_notify_func_t;
+import wayland.wl_signal;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.function.Consumer;
 
+import static wayland.server_h.wl_list_insert;
+
+/// A source of a type of observable event.
+///
+/// Signals are recognized points where significant events can be observed. Compositors as well as
+/// the server can provide signals. Observers are wl_listener's that are added through
+/// wl_signal_add. Signals are emitted using wl_signal_emit, which will invoke all listeners until
+/// that listener is removed by wl_list_remove() (or whenever the signal is destroyed).
 public class Signal<T> {
-    // TODO: Interface instead of an abstract class?
+    public final @NonNull MemorySegment signalPtr;
+    public final @NonNull Constructor<T> callbackParamCtor;
 
-    public Consumer<T> callback;
-    public final MemorySegment signalPtr;
-    public final Constructor<T> callbackParamCtor;
-
-    public Signal(MemorySegment signalPtr, Constructor<T> callbackParamCtor) {
+    public Signal(@NonNull MemorySegment signalPtr, @NotNull Constructor<T> callbackParamCtor) {
         this.signalPtr = signalPtr;
         this.callbackParamCtor = callbackParamCtor;
     }
 
-    /**
-     * wayland-server-core.h/wl_signal_add
-     *
-     * @param callback Callback function
-     */
+    /// Add the specified listener to this signal.
+    ///
+    /// ```
+    /// static inline void
+    /// wl_signal_add(struct wl_signal *signal,
+    ///               struct wl_listener *listener)
+    ///```
+    ///
+    /// @param callback Callback function
     public void add(Consumer<T> callback) {
-        // TODO: Memory ownership
+        var notifyFunction = new wl_notify_func_t.Function() {
+            @Override
+            public void apply(MemorySegment listener, MemorySegment data) {
+                try {
+                    T callbackArgument = callbackParamCtor.newInstance(data);
+                    callback.accept(callbackArgument);
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
 
-        this.callback = callback;
+        // TODO: Memory ownership - can't be auto or confined/scope
+        var arena = Arena.global();
 
-        var listener = wl_listener.allocate(Arena.global());
-        var notifyFunc = wl_notify_func_t.allocate(this::funfun, Arena.global());
-        wl_listener.notify(listener, notifyFunc);
+        // Create wl_listener object and associate it with callback function
+        var notifyFuncPtr = wl_notify_func_t.allocate(notifyFunction, arena);
+        var listenerPtr = wl_listener.allocate(arena);
+        wl_listener.notify(listenerPtr, notifyFuncPtr);
 
         // TODO: Move to wl_list implementation, keep inline for now
-        var previous = wl_list.prev(wl_signal.listener_list(signalPtr));
-        var link = wl_listener.link(listener);
-        server_h.wl_list_insert(previous, link);
-    }
-
-    public void funfun(MemorySegment listener, MemorySegment data) {
-        try {
-            T xyz = this.callbackParamCtor.newInstance(data);
-            this.callback.accept(xyz);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-    }
-
-    /**
-     * Not a direct C bindings, used to release memory allocated for a signal. Just a wrapper for wl_list_remove.
-     */
-    public void remove() {
-        // memory cleanup here?
+        // Add listener to signal (append at the end)
+        var listLastElementPtr = wl_list.prev(wl_signal.listener_list(signalPtr)); // `prev` is last element in list
+        var listenerLinkPtr = wl_listener.link(listenerPtr);
+        wl_list_insert(listLastElementPtr, listenerLinkPtr);
     }
 }

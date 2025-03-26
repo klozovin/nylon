@@ -18,16 +18,18 @@ public final class OutputState {
         this.outputStatePtr = outputStatePtr;
     }
 
+    public static OutputState allocate(Arena arena) {
+        return new OutputState(wlr_output_state.allocate(arena));
+    }
+
     public void init() {
         wlr_output_state_init(outputStatePtr);
     }
 
-    /**
-     * Enables or disables an output. A disabled output is turned off and doesn't
-     * emit `frame` events.
-     * <p>
-     * This state will be applied once {@link Output#commitState} is called.
-     */
+    /// Enables or disables an output. A disabled output is turned off and doesn't
+    /// emit `frame` events.
+    ///
+    /// This state will be applied once [#commitState] is called.
     public void setEnabled(boolean enabled) {
         wlr_output_state_set_enabled(outputStatePtr, enabled);
     }
@@ -52,9 +54,5 @@ public final class OutputState {
      */
     public void finish() {
         wlr_output_state_finish(outputStatePtr);
-    }
-
-    public static OutputState create(Arena arena) {
-        return new OutputState(wlr_output_state.allocate(arena));
     }
 }

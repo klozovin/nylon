@@ -357,7 +357,7 @@ fun main() {
     Log.init(Log.Importance.DEBUG)
 
     val display = Display.create()
-    val backend = Backend.autocreate(display.eventLoop, MemorySegment.NULL)
+    val backend = Backend.autocreate(display.eventLoop, null)
 
     State.displayW = display
     State.display = display.displayPtr
