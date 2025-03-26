@@ -13,6 +13,7 @@ repositories {
 sourceSets.create("generated")
 
 dependencies {
+    implementation("org.jspecify", "jspecify", "1.0.0")
     implementation(sourceSets.named("generated").get().output)
 }
 
@@ -28,7 +29,8 @@ kotlin.compilerOptions {
 }
 
 application {
-    mainClass.set("wrap.SimpleKt")
+//    mainClass.set("example.wrap.simple.SimpleKt")
+    mainClass.set("example.wrap.Simple2Kt")
     applicationDefaultJvmArgs = listOf(
         "-ea",
         "--enable-preview",

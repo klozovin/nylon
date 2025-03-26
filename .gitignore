@@ -6,3 +6,5 @@
 .kotlin
 .build
 build
+
+hs_err*.log

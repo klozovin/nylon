@@ -1,19 +1,35 @@
-package wrap
+package example.direct
 
-import wayland.*
-import wayland.server.Display
+import example.wrap.simple.Keyboard
+import example.wrap.simple.Output
+import example.wrap.simple.State
+import example.wrap.simple.arena
+import example.wrap.simple.keyboardDestroyNotify
+import example.wrap.simple.keyboardKeyNotify
+import example.wrap.simple.newInputNotify
+import example.wrap.simple.newOutputNotify
+import example.wrap.simple.outputFrameNotify
+import example.wrap.simple.outputRemoveNotify
+import example.wrap.simple.wl_signal_add
+import wayland.server_h
 import wayland.wl_list
 import wayland.wl_listener
 import wayland.wl_notify_func_t
 import wayland.wl_signal
-import wlroots.*
-import wlroots.types.*
+import wlroots.Log
+import wlroots.backend_h
+import wlroots.backend_h_1
+import wlroots.render.allocator_h
 import wlroots.types.wlr_box
+import wlroots.types.wlr_input_device
+import wlroots.types.wlr_input_device_h
+import wlroots.types.wlr_keyboard
+import wlroots.types.wlr_keyboard_h_1
+import wlroots.types.wlr_keyboard_key_event
 import wlroots.types.wlr_render_color
 import wlroots.types.wlr_render_rect_options
-import wlroots.wlr.Backend
-import wlroots.wlr.render.Allocator
-import wlroots.wlr.render.Renderer
+import wlroots.util.log_h
+import wlroots.wlr_backend
 import wlroots.wlr_output
 import wlroots.wlr_output_state
 import xkb.xkbcommon_h
@@ -21,7 +37,6 @@ import xkb.xkbcommon_h_1
 import xkb.xkbcommon_h_3
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
-import java.lang.foreign.MemorySegment.NULL
 import kotlin.system.exitProcess
 
 val arena: Arena = Arena.global()
@@ -31,23 +46,17 @@ object State {
     /**
      * ```struct wl_display *display;```
      */
-    @Deprecated("DEPRECATED")
     lateinit var display: MemorySegment
-    lateinit var displayW: Display
 
     /**
      * ```struct wlr_renderer *renderer;```
      */
-    @Deprecated("DEPRECATED")
     lateinit var renderer: MemorySegment
-    lateinit var rendererW: Renderer
 
     /**
      * ```struct wlr_allocator *allocator;```
      */
-    @Deprecated("DEPRECATED")
     lateinit var allocator: MemorySegment
-    lateinit var allocatorW: Allocator
 
     /**
      * ```struct timespec last_frame;```
@@ -132,11 +141,11 @@ fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
 
     // struct wlr_output_state state;
     // wlr_output_state_init(&state);
-    val statePtr = wlr_output_state.allocate(arena)
-    backend_h.wlr_output_state_init(statePtr)
+    val state = wlr_output_state.allocate(arena)
+    backend_h.wlr_output_state_init(state)
 
     // struct wlr_render_pass *pass = wlr_output_begin_render_pass(wlr_output, &state, NULL);
-    val pass = backend_h.wlr_output_begin_render_pass(Output.output, statePtr, NULL, NULL)
+    val pass = backend_h.wlr_output_begin_render_pass(Output.output, state, MemorySegment.NULL, MemorySegment.NULL)
 
     // wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
     //     .box = { .width = wlr_output->width, .height = wlr_output->height },
@@ -164,10 +173,10 @@ fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
     backend_h.wlr_render_pass_submit(pass)
 
     // wlr_output_commit_state(wlr_output, &state);
-    backend_h.wlr_output_commit_state(Output.output, statePtr)
+    backend_h.wlr_output_commit_state(Output.output, state)
 
     // wlr_output_state_finish(&state);
-    backend_h.wlr_output_state_finish(statePtr)
+    backend_h.wlr_output_state_finish(state)
 
     // sample->last_frame = now;
     State.lastFrame = now
@@ -197,7 +206,7 @@ fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
     // struct sample_state *sample = wl_container_of(listener, sample, new_output);
 
     // wlr_output_init_render(output, sample->allocator, sample->renderer);
-    backend_h.wlr_output_init_render(outputPtr, State.allocatorW.allocatorPtr, State.rendererW.rendererPtr)
+    backend_h.wlr_output_init_render(outputPtr, State.allocator, State.renderer)
 
     // struct sample_output *sample_output = calloc(1, sizeof(*sample_output));
     // sample_output->output = output;
@@ -228,7 +237,7 @@ fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
 
     // if (mode != NULL)
     //     wlr_output_state_set_mode(&state, mode);
-    if (modePtr != NULL)
+    if (modePtr != MemorySegment.NULL)
         backend_h.wlr_output_state_set_mode(statePtr, modePtr)
 
     // wlr_output_commit_state(output, &state);
@@ -316,7 +325,7 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
         //      exit(1);
         // }
         val xkbContextPtr = xkbcommon_h_1.xkb_context_new(xkbcommon_h_1.XKB_CONTEXT_NO_FLAGS())
-        if (xkbContextPtr == NULL) {
+        if (xkbContextPtr == MemorySegment.NULL) {
             Log.logError("Failed to create XKB context")
             exitProcess(1)
         }
@@ -328,10 +337,10 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
         // }
         val xkbKeymapPtr = xkbcommon_h_1.xkb_keymap_new_from_names(
             xkbContextPtr,
-            NULL,
+            MemorySegment.NULL,
             xkbcommon_h_1.XKB_KEYMAP_COMPILE_NO_FLAGS()
         )
-        if (xkbKeymapPtr == NULL) {
+        if (xkbKeymapPtr == MemorySegment.NULL) {
             Log.logError("Failed to create XKB keymap")
             exitProcess(1)
         }
@@ -348,40 +357,58 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
 
 
 fun main() {
-    Log.init(Log.Importance.DEBUG)
+    // wlr_log_init(WLR_DEBUG, NULL);
+    log_h.wlr_log_init(log_h.WLR_DEBUG(), MemorySegment.NULL)
 
-    val display = Display.create()
-    val backend = Backend.autocreate(display.eventLoop, NULL)
+    // struct wl_display *display = wl_display_create();
+    val displayPtr = server_h.wl_display_create()
+    State.display = displayPtr
 
-    State.displayW = display
-    State.display = display.displayPtr
+    // 	struct wlr_backend *backend = wlr_backend_autocreate(wl_display_get_event_loop(display), NULL);
+    //  if (!backend) {
+    //      exit(1);
+    //  }
+    val backendPtr =
+        backend_h.wlr_backend_autocreate(server_h.wl_display_get_event_loop(displayPtr), MemorySegment.NULL)
+    if (backendPtr == MemorySegment.NULL)
+        exitProcess(1)
 
-    State.rendererW = Renderer.autocreate(backend)
-    State.allocatorW = Allocator.autocreate(backend, State.rendererW)
+    // state.renderer = wlr_renderer_autocreate(backend);
+    // state.allocator = wlr_allocator_autocreate(backend, state.renderer);
+    State.renderer = backend_h.wlr_renderer_autocreate(backendPtr)
+    State.allocator = allocator_h.wlr_allocator_autocreate(backendPtr, State.renderer)
 
     // wl_signal_add(&backend->events.new_output, &state.new_output);
     // state.new_output.notify = new_output_notify;
     val newOutputListenerPtr = wl_listener.allocate(arena)
     wl_listener.notify(newOutputListenerPtr, wl_notify_func_t.allocate(::newOutputNotify, arena))
-    wl_signal_add(wlr_backend.events.new_output(wlr_backend.events(backend.backendPtr)), newOutputListenerPtr)
+    wl_signal_add(wlr_backend.events.new_output(wlr_backend.events(backendPtr)), newOutputListenerPtr)
 
     // wl_signal_add(&backend->events.new_input, &state.new_input);
     // state.new_input.notify = new_input_notify;
     val newInputListenerPtr = wl_listener.allocate(arena)
     wl_listener.notify(newInputListenerPtr, wl_notify_func_t.allocate(::newInputNotify, arena))
-    wl_signal_add(wlr_backend.events.new_input(wlr_backend.events(backend.backendPtr)), newInputListenerPtr)
+    wl_signal_add(wlr_backend.events.new_input(wlr_backend.events(backendPtr)), newInputListenerPtr)
 
     // clock_gettime(CLOCK_MONOTONIC, &state.last_frame);
     State.lastFrame = System.currentTimeMillis()
 
-    if (!backend.start()) {
+    // if (!wlr_backend_start(backend)) {
+    //     wlr_log(WLR_ERROR, "Failed to start backend");
+    //     wlr_backend_destroy(backend);
+    //     exit(1);
+    // }
+    if (!backend_h.wlr_backend_start(backendPtr)) {
         Log.logError("Failed to start backend")
-        backend.destroy()
+        backend_h.wlr_backend_destroy(backendPtr)
         exitProcess(1)
     }
 
-    display.run()
-    display.destroy()
+    // wl_display_run(display);
+    backend_h_1.wl_display_run(displayPtr)
+
+    // wl_display_destroy(display);
+    backend_h_1.wl_display_destroy(displayPtr)
 }
 
 

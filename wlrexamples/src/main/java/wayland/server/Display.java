@@ -1,30 +1,32 @@
 package wayland.server;
 
-import wayland.server_h;
+import org.jspecify.annotations.NonNull;
 
 import java.lang.foreign.MemorySegment;
 
+import static wayland.server_h.*;
+
 public class Display {
 
-    public final MemorySegment displayPtr;
+    public final @NonNull MemorySegment displayPtr;
 
-    private Display(MemorySegment displayPtr) {
+    private Display(@NonNull MemorySegment displayPtr) {
         this.displayPtr = displayPtr;
     }
 
     public void run() {
-        server_h.wl_display_run(displayPtr);
+        wl_display_run(displayPtr);
     }
 
     public void destroy() {
-        server_h.wl_client_destroy(displayPtr);
+        wl_display_destroy(displayPtr);
     }
 
     public EventLoop getEventLoop() {
-        return new EventLoop(server_h.wl_display_get_event_loop(displayPtr));
+        return new EventLoop(wl_display_get_event_loop(displayPtr));
     }
 
     public static Display create() {
-        return new Display(server_h.wl_display_create());
+        return new Display(wl_display_create());
     }
 }

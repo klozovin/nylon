@@ -1,48 +1,37 @@
+package example.wrap
+
 import wayland.*
-import wayland.server_h.wl_display_create
-import wayland.server_h.wl_display_get_event_loop
+import wayland.server.Display
 import wayland.wl_list
 import wayland.wl_listener
 import wayland.wl_notify_func_t
 import wayland.wl_signal
-import wlroots.Log
-import wlroots.backend_h.*
-import wlroots.render.allocator_h.wlr_allocator_autocreate
+import wlroots.*
 import wlroots.types.*
-import wlroots.types.wlr_input_device_h.WLR_INPUT_DEVICE_KEYBOARD
-import wlroots.types.wlr_keyboard_h.wlr_keyboard_from_input_device
-import wlroots.types.wlr_keyboard_h.wlr_keyboard_set_keymap
-import wlroots.util.log_h.WLR_DEBUG
-import wlroots.util.log_h.wlr_log_init
-import wlroots.wlr_backend
+import wlroots.types.wlr_box
+import wlroots.types.wlr_render_color
+import wlroots.types.wlr_render_rect_options
+import wlroots.wlr.Backend
+import wlroots.wlr.render.Allocator
+import wlroots.wlr.render.Renderer
+import wlroots.wlr.types.OutputState
 import wlroots.wlr_output
 import wlroots.wlr_output_state
 import xkb.xkbcommon_h
-import xkb.xkbcommon_h.*
+import xkb.xkbcommon_h_1
+import xkb.xkbcommon_h_3
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
-import java.lang.foreign.MemorySegment.NULL
 import kotlin.system.exitProcess
 
-
 val arena: Arena = Arena.global()
+val autoArena: Arena = Arena.ofAuto()
 
 
 object State {
-    /**
-     * ```struct wl_display *display;```
-     */
-    lateinit var display: MemorySegment
-
-    /**
-     * ```struct wlr_renderer *renderer;```
-     */
-    lateinit var renderer: MemorySegment
-
-    /**
-     * ```struct wlr_allocator *allocator;```
-     */
-    lateinit var allocator: MemorySegment
+    lateinit var display: Display
+    lateinit var renderer: Renderer
+    lateinit var allocator: Allocator
 
     /**
      * ```struct timespec last_frame;```
@@ -65,6 +54,7 @@ object Output {
      * ```struct wlr_output *output;```
      */
     lateinit var output: MemorySegment
+    lateinit var outputW: wlroots.wlr.types.Output
 
     /**
      *  struct wl_listener frame;
@@ -128,10 +118,10 @@ fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
     // struct wlr_output_state state;
     // wlr_output_state_init(&state);
     val state = wlr_output_state.allocate(arena)
-    wlr_output_state_init(state)
+    backend_h.wlr_output_state_init(state)
 
     // struct wlr_render_pass *pass = wlr_output_begin_render_pass(wlr_output, &state, NULL);
-    val pass = wlr_output_begin_render_pass(Output.output, state, NULL, NULL)
+    val pass = backend_h.wlr_output_begin_render_pass(Output.output, state, MemorySegment.NULL, MemorySegment.NULL)
 
     // wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
     //     .box = { .width = wlr_output->width, .height = wlr_output->height },
@@ -142,7 +132,7 @@ fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
     //          .a = sample->color[3],
     //      },
     // });
-    wlr_render_pass_add_rect(pass, wlr_render_rect_options.allocate(arena).also { rectPtr ->
+    backend_h.wlr_render_pass_add_rect(pass, wlr_render_rect_options.allocate(arena).also { rectPtr ->
         wlr_render_rect_options.box(rectPtr).let { boxPtr ->
             wlr_box.width(boxPtr, wlr_output.width(Output.output))
             wlr_box.height(boxPtr, wlr_output.height(Output.output))
@@ -156,13 +146,13 @@ fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
     })
 
     // wlr_render_pass_submit(pass);
-    wlr_render_pass_submit(pass)
+    backend_h.wlr_render_pass_submit(pass)
 
     // wlr_output_commit_state(wlr_output, &state);
-    wlr_output_commit_state(Output.output, state)
+    backend_h.wlr_output_commit_state(Output.output, state)
 
     // wlr_output_state_finish(&state);
-    wlr_output_state_finish(state)
+    backend_h.wlr_output_state_finish(state)
 
     // sample->last_frame = now;
     State.lastFrame = now
@@ -177,8 +167,8 @@ fun outputRemoveNotify(listener: MemorySegment, data: MemorySegment) {
 
     // wl_list_remove(&sample_output->frame.link);
     // wl_list_remove(&sample_output->destroy.link);
-    wl_list_remove(wl_listener.link(Output.frame))
-    wl_list_remove(wl_listener.link(Output.destroy))
+    backend_h_1.wl_list_remove(wl_listener.link(Output.frame))
+    backend_h_1.wl_list_remove(wl_listener.link(Output.destroy))
 
     // free(sample_output);
 }
@@ -188,11 +178,11 @@ fun outputRemoveNotify(listener: MemorySegment, data: MemorySegment) {
  * ```static void new_output_notify(struct wl_listener *listener, void *data)```
  */
 fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
-    // struct wlr_output *output = data;
-    // struct sample_state *sample = wl_container_of(listener, sample, new_output);
+    Output.outputW = wlroots.wlr.types.Output(outputPtr)
 
     // wlr_output_init_render(output, sample->allocator, sample->renderer);
-    wlr_output_init_render(outputPtr, State.allocator, State.renderer)
+//    backend_h.wlr_output_init_render(outputPtr, State.allocator.allocatorPtr, State.renderer.rendererPtr)
+    Output.outputW.initRender(State.allocator, State.renderer)
 
     // struct sample_output *sample_output = calloc(1, sizeof(*sample_output));
     // sample_output->output = output;
@@ -211,25 +201,15 @@ fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
     wl_listener.notify(Output.destroy, wl_notify_func_t.allocate(::outputRemoveNotify, arena))
     wl_signal_add(wlr_output.events.destroy(wlr_output.events(outputPtr)), Output.destroy)
 
-    // struct wlr_output_state state;
-    // wlr_output_state_init(&state);
-    // wlr_output_state_set_enabled(&state, true);
-    val statePtr = wlr_output_state.allocate(arena)
-    wlr_output_state_init(statePtr)
-    wlr_output_state_set_enabled(statePtr, true)
-
-    // struct wlr_output_mode *mode = wlr_output_preferred_mode(output);
-    val modePtr = wlr_output_preferred_mode(outputPtr)
-
-    // if (mode != NULL)
-    //     wlr_output_state_set_mode(&state, mode);
-    if (modePtr != NULL)
-        wlr_output_state_set_mode(statePtr, modePtr)
-
-    // wlr_output_commit_state(output, &state);
-    // wlr_output_state_finish(&state);
-    wlr_output_commit_state(outputPtr, statePtr)
-    wlr_output_state_finish(statePtr)
+    // TODO: Maybe use confined Arena?
+    val outputState = OutputState.create(autoArena)
+    outputState.init()
+    outputState.setEnabled(true)
+    Output.outputW.preferredMode()?.let { preferredOutputMode ->
+        outputState.setMode(preferredOutputMode)
+    }
+    Output.outputW.commitState(outputState)
+    outputState.finish()
 }
 
 
@@ -245,7 +225,7 @@ fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEventPtr: MemorySegmen
     val symsPtr = arena.allocate(xkbcommon_h.C_POINTER)
 
     // int nsyms = xkb_state_key_get_syms(keyboard->wlr_keyboard->xkb_state, keycode, &syms);
-    val nsyms = xkb_state_key_get_syms(wlr_keyboard.xkb_state(Keyboard.keyboard), keycode, symsPtr)
+    val nsyms = xkbcommon_h_1.xkb_state_key_get_syms(wlr_keyboard.xkb_state(Keyboard.keyboard), keycode, symsPtr)
 
     // for (int i = 0; i < nsyms; i++) {
     //     xkb_keysym_t sym = syms[i];
@@ -254,9 +234,9 @@ fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEventPtr: MemorySegmen
     //     }
     // }
     for (i in 0..<nsyms) {
-        val sym = symsPtr.get(xkbcommon_h.C_POINTER, i.toLong()).get(xkb_keysym_t, 0)
-        if (sym == XKB_KEY_Escape()) {
-            wl_display_terminate(State.display)
+        val sym = symsPtr.get(xkbcommon_h.C_POINTER, i.toLong()).get(xkbcommon_h_1.xkb_keysym_t, 0)
+        if (sym == xkbcommon_h_3.XKB_KEY_Escape()) {
+            backend_h_1.wl_display_terminate(State.display.displayPtr)
         }
     }
 }
@@ -267,8 +247,8 @@ fun keyboardDestroyNotify(listener: MemorySegment, data: MemorySegment) {
 
     // wl_list_remove(&keyboard->destroy.link);
     // wl_list_remove(&keyboard->key.link);
-    wl_list_remove(wl_listener.link(Keyboard.destroy))
-    wl_list_remove(wl_listener.link(Keyboard.key))
+    backend_h_1.wl_list_remove(wl_listener.link(Keyboard.destroy))
+    backend_h_1.wl_list_remove(wl_listener.link(Keyboard.key))
 
     // free(keyboard);
 }
@@ -285,11 +265,11 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
 
     // switch (device->type) {
     // case WLR_INPUT_DEVICE_KEYBOARD:;
-    if (wlr_input_device.type(inputDevicePtr) == WLR_INPUT_DEVICE_KEYBOARD()) {
+    if (wlr_input_device.type(inputDevicePtr) == wlr_input_device_h.WLR_INPUT_DEVICE_KEYBOARD()) {
         // struct sample_keyboard *keyboard = calloc(1, sizeof(*keyboard));
 
         // keyboard->wlr_keyboard = wlr_keyboard_from_input_device(device);
-        Keyboard.keyboard = wlr_keyboard_from_input_device(inputDevicePtr)
+        Keyboard.keyboard = wlr_keyboard_h_1.wlr_keyboard_from_input_device(inputDevicePtr)
 
         // keyboard->sample = sample;
 
@@ -310,8 +290,8 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
         //      wlr_log(WLR_ERROR, "Failed to create XKB context");
         //      exit(1);
         // }
-        val xkbContextPtr = xkb_context_new(XKB_CONTEXT_NO_FLAGS())
-        if (xkbContextPtr == NULL) {
+        val xkbContextPtr = xkbcommon_h_1.xkb_context_new(xkbcommon_h_1.XKB_CONTEXT_NO_FLAGS())
+        if (xkbContextPtr == MemorySegment.NULL) {
             Log.logError("Failed to create XKB context")
             exitProcess(1)
         }
@@ -321,75 +301,60 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
         //     wlr_log(WLR_ERROR, "Failed to create XKB keymap");
         //     exit(1);
         // }
-        val xkbKeymapPtr = xkb_keymap_new_from_names(xkbContextPtr, NULL, XKB_KEYMAP_COMPILE_NO_FLAGS())
-        if (xkbKeymapPtr == NULL) {
+        val xkbKeymapPtr = xkbcommon_h_1.xkb_keymap_new_from_names(
+            xkbContextPtr,
+            MemorySegment.NULL,
+            xkbcommon_h_1.XKB_KEYMAP_COMPILE_NO_FLAGS()
+        )
+        if (xkbKeymapPtr == MemorySegment.NULL) {
             Log.logError("Failed to create XKB keymap")
             exitProcess(1)
         }
 
         // wlr_keyboard_set_keymap(keyboard->wlr_keyboard, keymap);
-        wlr_keyboard_set_keymap(Keyboard.keyboard, xkbKeymapPtr)
+        wlr_keyboard_h_1.wlr_keyboard_set_keymap(Keyboard.keyboard, xkbKeymapPtr)
 
         // xkb_keymap_unref(keymap);
         // xkb_context_unref(context);
-        xkb_keymap_unref(xkbKeymapPtr)
-        xkb_context_unref(xkbContextPtr)
+        xkbcommon_h_1.xkb_keymap_unref(xkbKeymapPtr)
+        xkbcommon_h_1.xkb_context_unref(xkbContextPtr)
     }
 }
 
 
 fun main() {
-    // wlr_log_init(WLR_DEBUG, NULL);
-    wlr_log_init(WLR_DEBUG(), NULL)
+    Log.init(Log.Importance.DEBUG)
 
-    // struct wl_display *display = wl_display_create();
-    val displayPtr = wl_display_create()
-    State.display = displayPtr
+    State.display = Display.create()
+    val backend = Backend.autocreate(State.display.eventLoop, MemorySegment.NULL)
+    State.renderer = Renderer.autocreate(backend)
+    State.allocator = Allocator.autocreate(backend, State.renderer)
 
-    // 	struct wlr_backend *backend = wlr_backend_autocreate(wl_display_get_event_loop(display), NULL);
-    //  if (!backend) {
-    //      exit(1);
-    //  }
-    val backendPtr = wlr_backend_autocreate(wl_display_get_event_loop(displayPtr), NULL)
-    if (backendPtr == NULL)
+    if (backend.backendPtr == MemorySegment.NULL)
         exitProcess(1)
-
-    // state.renderer = wlr_renderer_autocreate(backend);
-    // state.allocator = wlr_allocator_autocreate(backend, state.renderer);
-    State.renderer = wlr_renderer_autocreate(backendPtr)
-    State.allocator = wlr_allocator_autocreate(backendPtr, State.renderer)
 
     // wl_signal_add(&backend->events.new_output, &state.new_output);
     // state.new_output.notify = new_output_notify;
     val newOutputListenerPtr = wl_listener.allocate(arena)
     wl_listener.notify(newOutputListenerPtr, wl_notify_func_t.allocate(::newOutputNotify, arena))
-    wl_signal_add(wlr_backend.events.new_output(wlr_backend.events(backendPtr)), newOutputListenerPtr)
+    wl_signal_add(wlr_backend.events.new_output(wlr_backend.events(backend.backendPtr)), newOutputListenerPtr)
 
     // wl_signal_add(&backend->events.new_input, &state.new_input);
     // state.new_input.notify = new_input_notify;
     val newInputListenerPtr = wl_listener.allocate(arena)
     wl_listener.notify(newInputListenerPtr, wl_notify_func_t.allocate(::newInputNotify, arena))
-    wl_signal_add(wlr_backend.events.new_input(wlr_backend.events(backendPtr)), newInputListenerPtr)
+    wl_signal_add(wlr_backend.events.new_input(wlr_backend.events(backend.backendPtr)), newInputListenerPtr)
 
-    // clock_gettime(CLOCK_MONOTONIC, &state.last_frame);
     State.lastFrame = System.currentTimeMillis()
 
-    // if (!wlr_backend_start(backend)) {
-    //     wlr_log(WLR_ERROR, "Failed to start backend");
-    //     wlr_backend_destroy(backend);
-    //     exit(1);
-    // }
-    if (!wlr_backend_start(backendPtr)) {
+    if (!backend.start()) {
         Log.logError("Failed to start backend")
-        wlr_backend_destroy(backendPtr)
+        backend.destroy()
         exitProcess(1)
     }
 
-    // wl_display_run(display);
-    wl_display_run(displayPtr)
-
-    // wl_display_destroy(display);
-    wl_display_destroy(displayPtr)
+    State.display.run()
+    State.display.destroy()
 }
 
 

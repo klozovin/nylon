@@ -35,6 +35,7 @@ public final class Backend {
         // TODO: wrap sessionPtr in object
         var backendPtr = backend_h.wlr_backend_autocreate(eventLoop.eventLoopPtr, sessionPtr);
         assert backendPtr != null;
+        assert backendPtr != MemorySegment.NULL;
         return new Backend(backendPtr);
     }
 
@@ -84,16 +85,16 @@ public final class Backend {
         }
     }
 
-//    public static class NewOutputSignal extends Signal<Output> {
+//    public static class NewOutputSignal extends Signal<examples.direct.Output> {
 //
 //        public NewOutputSignal(MemorySegment signalPtr) {
 //            super(signalPtr);
 //        }
 //
 //        @Override
-//        public void add(Consumer<Output> callback) {
+//        public void add(Consumer<examples.direct.Output> callback) {
 //            super.add(callback);
-//            // wl_signal_add this.signalptr
+//            // examples.direct.wl_signal_add this.signalptr
 //        }
 //    }
 }

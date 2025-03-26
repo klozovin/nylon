@@ -1,4 +1,4 @@
-package wrap
+package example.wrap
 
 import wlroots.Log
 import wlroots.Version
@@ -9,3 +9,6 @@ fun main() {
     Log.log(Log.Importance.INFO, "This is Java version: ${System.getProperty("java.version")}")
     Log.log(Log.Importance.INFO, "Running on wlroots version: ${Version.VERSION_STR}")
 }
+
+
+fun dickhead() {}
