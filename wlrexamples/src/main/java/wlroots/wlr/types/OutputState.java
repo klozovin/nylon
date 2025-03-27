@@ -1,15 +1,14 @@
 package wlroots.wlr.types;
 
-import wlroots.types.wlr_output_state;
+import jexwlroots.types.wlr_output_state;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
-import static wlroots.types.wlr_output_h.*;
+import static jexwlroots.types.wlr_output_h.*;
 
-/**
- * Holds the double-buffered output state.
- */
+
+/// Holds the double-buffered output state.
 public final class OutputState {
 
     public final MemorySegment outputStatePtr;

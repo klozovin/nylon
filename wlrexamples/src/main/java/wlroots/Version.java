@@ -1,13 +1,14 @@
 package wlroots;
 
+import static jexwlroots.version_h.*;
+
 
 public final class Version {
+    public static final String STR = WLR_VERSION_STR().getString(0);
 
-    public static final String VERSION_STR = version_h.WLR_VERSION_STR().getString(0);
+    public static final int MAJOR = WLR_VERSION_MAJOR();
+    public static final int MINOR = WLR_VERSION_MINOR();
+    public static final int MICRO = WLR_VERSION_MICRO();
 
-    public static final int VERSION_MAJOR = version_h.WLR_VERSION_MAJOR();
-    public static final int VERSION_MINOR = version_h.WLR_VERSION_MINOR();
-    public static final int VERSION_MICRO = version_h.WLR_VERSION_MICRO();
-
-    public static final int VERSION_NUM = version_h.WLR_VERSION_NUM();
+    public static final int NUM = WLR_VERSION_NUM();
 }

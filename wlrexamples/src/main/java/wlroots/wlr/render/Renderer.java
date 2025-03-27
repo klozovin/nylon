@@ -1,9 +1,11 @@
 package wlroots.wlr.render;
 
-import wlroots.backend_h;
 import wlroots.wlr.Backend;
 
 import java.lang.foreign.MemorySegment;
+
+import static jexwlroots.backend_h.wlr_renderer_autocreate;
+
 
 public class Renderer {
 
@@ -14,6 +16,6 @@ public class Renderer {
     }
 
     public static Renderer autocreate(Backend backend) {
-        return new Renderer(backend_h.wlr_renderer_autocreate(backend.backendPtr));
+        return new Renderer(wlr_renderer_autocreate(backend.backendPtr));
     }
 }

@@ -1,13 +1,13 @@
 package wlroots.wlr.types;
 
-
 import org.jspecify.annotations.Nullable;
 import wlroots.wlr.render.Allocator;
 import wlroots.wlr.render.Renderer;
 
 import java.lang.foreign.MemorySegment;
 
-import static wlroots.types.wlr_output_h.*;
+import static jexwlroots.types.wlr_output_h.*;
+
 
 public final class Output {
 
@@ -22,8 +22,7 @@ public final class Output {
 
         assert ptr != null;
 
-        if (ptr == MemorySegment.NULL)
-            return null;
+        if (ptr == MemorySegment.NULL) return null;
 
         return new OutputMode(ptr);
     }

@@ -1,12 +1,13 @@
 package wayland.server;
 
+import jexwayland.wl_listener;
+import jexwayland.wl_notify_func_t;
 import org.jspecify.annotations.NonNull;
-import wayland.wl_listener;
-import wayland.wl_notify_func_t;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.function.Consumer;
+
 
 // TODO: Maybe don't make end user use this class?
 public class Listener {

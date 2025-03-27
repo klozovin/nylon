@@ -1,17 +1,18 @@
 package wlroots.wlr;
 
+import jexwlroots.wlr_backend;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import wayland.server.EventLoop;
 import wayland.server.Signal;
-import wlroots.backend_h;
 import wlroots.wlr.backend.Session;
 import wlroots.wlr.types.Output;
-import wlroots.wlr_backend;
 
 import java.lang.foreign.MemorySegment;
 import java.util.function.Consumer;
+
+import static jexwlroots.backend_h.*;
 
 
 /// A backend provides a set of input and output devices.
@@ -29,11 +30,11 @@ public final class Backend {
     }
 
     public boolean start() {
-        return backend_h.wlr_backend_start(backendPtr);
+        return wlr_backend_start(backendPtr);
     }
 
     public void destroy() {
-        backend_h.wlr_backend_destroy(backendPtr);
+        wlr_backend_destroy(backendPtr);
     }
 
     /// Automatically initializes the most suitable backend given the environment. Will always
@@ -51,7 +52,7 @@ public final class Backend {
             case null -> MemorySegment.NULL;
             case Session s -> s.sessionPtr;
         };
-        var backendPtr = backend_h.wlr_backend_autocreate(eventLoop.eventLoopPtr, sessionPtr);
+        var backendPtr = wlr_backend_autocreate(eventLoop.eventLoopPtr, sessionPtr);
         assert backendPtr != null;
 
         if (backendPtr != MemorySegment.NULL)

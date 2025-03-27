@@ -1,43 +1,23 @@
 package example.direct
 
-import example.wrap.simple.Keyboard
-import example.wrap.simple.Output
-import example.wrap.simple.State
-import example.wrap.simple.arena
-import example.wrap.simple.keyboardDestroyNotify
-import example.wrap.simple.keyboardKeyNotify
-import example.wrap.simple.newInputNotify
-import example.wrap.simple.newOutputNotify
-import example.wrap.simple.outputFrameNotify
-import example.wrap.simple.outputRemoveNotify
-import example.wrap.simple.wl_signal_add
-import wayland.server_h
-import wayland.wl_list
-import wayland.wl_listener
-import wayland.wl_notify_func_t
-import wayland.wl_signal
+import jexwayland.*
+import jexwayland.wl_list
+import jexwayland.wl_listener
+import jexwayland.wl_notify_func_t
+import jexwayland.wl_signal
+import jexwlroots.backend_h
+import jexwlroots.render.allocator_h
+import jexwlroots.types.*
+import jexwlroots.util.log_h
+import jexwlroots.wlr_backend
+import jexwlroots.wlr_output
+import jexwlroots.wlr_output_state
+import jexxkb.xkbcommon_h
 import wlroots.Log
-import wlroots.backend_h
-import wlroots.backend_h_1
-import wlroots.render.allocator_h
-import wlroots.types.wlr_box
-import wlroots.types.wlr_input_device
-import wlroots.types.wlr_input_device_h
-import wlroots.types.wlr_keyboard
-import wlroots.types.wlr_keyboard_h_1
-import wlroots.types.wlr_keyboard_key_event
-import wlroots.types.wlr_render_color
-import wlroots.types.wlr_render_rect_options
-import wlroots.util.log_h
-import wlroots.wlr_backend
-import wlroots.wlr_output
-import wlroots.wlr_output_state
-import xkb.xkbcommon_h
-import xkb.xkbcommon_h_1
-import xkb.xkbcommon_h_3
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 import kotlin.system.exitProcess
+
 
 val arena: Arena = Arena.global()
 
@@ -161,7 +141,7 @@ fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
             wlr_box.width(boxPtr, wlr_output.width(Output.output))
             wlr_box.height(boxPtr, wlr_output.height(Output.output))
         }
-        wlroots.wlr_render_rect_options.color(rectPtr).let { colorPtr ->
+        jexwlroots.wlr_render_rect_options.color(rectPtr).let { colorPtr ->
             wlr_render_color.r(colorPtr, State.color[0])
             wlr_render_color.g(colorPtr, State.color[1])
             wlr_render_color.b(colorPtr, State.color[2])
@@ -191,8 +171,8 @@ fun outputRemoveNotify(listener: MemorySegment, data: MemorySegment) {
 
     // wl_list_remove(&sample_output->frame.link);
     // wl_list_remove(&sample_output->destroy.link);
-    backend_h_1.wl_list_remove(wl_listener.link(Output.frame))
-    backend_h_1.wl_list_remove(wl_listener.link(Output.destroy))
+    backend_h.wl_list_remove(wl_listener.link(Output.frame))
+    backend_h.wl_list_remove(wl_listener.link(Output.destroy))
 
     // free(sample_output);
 }
@@ -259,7 +239,7 @@ fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEventPtr: MemorySegmen
     val symsPtr = arena.allocate(xkbcommon_h.C_POINTER)
 
     // int nsyms = xkb_state_key_get_syms(keyboard->wlr_keyboard->xkb_state, keycode, &syms);
-    val nsyms = xkbcommon_h_1.xkb_state_key_get_syms(wlr_keyboard.xkb_state(Keyboard.keyboard), keycode, symsPtr)
+    val nsyms = xkbcommon_h.xkb_state_key_get_syms(wlr_keyboard.xkb_state(Keyboard.keyboard), keycode, symsPtr)
 
     // for (int i = 0; i < nsyms; i++) {
     //     xkb_keysym_t sym = syms[i];
@@ -268,9 +248,9 @@ fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEventPtr: MemorySegmen
     //     }
     // }
     for (i in 0..<nsyms) {
-        val sym = symsPtr.get(xkbcommon_h.C_POINTER, i.toLong()).get(xkbcommon_h_1.xkb_keysym_t, 0)
-        if (sym == xkbcommon_h_3.XKB_KEY_Escape()) {
-            backend_h_1.wl_display_terminate(State.display)
+        val sym = symsPtr.get(xkbcommon_h.C_POINTER, i.toLong()).get(xkbcommon_h.xkb_keysym_t, 0)
+        if (sym == xkbcommon_h.XKB_KEY_Escape()) {
+            backend_h.wl_display_terminate(State.display)
         }
     }
 }
@@ -281,8 +261,8 @@ fun keyboardDestroyNotify(listener: MemorySegment, data: MemorySegment) {
 
     // wl_list_remove(&keyboard->destroy.link);
     // wl_list_remove(&keyboard->key.link);
-    backend_h_1.wl_list_remove(wl_listener.link(Keyboard.destroy))
-    backend_h_1.wl_list_remove(wl_listener.link(Keyboard.key))
+    backend_h.wl_list_remove(wl_listener.link(Keyboard.destroy))
+    backend_h.wl_list_remove(wl_listener.link(Keyboard.key))
 
     // free(keyboard);
 }
@@ -324,7 +304,7 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
         //      wlr_log(WLR_ERROR, "Failed to create XKB context");
         //      exit(1);
         // }
-        val xkbContextPtr = xkbcommon_h_1.xkb_context_new(xkbcommon_h_1.XKB_CONTEXT_NO_FLAGS())
+        val xkbContextPtr = xkbcommon_h.xkb_context_new(xkbcommon_h.XKB_CONTEXT_NO_FLAGS())
         if (xkbContextPtr == MemorySegment.NULL) {
             Log.logError("Failed to create XKB context")
             exitProcess(1)
@@ -335,10 +315,10 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
         //     wlr_log(WLR_ERROR, "Failed to create XKB keymap");
         //     exit(1);
         // }
-        val xkbKeymapPtr = xkbcommon_h_1.xkb_keymap_new_from_names(
+        val xkbKeymapPtr = xkbcommon_h.xkb_keymap_new_from_names(
             xkbContextPtr,
             MemorySegment.NULL,
-            xkbcommon_h_1.XKB_KEYMAP_COMPILE_NO_FLAGS()
+            xkbcommon_h.XKB_KEYMAP_COMPILE_NO_FLAGS()
         )
         if (xkbKeymapPtr == MemorySegment.NULL) {
             Log.logError("Failed to create XKB keymap")
@@ -350,8 +330,8 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
 
         // xkb_keymap_unref(keymap);
         // xkb_context_unref(context);
-        xkbcommon_h_1.xkb_keymap_unref(xkbKeymapPtr)
-        xkbcommon_h_1.xkb_context_unref(xkbContextPtr)
+        xkbcommon_h.xkb_keymap_unref(xkbKeymapPtr)
+        xkbcommon_h.xkb_context_unref(xkbContextPtr)
     }
 }
 
@@ -405,10 +385,10 @@ fun main() {
     }
 
     // wl_display_run(display);
-    backend_h_1.wl_display_run(displayPtr)
+    backend_h.wl_display_run(displayPtr)
 
     // wl_display_destroy(display);
-    backend_h_1.wl_display_destroy(displayPtr)
+    backend_h.wl_display_destroy(displayPtr)
 }
 
 

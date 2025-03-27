@@ -4,10 +4,10 @@ import org.jspecify.annotations.NonNull;
 
 import java.lang.foreign.MemorySegment;
 
-import static wayland.server_h.*;
+import static jexwayland.server_h.*;
+
 
 public class Display {
-
     public final @NonNull MemorySegment displayPtr;
 
     private Display(@NonNull MemorySegment displayPtr) {

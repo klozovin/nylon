@@ -1,11 +1,11 @@
 package wayland.server;
 
+import jexwayland.wl_list;
+import jexwayland.wl_listener;
+import jexwayland.wl_notify_func_t;
+import jexwayland.wl_signal;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
-import wayland.wl_list;
-import wayland.wl_listener;
-import wayland.wl_notify_func_t;
-import wayland.wl_signal;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -13,7 +13,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.function.Consumer;
 
-import static wayland.server_h.wl_list_insert;
+import static jexwayland.server_h.wl_list_insert;
 
 /// A source of a type of observable event.
 ///
