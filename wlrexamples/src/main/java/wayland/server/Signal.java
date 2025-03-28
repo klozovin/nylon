@@ -1,11 +1,10 @@
 package wayland.server;
 
-import jexwayland.wl_list;
-import jexwayland.wl_listener;
 import jexwayland.wl_notify_func_t;
 import jexwayland.wl_signal;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
+import wayland.util.list1.List;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -13,7 +12,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.function.Consumer;
 
-import static jexwayland.server_h.wl_list_insert;
 
 /// A source of a type of observable event.
 ///
@@ -25,10 +23,17 @@ public class Signal<T> {
     public final @NonNull MemorySegment signalPtr;
     public final @NonNull Constructor<T> callbackParamCtor;
 
+
     public Signal(@NonNull MemorySegment signalPtr, @NotNull Constructor<T> callbackParamCtor) {
         this.signalPtr = signalPtr;
         this.callbackParamCtor = callbackParamCtor;
     }
+
+
+    public @NonNull List getListenerList() {
+        return new List(wl_signal.listener_list(signalPtr));
+    }
+
 
     /// Add the specified listener to this signal.
     ///
@@ -56,14 +61,17 @@ public class Signal<T> {
         var arena = Arena.global();
 
         // Create wl_listener object and associate it with callback function
-        var notifyFuncPtr = wl_notify_func_t.allocate(notifyFunction, arena);
-        var listenerPtr = wl_listener.allocate(arena);
-        wl_listener.notify(listenerPtr, notifyFuncPtr);
+
+//        var notifyFuncPtr = wl_notify_func_t.allocate(notifyFunction, arena);
+//        var listenerPtr = wl_listener.allocate(arena);
+//        wl_listener.notify(listenerPtr, notifyFuncPtr);
+
+        var listener = Listener.allocate(arena, notifyFunction);
+        getListenerList().append(listener);
 
         // TODO: Move to wl_list implementation, keep inline for now
         // Add listener to signal (append at the end)
-        var listLastElementPtr = wl_list.prev(wl_signal.listener_list(signalPtr)); // `prev` is last element in list
-        var listenerLinkPtr = wl_listener.link(listenerPtr);
-        wl_list_insert(listLastElementPtr, listenerLinkPtr);
+//        var listenerLinkPtr = wl_listener.link(listenerPtr);
+//        getListenerList().append(new List(listenerLinkPtr));
     }
 }

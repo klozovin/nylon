@@ -3,39 +3,31 @@ package wayland.server;
 import jexwayland.wl_listener;
 import jexwayland.wl_notify_func_t;
 import org.jspecify.annotations.NonNull;
+import wayland.util.list3.ListLink;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.util.function.Consumer;
 
 
-// TODO: Maybe don't make end user use this class?
-public class Listener {
-
+public class Listener implements ListLink {
     public final @NonNull MemorySegment listenerPtr;
+
 
     private Listener(@NonNull MemorySegment listenerPtr) {
         this.listenerPtr = listenerPtr;
     }
 
-    public static Listener create(Arena arena) {
-        // :fix:memory: who and when deallocates this?
+
+    public static @NonNull Listener allocate(@NonNull Arena arena, wl_notify_func_t.@NonNull Function notify) {
         var listenerPtr = wl_listener.allocate(arena);
+        var notifyFunctionPtr = wl_notify_func_t.allocate(notify, arena);
+        wl_listener.notify(listenerPtr, notifyFunctionPtr);
         return new Listener(listenerPtr);
     }
 
-    public void setNotify() {
-        // TODO: new_output event signature
-    }
 
-    public static <T> Listener create(Arena arena, Consumer<T> callback) {
-        var listenerPtr = wl_listener.allocate(arena);
-
-        var notifyFuncTPtr = wl_notify_func_t.allocate((wl_notify_func_t.Function) callback, arena);
-
-        wl_listener.notify(listenerPtr, notifyFuncTPtr);
-        var listener = new Listener(listenerPtr);
-        listener.setNotify();
-        return null;
+    @Override
+    public @NonNull MemorySegment getLink() {
+        return wl_listener.link(listenerPtr);
     }
 }

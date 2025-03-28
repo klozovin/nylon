@@ -23,19 +23,23 @@ public final class Backend {
     public final @NonNull MemorySegment backendPtr;
     public final @NonNull Events events;
 
+
     public Backend(@NonNull MemorySegment backendPtr) {
         assert backendPtr != MemorySegment.NULL;
         this.backendPtr = backendPtr;
         this.events = new Events(wlr_backend.events(backendPtr));
     }
 
+
     public boolean start() {
         return wlr_backend_start(backendPtr);
     }
 
+
     public void destroy() {
         wlr_backend_destroy(backendPtr);
     }
+
 
     /// Automatically initializes the most suitable backend given the environment. Will always
     /// return a multi-backend. The backend is created but not started. Returns NULL on failure.
@@ -69,12 +73,9 @@ public final class Backend {
         public final @NonNull MemorySegment eventsPtr;
         public final @NonNull Signal<Output> newOutput;
 
-        //        public final Signal<InputDevice> newInput;
-//        public final Signal<Void> destroy;
 
         Events(@NotNull MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
-
             try {
                 this.newOutput = new Signal<Output>(wlr_backend.events.new_output(eventsPtr), Output.class.getConstructor(MemorySegment.class)) {
                     @Override

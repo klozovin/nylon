@@ -336,6 +336,10 @@ fun main() {
     wl_listener.notify(newOutputListenerPtr, wl_notify_func_t.allocate(::newOutputNotify, arena))
     wl_signal_add(wlr_backend.events.new_output(wlr_backend.events(backend.backendPtr)), newOutputListenerPtr)
 
+    backend.events.newOutput.add {
+        TODO()
+    }
+
     // wl_signal_add(&backend->events.new_input, &state.new_input);
     // state.new_input.notify = new_input_notify;
     val newInputListenerPtr = wl_listener.allocate(arena)
