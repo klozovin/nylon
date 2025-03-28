@@ -31,6 +31,7 @@ kotlin.compilerOptions {
 application {
 //    mainClass.set("example.wrap.simple.SimpleKt")
     mainClass.set("example.wrap.Simple2Kt")
+//    mainClass.set("example.ListDemoKt")
     applicationDefaultJvmArgs = listOf(
         "-ea",
         "--enable-preview",

@@ -3,13 +3,13 @@ package wayland.server;
 import jexwayland.wl_listener;
 import jexwayland.wl_notify_func_t;
 import org.jspecify.annotations.NonNull;
-import wayland.util.list3.ListLink;
+import wayland.util.IList;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
 
-public class Listener implements ListLink {
+public class Listener implements IList<Listener> {
     public final @NonNull MemorySegment listenerPtr;
 
 

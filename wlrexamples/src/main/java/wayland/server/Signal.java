@@ -4,7 +4,7 @@ import jexwayland.wl_notify_func_t;
 import jexwayland.wl_signal;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
-import wayland.util.list1.List;
+import wayland.util.IList;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -19,19 +19,23 @@ import java.util.function.Consumer;
 /// the server can provide signals. Observers are wl_listener's that are added through
 /// wl_signal_add. Signals are emitted using wl_signal_emit, which will invoke all listeners until
 /// that listener is removed by wl_list_remove() (or whenever the signal is destroyed).
+///
+/// @param <T> type of parameters that gets passed to signal callback function
 public class Signal<T> {
     public final @NonNull MemorySegment signalPtr;
     public final @NonNull Constructor<T> callbackParamCtor;
+    private final IList<Listener> listenerList;
 
 
     public Signal(@NonNull MemorySegment signalPtr, @NotNull Constructor<T> callbackParamCtor) {
         this.signalPtr = signalPtr;
         this.callbackParamCtor = callbackParamCtor;
-    }
-
-
-    public @NonNull List getListenerList() {
-        return new List(wl_signal.listener_list(signalPtr));
+        this.listenerList = new IList<Listener>() {
+            @Override
+            public @NonNull MemorySegment getLink() {
+                return wl_signal.listener_list(signalPtr);
+            }
+        };
     }
 
 
@@ -57,21 +61,10 @@ public class Signal<T> {
             }
         };
 
+        // Create wl_listener object and associate it with callback function
         // TODO: Memory ownership - can't be auto or confined/scope
         var arena = Arena.global();
-
-        // Create wl_listener object and associate it with callback function
-
-//        var notifyFuncPtr = wl_notify_func_t.allocate(notifyFunction, arena);
-//        var listenerPtr = wl_listener.allocate(arena);
-//        wl_listener.notify(listenerPtr, notifyFuncPtr);
-
         var listener = Listener.allocate(arena, notifyFunction);
-        getListenerList().append(listener);
-
-        // TODO: Move to wl_list implementation, keep inline for now
-        // Add listener to signal (append at the end)
-//        var listenerLinkPtr = wl_listener.link(listenerPtr);
-//        getListenerList().append(new List(listenerLinkPtr));
+        listenerList.append(listener);
     }
 }
