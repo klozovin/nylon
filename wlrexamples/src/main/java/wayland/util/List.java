@@ -6,54 +6,71 @@ import org.jspecify.annotations.Nullable;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.StructLayout;
 import java.lang.reflect.InvocationTargetException;
 
 import static jexwayland.util_h.*;
+import static wayland.util.Utils.containerOf;
 
 
 public final class List<T extends List.Element<@NonNull T>> {
     public final @NonNull MemorySegment listPtr;
-    public final @NonNull Class<T> cls;
-
-
-    public List(@NonNull Arena arena) {
-        this.listPtr = wl_list.allocate(arena);
-        this.cls = null;
-    }
+    public final @NonNull ElementMetadata<T> meta;
 
 
     @Deprecated()
-    public List(@NonNull MemorySegment listPtr, @NonNull Class<T> cls) {
+    public List(@NonNull MemorySegment listPtr) {
         this.listPtr = listPtr;
-        this.cls = cls;
+        this.meta = null;
     }
 
 
-    /// Allocate and initialize new `wl_list` object.
-    public static <T extends Element<@NonNull T>> List<T> allocate(@NonNull Arena arena, @NonNull Class<T> cls) {
-        var list = new List<>(wl_list.allocate(arena), cls);
+    public List(@NonNull MemorySegment listPtr, List.@NonNull ElementMetadata<T> meta) {
+        this.listPtr = listPtr;
+        this.meta = meta;
+    }
+
+
+    public static <T extends Element<@NonNull T>> @NonNull List<T> allocate(@NonNull Arena arena, List.@NonNull ElementMetadata<T> meta) {
+        var list = new List<>(wl_list.allocate(arena), meta);
         list.init();
         return list;
     }
 
 
     ///  Get `wl_list.prev` field.
-    ///
-    /// Return null when the list is empty.
-    public @Nullable T getPrev() {
-        var previousPtr = wl_list.prev(listPtr);
-        if (previousPtr.equals(listPtr)) return null;
-        return constructElement(previousPtr);
+    public @NonNull MemorySegment getPrev() {
+        return wl_list.prev(listPtr);
     }
 
 
     /// Get `wl_list.next` field
-    ///
-    /// Return null when the list is empty.
-    public @Nullable T getNext() {
-        var nextPtr = wl_list.next(listPtr);
-        if (nextPtr.equals(listPtr)) return null;
-        return constructElement(nextPtr);
+    public @NonNull MemorySegment getNext() {
+        return wl_list.next(listPtr);
+    }
+
+
+    public @Nullable T getFirst() {
+        var nextElementLinkPtr = getNext();
+
+        // wl_list.next points to list head => List is empty
+        if (nextElementLinkPtr.equals(listPtr))
+            return null;
+
+        var firstPtr = containerOf(nextElementLinkPtr, meta.layout, meta.linkMemberName);
+        return constructElement(firstPtr);
+    }
+
+
+    public @Nullable T getLast() {
+        var lastElementLinkPtr = getPrev();
+
+        // wl_list.prev points to list head => List is empty
+        if (lastElementLinkPtr.equals(listPtr))
+            return null;
+
+        var lastPtr = containerOf(lastElementLinkPtr, meta.layout, meta.linkMemberName);
+        return constructElement(lastPtr);
     }
 
 
@@ -64,8 +81,6 @@ public final class List<T extends List.Element<@NonNull T>> {
 
 
     /// Determines if the list is empty.
-    ///
-    /// Note: should work both on
     public boolean empty() {
         return switch (wl_list_empty(listPtr)) {
             case 0 -> false;
@@ -83,25 +98,25 @@ public final class List<T extends List.Element<@NonNull T>> {
 
     /// Insert `element` after `after` element.
     public void insert(@NonNull T after, @NonNull T element) {
-        wl_list_insert(after.getLinkPtr(), element.getLinkPtr());
+        wl_list_insert(after.getLinkMemberPtr(), element.getLinkMemberPtr());
     }
 
 
+    ///  Add `element` to the end of the list.
     public void append(T element) {
-        var previous = getPrev();
+        var previous = getLast();
         if (previous != null) {
-            insert(getPrev(), element);
+            wl_list_insert(previous.getLinkMemberPtr(), element.getLinkMemberPtr());
         } else {
             // List is empty, add to list head itself
-            System.out.println("it emptyyyyyyy");
-            wl_list_insert(listPtr, element.getLinkPtr());
+            wl_list_insert(listPtr, element.getLinkMemberPtr());
         }
     }
 
 
     private T constructElement(@NonNull MemorySegment elementPtr) {
         try {
-            var element = cls.getConstructor(MemorySegment.class).newInstance(elementPtr);
+            var element = meta.cls.getConstructor(MemorySegment.class).newInstance(elementPtr);
             return element;
         } catch (NoSuchMethodException | InvocationTargetException | InstantiationException |
                  IllegalAccessException e) {
@@ -110,27 +125,35 @@ public final class List<T extends List.Element<@NonNull T>> {
     }
 
 
+    public record ElementMetadata<T extends List.Element<@NonNull T>>(
+        @NonNull Class<T> cls,
+        @NonNull StructLayout layout,
+        @NonNull String linkMemberName
+    ) {
+
+
+    }
+
     public interface Element<T extends Element<T>> {
-        MemorySegment getLinkPtr();
+        MemorySegment getLinkMemberPtr();
 
-        @NonNull
-        Class<T> getCls();
-
-        default @NonNull T next() {
-            try {
-                var cls = (Class<Element<T>>) getClass();
-                var ctor = cls.getConstructor(MemorySegment.class);
-
-                TODO
-
-//                        // calc struct beginning
-
-                var element = ctor.newInstance(wl_list.next(getLinkPtr()));
-
-                return (T) element;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
+        default @NonNull MemorySegment getNext() {
+            return wl_list.next(getLinkMemberPtr());
         }
+
+        default @NonNull MemorySegment getPrev() {
+            return wl_list.prev(getLinkMemberPtr());
+        }
+
+//        default @NonNull T next() {
+//            try {
+//                var cls = (Class<Element<T>>) getClass();
+//                var ctor = cls.getConstructor(MemorySegment.class);
+//                var element = ctor.newInstance(wl_list.next(getLinkPtr()));
+//                return (T) element;
+//            } catch (Exception e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
     }
 }

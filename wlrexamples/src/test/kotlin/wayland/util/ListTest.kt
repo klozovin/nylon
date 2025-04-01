@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.equals.shouldBeEqual
+import io.kotest.matchers.equals.shouldNotBeEqual
 import io.kotest.matchers.nulls.shouldBeNull
 import jexwayland.wl_list
 import java.lang.foreign.Arena
@@ -12,11 +13,10 @@ import java.lang.foreign.MemoryLayout.PathElement.groupElement
 import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout.JAVA_INT
 import java.lang.foreign.ValueLayout.JAVA_LONG
+import java.util.*
 
 
 class ListElement(val elementPtr: MemorySegment) : List.Element<ListElement> {
-
-    constructor(arena: Arena) : this(arena.allocate(LAYOUT))
 
     //
     // IMPORTANT: Don't use Kotlin properties
@@ -31,16 +31,25 @@ class ListElement(val elementPtr: MemorySegment) : List.Element<ListElement> {
     fun getZ(): Long = LAYOUT.varHandle(groupElement("z")).get(elementPtr, 0) as Long
     fun setZ(z: Long) = LAYOUT.varHandle(groupElement("z")).set(elementPtr, 0, z)
 
-    override fun getLinkPtr(): MemorySegment {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ListElement) return false
+        return this.getX() == other.getX() && this.getY() == other.getY() && this.getZ() == other.getZ()
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(getX(), getY(), getZ())
+    }
+
+    override fun getLinkMemberPtr(): MemorySegment {
         val linkByteOffset = LAYOUT.byteOffset(groupElement("link"))
         val linkSizeBytes = wl_list.layout().byteSize()
         val linkPtr = elementPtr.asSlice(linkByteOffset, linkSizeBytes)
         return linkPtr
     }
 
-    override fun getCls(): Class<ListElement> = ListElement::class.java
-
     companion object {
+
         val LAYOUT = MemoryLayout.structLayout(
             JAVA_INT.withName("x"),
             MemoryLayout.paddingLayout(4),
@@ -53,45 +62,25 @@ class ListElement(val elementPtr: MemorySegment) : List.Element<ListElement> {
             JAVA_LONG.withName("z"),
         )
 
-        fun allocate(arena: Arena): ListElement {
+        fun allocate(arena: Arena, x: Int = 100, y: Int = 200, z: Long = 300): ListElement {
             val listElementPtr = arena.allocate(LAYOUT)
             val listElement = ListElement(listElementPtr)
-            listElement.setX(100)
-            listElement.setY(200)
-            listElement.setZ(300)
+            listElement.setX(x)
+            listElement.setY(y)
+            listElement.setZ(z)
             return listElement
         }
+
+        val meta = List.ElementMetadata(
+            ListElement::class.java,
+            LAYOUT,
+            "link"
+        )
     }
 }
 
 
-//class ListElementTest : FunSpec({
-//
-//    context("Bare ListElement node") {
-//        Arena.ofConfined().use { arena ->
-//            val list = List.allocate<ListElement>(arena, ListElement::class.java)
-//
-//            test("List should be empty") {
-//                list.empty().shouldBeTrue()
-//            }
-//
-//            val element = ListElement.allocate(arena)
-//            list.append(element)
-//
-//            test("List should not be empty") {
-//                list.empty().shouldBeFalse()
-//            }
-//
-//            test("List length should be ") {
-//                list.length() shouldBeEqual 1
-//            }
-//        }
-//    }
-//})
-
-
 class ListTest : FunSpec({
-
 //    isolationMode = IsolationMode.InstancePerTest
 //    beforeEach {}
 //    beforeTest {}
@@ -100,6 +89,13 @@ class ListTest : FunSpec({
 
     context("Just the list element") {
         val element = ListElement.allocate(arena)
+        val el1 = ListElement.allocate(arena)
+        val el2 = ListElement.allocate(arena, 101, 201, 301)
+        val el3 = ListElement.allocate(arena, 101, 201, 301)
+
+        test("Layout size") {
+            ListElement.LAYOUT.byteSize() shouldBeEqual (4 + 4 + (8 + 8) + (4 + 4) + 8)
+        }
         test("Default values") {
             element.getX() shouldBeEqual 100
             element.getY() shouldBeEqual 200
@@ -113,10 +109,17 @@ class ListTest : FunSpec({
             element.setZ(301)
             element.getZ() shouldBeEqual 301
         }
+        test("Equality") {
+            el1 shouldBeEqual el1
+            el2 shouldBeEqual el3
+            el1 shouldNotBeEqual el2
+            el1 shouldNotBeEqual el3
+        }
     }
 
+
     context("List with no elements added") {
-        val list = List.allocate<ListElement>(arena, ListElement::class.java)
+        val list = List.allocate<ListElement>(arena, ListElement.meta)
         list.init()
 
         test("Should be empty") {
@@ -125,22 +128,23 @@ class ListTest : FunSpec({
         test("Length should be 0") {
             list.length() shouldBeEqual 0
         }
-        test("List.getNext() should return null") {
-            list.getNext().shouldBeNull()
+        test("List.getFirst() should return null") {
+            list.first.shouldBeNull()
         }
-        test("List.getPrev() should return null") {
-            list.getPrev().shouldBeNull()
+        test("List.getLast() should return null") {
+            list.last.shouldBeNull()
         }
-        test("Pointer .prev should point to list head") {
-            wl_list.prev(list.listPtr) shouldBeEqual list.listPtr
+        test("List.prev should point to list head") {
+            list.prev shouldBeEqual list.listPtr
         }
         test("Pointer .next should point to list head") {
-            wl_list.next(list.listPtr) shouldBeEqual list.listPtr
+            list.next shouldBeEqual list.listPtr
         }
     }
 
-    context("List with single element appended") {
-        val list = List.allocate<ListElement>(arena, ListElement::class.java)
+
+    context("List with a single element") {
+        val list = List.allocate<ListElement>(arena, ListElement.meta)
         list.init()
         val element = ListElement.allocate(arena)
 
@@ -159,146 +163,67 @@ class ListTest : FunSpec({
         test("Length should be 1") {
             list.length() shouldBeEqual 1
         }
-
         test("Default list element fields after insertion") {
             element.getX() shouldBeEqual 100
             element.getY() shouldBeEqual 200
             element.getZ() shouldBeEqual 300
         }
-        test("getNext() and getPrev() return the same object") {
-            val prev = list.getPrev()!!
-            val next = list.getNext()!!
-            prev.getX() shouldBeEqual next.getX()
-            prev.getY() shouldBeEqual next.getY()
-            prev.getZ() shouldBeEqual next.getZ()
+        test("List.prev and List.next point to the same element") {
+            list.prev shouldBeEqual element.linkMemberPtr
+            list.next shouldBeEqual element.linkMemberPtr
         }
-        test("List.Element.next()") {
-            val next = element.next()
-            element.getX() shouldBeEqual next.getX()
-//            element.getY() shouldBeEqual next.getY()
-//            element.getZ() shouldBeEqual next.getZ()
+        test("List.first is structurally the same object as the inserted element") {
+            val first = list.first!!
+            first.getX() shouldBeEqual element.getX()
+            first.getY() shouldBeEqual element.getY()
+            first.getZ() shouldBeEqual element.getZ()
+            first shouldBeEqual element
         }
-    }
-
-//    context("Empty list") {
-//        Arena.ofConfined().use { arena ->
-//            val list = List<ListElement>(arena)
-//            list.init()
-//
-//            test("wl_list.next should point to list head") {
-//                list.listPtr shouldBeEqual wl_list.next(list.listPtr)
-//            }
-//            test("wl_list.prev should point to list head") {
-//                list.listPtr shouldBeEqual wl_list.prev(list.listPtr)
-//            }
-//
-//            test("wl_list should be empty") {
-//                list.empty().shouldBeTrue()
-//            }
-//
-//            test("null") {
-////                list.getNext().shouldBeNull()
-//            }
-//        }
-//    }
-
-    xcontext("Low level struct init") {
-        Arena.ofConfined().use { arena ->
-            val layout = MemoryLayout.structLayout(
-                JAVA_INT.withName("aaa"),
-                MemoryLayout.paddingLayout(4),
-                wl_list.layout().withName("link"),
-                JAVA_INT.withName("bbb"),
-            )
-            val struct = arena.allocate(layout)
-
-            test("Layout size") {
-                layout.byteSize() shouldBeEqual (4 + 4 + (8 + 8) + 4)
-            }
-            test("Field 'aaa' offset") {
-                layout.byteOffset((groupElement("aaa"))) shouldBeEqual 0
-            }
-            test("Field 'link' offset") {
-                layout.byteOffset((groupElement("link"))) shouldBeEqual (4 + 4)
-            }
-            test("Field 'bbb' offset") {
-                layout.byteOffset((groupElement("bbb"))) shouldBeEqual (4 + 4) + (8 + 8)
-            }
-            test("Struct size") {
-                struct.byteSize() shouldBeEqual (4 + 4) + (8 + 8) + 4
-            }
-            test("Get/set field 'aaa' directly") {
-                struct.set(JAVA_INT, layout.byteOffset(groupElement("aaa")), 100)
-                struct.get(JAVA_INT, layout.byteOffset(groupElement("aaa"))) shouldBeEqual 100
-            }
-            test("Get/set field 'bbb' directly") {
-                struct.set(JAVA_INT, layout.byteOffset(groupElement("bbb")), 200)
-                struct.get(JAVA_INT, layout.byteOffset(groupElement("aaa"))) shouldBeEqual 100
-                struct.get(JAVA_INT, layout.byteOffset(groupElement("bbb"))) shouldBeEqual 200
-            }
+        test("List.last is structurally the same object as the inserted element") {
+            val last = list.last!!
+            last.getX() shouldBeEqual element.getX()
+            last.getY() shouldBeEqual element.getY()
+            last.getZ() shouldBeEqual element.getZ()
+            last shouldBeEqual element
         }
     }
 
-    xcontext("With Kotlin wrapper class") {
-        Arena.ofConfined().use { arena ->
-            val element = ListElement(arena)
 
-            test("Set/get element 'x'") {
-                element.setX(100)
-                element.getX() shouldBeEqual 100
-            }
+    context("List with multiple elements") {
+        val element1 = ListElement.allocate(arena)
+        val element2 = ListElement.allocate(arena, 101, 201, 301)
+        val element3 = ListElement.allocate(arena, 102, 202, 302)
 
-            test("Set/get element 'z'") {
-                element.setZ(300)
-                element.getX() shouldBeEqual 100
-                element.getZ() shouldBeEqual 300
-            }
+        val list = List.allocate<ListElement>(arena, ListElement.meta).apply {
+            init()
+            append(element1)
+            insert(element1, element2)
+            append(element3)
+        }
+
+        test("Should not be empty") {
+            list.empty().shouldBeFalse()
+        }
+        test("List length") {
+            list.length() shouldBeEqual 3
+        }
+        test("Element 1 retrieval") {
+            list.first!! shouldBeEqual element1
+        }
+        test("Element 3 retrieval") {
+            list.last!! shouldBeEqual element3
+        }
+        test("List.next pointers") {
+            list.next shouldBeEqual element1.linkMemberPtr
+            element1.next shouldBeEqual element2.linkMemberPtr
+            element2.next shouldBeEqual element3.linkMemberPtr
+            element3.next shouldBeEqual list.listPtr
+        }
+        test("List.prev pointers") {
+            list.prev shouldBeEqual element3.linkMemberPtr
+            element3.prev shouldBeEqual element2.linkMemberPtr
+            element2.prev shouldBeEqual element1.linkMemberPtr
+            element1.prev shouldBeEqual list.listPtr
         }
     }
-
-    xcontext("With Java wrapper class") {
-        Arena.ofConfined().use { arena ->
-            val element = DummyListElement(arena)
-
-            test("Set/get element 'x'") {
-                element.x = 100
-                element.x shouldBeEqual 100
-
-                element.x = 200
-                element.x shouldBeEqual 200
-            }
-
-            test("Set/get element 'z'") {
-                element.setZ(1000)
-                element.z shouldBeEqual 1000
-
-                element.setZ(2000)
-                element.z shouldBeEqual 2000
-            }
-        }
-    }
-
-//    xcontext("Custom list element") {
-//        Arena.ofConfined().use { arena ->
-//            val element = ListElement(arena)
-//            test("set/get x property") {
-//                element.x = 100L
-//                element.x shouldBeEqual 100L
-//            }
-//        }
-//    }
-
-//    context("List with one element") {
-//        Arena.ofConfined().use { arena ->
-//            val listPtr = arena.allocate(ListElement.LAYOUT)
-//            val aHandle = ListElement.LAYOUT.varHandle(groupElement("a"))
-//            aHandle.set(listPtr, 10)
-//            ValueLayout.JAVA_INT.byteSize()
-////            listPtr.set(
-////                ListElement.LAYOUT.select(groupElement("a")),
-////
-////                )
-//
-//        }
-//    }
 })

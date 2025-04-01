@@ -15,7 +15,7 @@ import kotlin.io.path.readAttributes
 @Fork(1)
 @Warmup(iterations = 4)
 @Measurement(iterations = 8, time = 1, timeUnit = TimeUnit.SECONDS)
-open class ReadFilesAttributesBenchmark {
+open class ReadFilesAttributes {
     val path = Path.of("/usr/lib")
     val directoryEntries = path.listDirectoryEntries()
 

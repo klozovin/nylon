@@ -34,10 +34,12 @@ import kotlin.io.path.*
 - isSymbolicLink
 - isOther
 - size
+
 - PosixFileAttributes
 - owner
 - group
 - permissions (PosixFilePermissions)
+
 - OWNER_READ, OWNER_WRITE, OWNER_EXECUTE, ...
  */
 

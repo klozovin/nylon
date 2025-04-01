@@ -139,7 +139,7 @@ class WidgetDirectoryBrowser(path: Path) {
     }
 
     private fun ListView.showErrorListing(message: String) {
-        val model = StringList<StringObject>().apply { append(message) }
+        val model = StringList(arrayOf(message))
         val selection = NoSelection<GObject>(model)
 
         // MUST first set to null ("race" condition)
