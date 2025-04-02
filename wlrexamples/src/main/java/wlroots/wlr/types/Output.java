@@ -1,6 +1,10 @@
 package wlroots.wlr.types;
 
+import jexwlroots.types.wlr_output;
+import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import wayland.server.Signal;
 import wlroots.wlr.render.Allocator;
 import wlroots.wlr.render.Renderer;
 
@@ -10,12 +14,13 @@ import static jexwlroots.types.wlr_output_h.*;
 
 
 public final class Output {
+    public final @NonNull MemorySegment outputPtr;
+    public final @NonNull Events events;
 
-    public final MemorySegment outputPtr;
 
-
-    public Output(MemorySegment outputPtr) {
+    public Output(@NotNull MemorySegment outputPtr) {
         this.outputPtr = outputPtr;
+        this.events = new Events(wlr_output.events(outputPtr));
     }
 
 
@@ -36,5 +41,19 @@ public final class Output {
 
     public boolean initRender(Allocator allocator, Renderer renderer) {
         return wlr_output_init_render(outputPtr, allocator.allocatorPtr, renderer.rendererPtr);
+    }
+
+
+    public final static class Events {
+        public final @NonNull MemorySegment eventsPtr;
+        public final @NonNull Signal<Void> frame;
+        public final @NonNull Signal<Void> destroy;
+
+
+        Events(@NonNull MemorySegment eventsPtr) {
+            this.eventsPtr = eventsPtr;
+            frame = new Signal<>(wlr_output.events.frame(eventsPtr), (_) -> null);
+            destroy = new Signal<>(wlr_output.events.destroy(eventsPtr), (_) -> null);
+        }
     }
 }

@@ -7,6 +7,7 @@ import org.jspecify.annotations.Nullable;
 import wayland.server.EventLoop;
 import wayland.server.Signal;
 import wlroots.wlr.backend.Session;
+import wlroots.wlr.types.InputDevice;
 import wlroots.wlr.types.Output;
 
 import java.lang.foreign.MemorySegment;
@@ -64,18 +65,17 @@ public final class Backend {
             return null;
     }
 
-    //
-    // Helper classes for nicer events API (wl_signal, wl_listener)
-    //
 
     public final static class Events {
         public final @NonNull MemorySegment eventsPtr;
         public final @NonNull Signal<Output> newOutput;
+        public final @NonNull Signal<InputDevice> newInput;
 
 
         Events(@NotNull MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
             newOutput = new Signal<>(wlr_backend.events.new_output(eventsPtr), Output::new);
+            newInput  = new Signal<>(wlr_backend.events.new_input(eventsPtr), InputDevice::new);
         }
     }
 }

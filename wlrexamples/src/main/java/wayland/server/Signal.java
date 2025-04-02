@@ -47,7 +47,7 @@ public class Signal<T> {
     ///```
     ///
     /// @param callback Callback function to call when the signal is emitted
-    public void add2(Consumer<@NonNull T> callback) {
+    public void add(Consumer<@NonNull T> callback) {
         var notifyFunction = new wl_notify_func_t.Function() {
             @Override
             public void apply(MemorySegment listener, MemorySegment data) {
