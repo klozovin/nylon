@@ -8,9 +8,8 @@ import wayland.util.IList;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 
 /// A source of a type of observable event.
@@ -23,13 +22,13 @@ import java.util.function.Consumer;
 /// @param <T> type of parameters that gets passed to signal callback function
 public class Signal<T> {
     public final @NonNull MemorySegment signalPtr;
-    public final @NonNull Constructor<T> callbackParamCtor;
-    private final IList<Listener> listenerList;
+    public final @NonNull IList<Listener> listenerList;
+    public final @NonNull Function<MemorySegment, T> callbackArgumentCtor;
 
 
-    public Signal(@NonNull MemorySegment signalPtr, @NotNull Constructor<T> callbackParamCtor) {
+    public Signal(@NotNull MemorySegment signalPtr, @NotNull Function<MemorySegment, T> callbackArgumentCtor) {
         this.signalPtr = signalPtr;
-        this.callbackParamCtor = callbackParamCtor;
+        this.callbackArgumentCtor = callbackArgumentCtor;
         this.listenerList = new IList<Listener>() {
             @Override
             public @NonNull MemorySegment getLink() {
@@ -47,24 +46,18 @@ public class Signal<T> {
     ///               struct wl_listener *listener)
     ///```
     ///
-    /// @param callback Callback function
-    public void add(Consumer<T> callback) {
+    /// @param callback Callback function to call when the signal is emitted
+    public void add2(Consumer<@NonNull T> callback) {
         var notifyFunction = new wl_notify_func_t.Function() {
             @Override
             public void apply(MemorySegment listener, MemorySegment data) {
-                try {
-                    T callbackArgument = callbackParamCtor.newInstance(data);
-                    callback.accept(callbackArgument);
-                } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                    throw new RuntimeException(e);
-                }
+                callback.accept(callbackArgumentCtor.apply(data));
             }
         };
 
         // Create wl_listener object and associate it with callback function
         // TODO: Memory ownership - can't be auto or confined/scope
         var arena = Arena.global();
-        var listener = Listener.allocate(arena, notifyFunction);
-        listenerList.append(listener);
+        listenerList.append(Listener.allocate(arena, notifyFunction));
     }
 }

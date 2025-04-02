@@ -10,7 +10,6 @@ import wlroots.wlr.backend.Session;
 import wlroots.wlr.types.Output;
 
 import java.lang.foreign.MemorySegment;
-import java.util.function.Consumer;
 
 import static jexwlroots.backend_h.*;
 
@@ -76,29 +75,7 @@ public final class Backend {
 
         Events(@NotNull MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
-            try {
-                this.newOutput = new Signal<Output>(wlr_backend.events.new_output(eventsPtr), Output.class.getConstructor(MemorySegment.class)) {
-                    @Override
-                    public void add(Consumer<Output> callback) {
-                        super.add(callback);
-                    }
-                };
-            } catch (NoSuchMethodException e) {
-                throw new RuntimeException(e);
-            }
+            newOutput = new Signal<>(wlr_backend.events.new_output(eventsPtr), Output::new);
         }
     }
-
-//    public static class NewOutputSignal extends Signal<examples.direct.Output> {
-//
-//        public NewOutputSignal(MemorySegment signalPtr) {
-//            super(signalPtr);
-//        }
-//
-//        @Override
-//        public void add(Consumer<examples.direct.Output> callback) {
-//            super.add(callback);
-//            // examples.direct.wl_signal_add this.signalptr
-//        }
-//    }
 }
