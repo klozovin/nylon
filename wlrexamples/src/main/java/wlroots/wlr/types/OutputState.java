@@ -13,17 +13,21 @@ public final class OutputState {
 
     public final MemorySegment outputStatePtr;
 
+
     public OutputState(MemorySegment outputStatePtr) {
         this.outputStatePtr = outputStatePtr;
     }
+
 
     public static OutputState allocate(Arena arena) {
         return new OutputState(wlr_output_state.allocate(arena));
     }
 
+
     public void init() {
         wlr_output_state_init(outputStatePtr);
     }
+
 
     /// Enables or disables an output. A disabled output is turned off and doesn't
     /// emit `frame` events.
@@ -33,10 +37,6 @@ public final class OutputState {
         wlr_output_state_set_enabled(outputStatePtr, enabled);
     }
 
-    @Deprecated
-    public void setMode(MemorySegment mode) {
-        wlr_output_state_set_mode(outputStatePtr, mode);
-    }
 
     /**
      * Sets the output mode of an output. An output mode will specify the resolution and refresh
@@ -47,6 +47,7 @@ public final class OutputState {
     public void setMode(OutputMode mode) {
         wlr_output_state_set_mode(outputStatePtr, mode.outputModePtr);
     }
+
 
     /**
      * Releases all resources associated with an output state.

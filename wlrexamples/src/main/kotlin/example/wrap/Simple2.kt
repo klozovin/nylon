@@ -18,6 +18,7 @@ import wlroots.Log
 import wlroots.wlr.Backend
 import wlroots.wlr.render.Allocator
 import wlroots.wlr.render.Renderer
+import wlroots.wlr.types.Output
 import wlroots.wlr.types.OutputState
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
@@ -33,10 +34,7 @@ object State {
     lateinit var renderer: Renderer
     lateinit var allocator: Allocator
 
-    /**
-     * ```struct timespec last_frame;```
-     */
-    var lastFrame: Long = 0
+    var lastFrame: Long = 0                         // struct timespec last_frame;
 
     /**
      * ```float color[4];```
@@ -47,41 +45,124 @@ object State {
      * ```int dec;```
      */
     var dec: Int = 0
+
+    // Output
+    lateinit var output: Output
+    lateinit var outputFramePtr: MemorySegment      // struct wl_listener frame;
+    lateinit var outputDestroyPtr: MemorySegment    // struct wl_listener destroy;
+
+    // Keyboard
+//    lateinit var keyboard: Keybo
+    lateinit var keyboardPtr: MemorySegment         // struct wlr_keyboard *wlr_keyboard;
+    lateinit var keyboardKeyPtr: MemorySegment      // struct wl_listener key;
+    lateinit var keyboardDestroyPtr: MemorySegment  // struct wl_listener destroy;
 }
 
-object Output {
-    /**
-     * ```struct wlr_output *output;```
-     */
-    lateinit var output: MemorySegment
-    lateinit var outputW: wlroots.wlr.types.Output
 
-    /**
-     *  struct wl_listener frame;
-     */
-    lateinit var frame: MemorySegment
+/**
+ * ```static void new_output_notify(struct wl_listener *listener, void *data)```
+ */
+fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
+    State.output = Output(outputPtr)
 
-    /**
-     * ```struct wl_listener destroy;```
-     */
-    lateinit var destroy: MemorySegment
+    // wlr_output_init_render(output, sample->allocator, sample->renderer);
+//    backend_h.wlr_output_init_render(outputPtr, State.allocator.allocatorPtr, State.renderer.rendererPtr)
+    State.output.initRender(State.allocator, State.renderer)
+
+    // struct sample_output *sample_output = calloc(1, sizeof(*sample_output));
+    // sample_output->output = output;
+    // sample_output->sample = sample;
+//    OutputX.output = outputPtr
+
+    // wl_signal_add(&output->events.frame, &sample_output->frame);
+    // sample_output->frame.notify = output_frame_notify;
+//    OutputX.frame = wl_listener.allocate(arena)
+    State.outputFramePtr = wl_listener.allocate(arena)
+    wl_listener.notify(State.outputFramePtr, wl_notify_func_t.allocate(::outputFrameNotify, arena))
+    wl_signal_add(wlr_output.events.frame(wlr_output.events(outputPtr)), State.outputFramePtr)
+
+    // wl_signal_add(&output->events.destroy, &sample_output->destroy);
+    // sample_output->destroy.notify = output_remove_notify;
+    State.outputDestroyPtr = wl_listener.allocate(arena)
+    wl_listener.notify(State.outputDestroyPtr, wl_notify_func_t.allocate(::outputRemoveNotify, arena))
+    wl_signal_add(wlr_output.events.destroy(wlr_output.events(outputPtr)), State.outputDestroyPtr)
+
+    // TODO: Memory lifetime - maybe use confined Arena?
+    OutputState.allocate(autoArena).apply {
+        init()
+        setEnabled(true)
+        State.output.preferredMode?.let { mode -> setMode(mode) }
+        State.output.commitState(this)
+        finish()
+    }
 }
 
-object Keyboard {
-    /**
-     * ```struct wlr_keyboard *wlr_keyboard;```
-     */
-    lateinit var keyboard: MemorySegment
 
-    /**
-     * ```struct wl_listener key;```
-     */
-    lateinit var key: MemorySegment
+/**
+ * ```
+ * static void new_input_notify(struct wl_listener *listener, void *data)
+ * ```
+ */
+fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
+    // struct wlr_input_device *device = data;
+    // struct sample_state *sample = wl_container_of(listener, sample, new_input);
 
-    /**
-     * ```struct wl_listener destroy;```
-     */
-    lateinit var destroy: MemorySegment
+    // switch (device->type) {
+    // case WLR_INPUT_DEVICE_KEYBOARD:;
+    if (wlr_input_device.type(inputDevicePtr) == wlr_input_device_h.WLR_INPUT_DEVICE_KEYBOARD()) {
+        // struct sample_keyboard *keyboard = calloc(1, sizeof(*keyboard));
+
+        // keyboard->wlr_keyboard = wlr_keyboard_from_input_device(device);
+        State.keyboardPtr = wlr_keyboard_h.wlr_keyboard_from_input_device(inputDevicePtr)
+
+        // keyboard->sample = sample;
+
+        // wl_signal_add(&device->events.destroy, &keyboard->destroy);
+        // keyboard->destroy.notify = keyboard_destroy_notify;
+        State.keyboardDestroyPtr = wl_listener.allocate(arena)
+        wl_listener.notify(State.keyboardDestroyPtr, wl_notify_func_t.allocate(::keyboardDestroyNotify, arena))
+        wl_signal_add(wlr_input_device.events.destroy(wlr_input_device.events(inputDevicePtr)), State.keyboardDestroyPtr)
+
+        // wl_signal_add(&keyboard->wlr_keyboard->events.key, &keyboard->key);
+        // keyboard->key.notify = keyboard_key_notify;
+        State.keyboardKeyPtr = wl_listener.allocate(arena)
+        wl_listener.notify(State.keyboardKeyPtr, wl_notify_func_t.allocate(::keyboardKeyNotify, arena))
+        wl_signal_add(wlr_keyboard.events.key(wlr_keyboard.events(State.keyboardPtr)), State.keyboardKeyPtr)
+
+        // struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+        // if (!context) {
+        //      wlr_log(WLR_ERROR, "Failed to create XKB context");
+        //      exit(1);
+        // }
+        val xkbContextPtr = xkbcommon_h.xkb_context_new(xkbcommon_h.XKB_CONTEXT_NO_FLAGS())
+        if (xkbContextPtr == MemorySegment.NULL) {
+            Log.logError("Failed to create XKB context")
+            exitProcess(1)
+        }
+
+        // struct xkb_keymap *keymap = xkb_keymap_new_from_names(context, NULL, XKB_KEYMAP_COMPILE_NO_FLAGS);
+        // if (!keymap) {
+        //     wlr_log(WLR_ERROR, "Failed to create XKB keymap");
+        //     exit(1);
+        // }
+        val xkbKeymapPtr = xkbcommon_h.xkb_keymap_new_from_names(
+            xkbContextPtr,
+            MemorySegment.NULL,
+            xkbcommon_h.XKB_KEYMAP_COMPILE_NO_FLAGS()
+        )
+        if (xkbKeymapPtr == MemorySegment.NULL) {
+            Log.logError("Failed to create XKB keymap")
+            exitProcess(1)
+        }
+
+        // wlr_keyboard_set_keymap(keyboard->wlr_keyboard, keymap);
+        wlr_keyboard_h.wlr_keyboard_set_keymap(State.keyboardPtr, xkbKeymapPtr)
+
+        // xkb_keymap_unref(keymap);
+        // xkb_context_unref(context);
+        xkbcommon_h.xkb_keymap_unref(xkbKeymapPtr)
+        xkbcommon_h.xkb_context_unref(xkbContextPtr)
+    }
 }
 
 
@@ -121,7 +202,8 @@ fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
     backend_h.wlr_output_state_init(state)
 
     // struct wlr_render_pass *pass = wlr_output_begin_render_pass(wlr_output, &state, NULL);
-    val pass = backend_h.wlr_output_begin_render_pass(Output.output, state, MemorySegment.NULL, MemorySegment.NULL)
+    val pass =
+        backend_h.wlr_output_begin_render_pass(State.output.outputPtr, state, MemorySegment.NULL, MemorySegment.NULL)
 
     // wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
     //     .box = { .width = wlr_output->width, .height = wlr_output->height },
@@ -134,8 +216,8 @@ fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
     // });
     backend_h.wlr_render_pass_add_rect(pass, wlr_render_rect_options.allocate(arena).also { rectPtr ->
         wlr_render_rect_options.box(rectPtr).let { boxPtr ->
-            wlr_box.width(boxPtr, wlr_output.width(Output.output))
-            wlr_box.height(boxPtr, wlr_output.height(Output.output))
+            wlr_box.width(boxPtr, wlr_output.width(State.output.outputPtr))
+            wlr_box.height(boxPtr, wlr_output.height(State.output.outputPtr))
         }
         jexwlroots.wlr_render_rect_options.color(rectPtr).let { colorPtr ->
             wlr_render_color.r(colorPtr, State.color[0])
@@ -149,67 +231,13 @@ fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
     backend_h.wlr_render_pass_submit(pass)
 
     // wlr_output_commit_state(wlr_output, &state);
-    backend_h.wlr_output_commit_state(Output.output, state)
+    backend_h.wlr_output_commit_state(State.output.outputPtr, state)
 
     // wlr_output_state_finish(&state);
     backend_h.wlr_output_state_finish(state)
 
     // sample->last_frame = now;
     State.lastFrame = now
-}
-
-
-fun outputRemoveNotify(listener: MemorySegment, data: MemorySegment) {
-    // struct sample_output *sample_output = wl_container_of(listener, sample_output, destroy);
-
-    // wlr_log(WLR_DEBUG, "Output removed");
-    Log.logDebug("Output removed")
-
-    // wl_list_remove(&sample_output->frame.link);
-    // wl_list_remove(&sample_output->destroy.link);
-    backend_h_1.wl_list_remove(wl_listener.link(Output.frame))
-    backend_h_1.wl_list_remove(wl_listener.link(Output.destroy))
-
-    // free(sample_output);
-}
-
-
-/**
- * ```static void new_output_notify(struct wl_listener *listener, void *data)```
- */
-fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
-    Output.outputW = wlroots.wlr.types.Output(outputPtr)
-
-    // wlr_output_init_render(output, sample->allocator, sample->renderer);
-//    backend_h.wlr_output_init_render(outputPtr, State.allocator.allocatorPtr, State.renderer.rendererPtr)
-    Output.outputW.initRender(State.allocator, State.renderer)
-
-    // struct sample_output *sample_output = calloc(1, sizeof(*sample_output));
-    // sample_output->output = output;
-    // sample_output->sample = sample;
-    Output.output = outputPtr
-
-    // wl_signal_add(&output->events.frame, &sample_output->frame);
-    // sample_output->frame.notify = output_frame_notify;
-    Output.frame = wl_listener.allocate(arena)
-    wl_listener.notify(Output.frame, wl_notify_func_t.allocate(::outputFrameNotify, arena))
-    wl_signal_add(wlr_output.events.frame(wlr_output.events(outputPtr)), Output.frame)
-
-    // wl_signal_add(&output->events.destroy, &sample_output->destroy);
-    // sample_output->destroy.notify = output_remove_notify;
-    Output.destroy = wl_listener.allocate(arena)
-    wl_listener.notify(Output.destroy, wl_notify_func_t.allocate(::outputRemoveNotify, arena))
-    wl_signal_add(wlr_output.events.destroy(wlr_output.events(outputPtr)), Output.destroy)
-
-    // TODO: Maybe use confined Arena?
-    val outputState = OutputState.allocate(autoArena)
-    outputState.init()
-    outputState.setEnabled(true)
-    Output.outputW.preferredMode()?.let { preferredOutputMode ->
-        outputState.setMode(preferredOutputMode)
-    }
-    Output.outputW.commitState(outputState)
-    outputState.finish()
 }
 
 
@@ -225,7 +253,7 @@ fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEventPtr: MemorySegmen
     val symsPtr = arena.allocate(xkbcommon_h.C_POINTER)
 
     // int nsyms = xkb_state_key_get_syms(keyboard->wlr_keyboard->xkb_state, keycode, &syms);
-    val nsyms = xkbcommon_h.xkb_state_key_get_syms(wlr_keyboard.xkb_state(Keyboard.keyboard), keycode, symsPtr)
+    val nsyms = xkbcommon_h.xkb_state_key_get_syms(wlr_keyboard.xkb_state(State.keyboardPtr), keycode, symsPtr)
 
     // for (int i = 0; i < nsyms; i++) {
     //     xkb_keysym_t sym = syms[i];
@@ -236,9 +264,26 @@ fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEventPtr: MemorySegmen
     for (i in 0..<nsyms) {
         val sym = symsPtr.get(xkbcommon_h.C_POINTER, i.toLong()).get(xkbcommon_h.xkb_keysym_t, 0)
         if (sym == xkbcommon_h.XKB_KEY_Escape()) {
-            backend_h_1.wl_display_terminate(State.display.displayPtr)
+            backend_h.wl_display_terminate(State.display.displayPtr)
+        } else {
+            println("Key: $sym")
         }
     }
+}
+
+
+fun outputRemoveNotify(listener: MemorySegment, data: MemorySegment) {
+    // struct sample_output *sample_output = wl_container_of(listener, sample_output, destroy);
+
+    // wlr_log(WLR_DEBUG, "Output removed");
+    Log.logDebug("Output removed")
+
+    // wl_list_remove(&sample_output->frame.link);
+    // wl_list_remove(&sample_output->destroy.link);
+    backend_h_1.wl_list_remove(wl_listener.link(State.outputFramePtr))
+    backend_h_1.wl_list_remove(wl_listener.link(State.outputDestroyPtr))
+
+    // free(sample_output);
 }
 
 
@@ -247,78 +292,10 @@ fun keyboardDestroyNotify(listener: MemorySegment, data: MemorySegment) {
 
     // wl_list_remove(&keyboard->destroy.link);
     // wl_list_remove(&keyboard->key.link);
-    backend_h_1.wl_list_remove(wl_listener.link(Keyboard.destroy))
-    backend_h_1.wl_list_remove(wl_listener.link(Keyboard.key))
+    backend_h.wl_list_remove(wl_listener.link(State.keyboardDestroyPtr))
+    backend_h.wl_list_remove(wl_listener.link(State.keyboardKeyPtr))
 
     // free(keyboard);
-}
-
-
-/**
- * ```
- * static void new_input_notify(struct wl_listener *listener, void *data)
- * ```
- */
-fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
-    // struct wlr_input_device *device = data;
-    // struct sample_state *sample = wl_container_of(listener, sample, new_input);
-
-    // switch (device->type) {
-    // case WLR_INPUT_DEVICE_KEYBOARD:;
-    if (wlr_input_device.type(inputDevicePtr) == wlr_input_device_h.WLR_INPUT_DEVICE_KEYBOARD()) {
-        // struct sample_keyboard *keyboard = calloc(1, sizeof(*keyboard));
-
-        // keyboard->wlr_keyboard = wlr_keyboard_from_input_device(device);
-        Keyboard.keyboard = wlr_keyboard_h_1.wlr_keyboard_from_input_device(inputDevicePtr)
-
-        // keyboard->sample = sample;
-
-        // wl_signal_add(&device->events.destroy, &keyboard->destroy);
-        // keyboard->destroy.notify = keyboard_destroy_notify;
-        Keyboard.destroy = wl_listener.allocate(arena)
-        wl_listener.notify(Keyboard.destroy, wl_notify_func_t.allocate(::keyboardDestroyNotify, arena))
-        wl_signal_add(wlr_input_device.events.destroy(wlr_input_device.events(inputDevicePtr)), Keyboard.destroy)
-
-        // wl_signal_add(&keyboard->wlr_keyboard->events.key, &keyboard->key);
-        // keyboard->key.notify = keyboard_key_notify;
-        Keyboard.key = wl_listener.allocate(arena)
-        wl_listener.notify(Keyboard.key, wl_notify_func_t.allocate(::keyboardKeyNotify, arena))
-        wl_signal_add(wlr_keyboard.events.key(wlr_keyboard.events(Keyboard.keyboard)), Keyboard.key)
-
-        // struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-        // if (!context) {
-        //      wlr_log(WLR_ERROR, "Failed to create XKB context");
-        //      exit(1);
-        // }
-        val xkbContextPtr = xkbcommon_h.xkb_context_new(xkbcommon_h.XKB_CONTEXT_NO_FLAGS())
-        if (xkbContextPtr == MemorySegment.NULL) {
-            Log.logError("Failed to create XKB context")
-            exitProcess(1)
-        }
-
-        // struct xkb_keymap *keymap = xkb_keymap_new_from_names(context, NULL, XKB_KEYMAP_COMPILE_NO_FLAGS);
-        // if (!keymap) {
-        //     wlr_log(WLR_ERROR, "Failed to create XKB keymap");
-        //     exit(1);
-        // }
-        val xkbKeymapPtr = xkbcommon_h.xkb_keymap_new_from_names(
-            xkbContextPtr,
-            MemorySegment.NULL,
-            xkbcommon_h.XKB_KEYMAP_COMPILE_NO_FLAGS()
-        )
-        if (xkbKeymapPtr == MemorySegment.NULL) {
-            Log.logError("Failed to create XKB keymap")
-            exitProcess(1)
-        }
-
-        // wlr_keyboard_set_keymap(keyboard->wlr_keyboard, keymap);
-        wlr_keyboard_h_1.wlr_keyboard_set_keymap(Keyboard.keyboard, xkbKeymapPtr)
-
-        // xkb_keymap_unref(keymap);
-        // xkb_context_unref(context);
-        xkbcommon_h.xkb_keymap_unref(xkbKeymapPtr)
-        xkbcommon_h.xkb_context_unref(xkbContextPtr)
-    }
 }
 
 
@@ -335,12 +312,6 @@ fun main() {
     val newOutputListenerPtr = wl_listener.allocate(arena)
     wl_listener.notify(newOutputListenerPtr, wl_notify_func_t.allocate(::newOutputNotify, arena))
     wl_signal_add(wlr_backend.events.new_output(wlr_backend.events(backend.backendPtr)), newOutputListenerPtr)
-
-    backend.events.newOutput.add2 { output ->
-
-        println(output.preferredMode())
-        println("Oh my!")
-    }
 
     // wl_signal_add(&backend->events.new_input, &state.new_input);
     // state.new_input.notify = new_input_notify;
