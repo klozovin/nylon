@@ -1,6 +1,5 @@
 package wayland.server;
 
-import jexwayland.wl_notify_func_t;
 import jexwayland.wl_signal;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
@@ -47,17 +46,31 @@ public class Signal<T> {
     ///```
     ///
     /// @param callback Callback function to call when the signal is emitted
-    public void add(Consumer<@NonNull T> callback) {
-        var notifyFunction = new wl_notify_func_t.Function() {
-            @Override
-            public void apply(MemorySegment listener, MemorySegment data) {
-                callback.accept(callbackArgumentCtor.apply(data));
-            }
-        };
-
-        // Create wl_listener object and associate it with callback function
+    public void add(@NonNull Consumer<T> callback) {
         // TODO: Memory ownership - can't be auto or confined/scope
-        var arena = Arena.global();
-        listenerList.append(Listener.allocate(arena, notifyFunction));
+        listenerList.append(Listener.allocate(Arena.global(), (MemorySegment _, MemorySegment data) -> {
+            assert data != null;
+            assert data != MemorySegment.NULL;
+            callback.accept(callbackArgumentCtor.apply(data));
+        }));
+    }
+
+
+    /// Add the specified listener to this signal. Callback with no passed argument.
+    ///
+    /// ```
+    /// static inline void
+    /// wl_signal_add(struct wl_signal *signal,
+    ///               struct wl_listener *listener)
+    ///```
+    ///
+    /// @param callback Callback function to call when the signal is emitted
+    public void add(@NonNull Runnable callback) {
+        // TODO: Memory ownership - can't be auto or confined/scope
+        listenerList.append(Listener.allocate(Arena.global(), (MemorySegment _, MemorySegment data) -> {
+            assert data != null;
+            assert data != MemorySegment.NULL;
+            callback.run();
+        }));
     }
 }

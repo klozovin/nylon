@@ -148,7 +148,7 @@ fun newInputNotify(inputDevice: InputDevice) {
 
 
 //fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
-fun outputFrameNotify(data: Void?) {
+fun outputFrameNotify() {
     // struct sample_output *sample_output = wl_container_of(listener, sample_output, frame);
     // struct sample_state *sample = sample_output->sample;
     // struct wlr_output *wlr_output = sample_output->output;
@@ -255,13 +255,11 @@ fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEventPtr: MemorySegmen
 }
 
 
-fun outputRemoveNotify(data: Void?) {
+fun outputRemoveNotify() {
     Log.logDebug("Output removed")
     // TODO: Handle list removal somehow?
 //    backend_h.wl_list_remove(wl_listener.link(State.outputFramePtr))
 //    backend_h.wl_list_remove(wl_listener.link(State.outputDestroyPtr))
-
-    // free(sample_output);
 }
 
 
@@ -272,8 +270,6 @@ fun keyboardDestroyNotify(listener: MemorySegment, data: MemorySegment) {
     // wl_list_remove(&keyboard->key.link);
     backend_h.wl_list_remove(wl_listener.link(State.keyboardDestroyPtr))
     backend_h.wl_list_remove(wl_listener.link(State.keyboardKeyPtr))
-
-    // free(keyboard);
 }
 
 
