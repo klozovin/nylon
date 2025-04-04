@@ -5,18 +5,14 @@ import jexwayland.wl_list
 import jexwayland.wl_listener
 import jexwayland.wl_notify_func_t
 import jexwayland.wl_signal
-import jexwlroots.*
+import jexwlroots.backend_h
 import jexwlroots.types.*
-import jexwlroots.types.wlr_box
-import jexwlroots.types.wlr_render_color
-import jexwlroots.types.wlr_render_rect_options
-import jexwlroots.wlr_output
-import jexwlroots.wlr_output_state
 import jexxkb.xkbcommon_h
 import wayland.server.Display
 import wlroots.Log
 import wlroots.wlr.Backend
 import wlroots.wlr.render.Allocator
+import wlroots.wlr.render.RectOptions
 import wlroots.wlr.render.Renderer
 import wlroots.wlr.types.InputDevice
 import wlroots.wlr.types.Output
@@ -102,7 +98,10 @@ fun newInputNotify(inputDevice: InputDevice) {
         // keyboard->destroy.notify = keyboard_destroy_notify;
         State.keyboardDestroyPtr = wl_listener.allocate(arena)
         wl_listener.notify(State.keyboardDestroyPtr, wl_notify_func_t.allocate(::keyboardDestroyNotify, arena))
-        wl_signal_add(wlr_input_device.events.destroy(wlr_input_device.events(inputDevice.inputDevicePtr)), State.keyboardDestroyPtr)
+        wl_signal_add(
+            wlr_input_device.events.destroy(wlr_input_device.events(inputDevice.inputDevicePtr)),
+            State.keyboardDestroyPtr
+        )
 
         // wl_signal_add(&keyboard->wlr_keyboard->events.key, &keyboard->key);
         // keyboard->key.notify = keyboard_key_notify;
@@ -147,78 +146,34 @@ fun newInputNotify(inputDevice: InputDevice) {
 }
 
 
-//fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
 fun outputFrameNotify() {
-    // struct sample_output *sample_output = wl_container_of(listener, sample_output, frame);
-    // struct sample_state *sample = sample_output->sample;
-    // struct wlr_output *wlr_output = sample_output->output;
-
-    // struct timespec now;
-    // clock_gettime(CLOCK_MONOTONIC, &now);
     val now = System.currentTimeMillis()
-
-    // long ms = (now.tv_sec - sample->last_frame.tv_sec) * 1000 + (now.tv_nsec - sample->last_frame.tv_nsec) / 1000000;
-    // int inc = (sample->dec + 1) % 3;
     val ms = now - State.lastFrame
     val inc = (State.dec + 1) % 3
-
-    // sample->color[inc] += ms / 2000.0f;
-    // sample->color[sample->dec] -= ms / 2000.0f;
     State.color[inc] += ms / 2000.0f
     State.color[State.dec] -= ms / 2000.0f
 
-    // if (sample->color[sample->dec] < 0.0f) {
-    //     sample->color[inc] = 1.0f;
-    //     sample->color[sample->dec] = 0.0f;
-    //     sample->dec = inc;
-    // }
     if (State.color[State.dec] < 0.0f) {
         State.color[inc] = 1.0f
         State.color[State.dec] = 0.0f
         State.dec = inc
     }
 
-    // struct wlr_output_state state;
-    // wlr_output_state_init(&state);
-    val state = wlr_output_state.allocate(arena)
-    backend_h.wlr_output_state_init(state)
+    Arena.ofConfined().use { arena ->
+        val outputState = OutputState.allocate(arena)
+        outputState.init()
 
-    // struct wlr_render_pass *pass = wlr_output_begin_render_pass(wlr_output, &state, NULL);
-    val pass =
-        backend_h.wlr_output_begin_render_pass(State.output.outputPtr, state, MemorySegment.NULL, MemorySegment.NULL)
+        val renderPass = State.output.beginRenderPass(outputState) ?: error("Render pass should not be null")
 
-    // wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
-    //     .box = { .width = wlr_output->width, .height = wlr_output->height },
-    //     .color = {
-    //          .r = sample->color[0],
-    //          .g = sample->color[1],
-    //          .b = sample->color[2],
-    //          .a = sample->color[3],
-    //      },
-    // });
-    backend_h.wlr_render_pass_add_rect(pass, wlr_render_rect_options.allocate(arena).also { rectPtr ->
-        wlr_render_rect_options.box(rectPtr).let { boxPtr ->
-            wlr_box.width(boxPtr, wlr_output.width(State.output.outputPtr))
-            wlr_box.height(boxPtr, wlr_output.height(State.output.outputPtr))
-        }
-        jexwlroots.wlr_render_rect_options.color(rectPtr).let { colorPtr ->
-            wlr_render_color.r(colorPtr, State.color[0])
-            wlr_render_color.g(colorPtr, State.color[1])
-            wlr_render_color.b(colorPtr, State.color[2])
-            wlr_render_color.a(colorPtr, State.color[3])
-        }
-    })
-
-    // wlr_render_pass_submit(pass);
-    backend_h.wlr_render_pass_submit(pass)
-
-    // wlr_output_commit_state(wlr_output, &state);
-    backend_h.wlr_output_commit_state(State.output.outputPtr, state)
-
-    // wlr_output_state_finish(&state);
-    backend_h.wlr_output_state_finish(state)
-
-    // sample->last_frame = now;
+        renderPass.addRect(RectOptions.allocate(arena).apply {
+            box.setWidth(State.output.width)
+            box.setHeight(State.output.height)
+            color.setColor(State.color[0], State.color[1], State.color[2], State.color[3])
+        })
+        renderPass.submit()
+        State.output.commitState(outputState)
+        outputState.finish()
+    }
     State.lastFrame = now
 }
 

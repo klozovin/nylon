@@ -6,10 +6,12 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wlroots.wlr.render.Allocator;
+import wlroots.wlr.render.RenderPass;
 import wlroots.wlr.render.Renderer;
 
 import java.lang.foreign.MemorySegment;
 
+import static java.lang.foreign.MemorySegment.NULL;
 import static jexwlroots.types.wlr_output_h.*;
 
 
@@ -24,23 +26,50 @@ public final class Output {
     }
 
 
+    public int getWidth() {
+        return wlr_output.width(outputPtr);
+    }
+
+
+    public int getHeight() {
+        return wlr_output.height(outputPtr);
+    }
+
+
     public @Nullable OutputMode getPreferredMode() {
         var ptr = wlr_output_preferred_mode(outputPtr);
 
         assert ptr != null;
 
-        if (ptr == MemorySegment.NULL) return null;
+        if (ptr == NULL) return null;
         return new OutputMode(ptr);
-    }
-
-
-    public boolean commitState(OutputState state) {
-        return wlr_output_commit_state(outputPtr, state.outputStatePtr);
     }
 
 
     public boolean initRender(Allocator allocator, Renderer renderer) {
         return wlr_output_init_render(outputPtr, allocator.allocatorPtr, renderer.rendererPtr);
+    }
+
+
+    /// Begin a render pass on this output.
+    ///
+    /// ```
+    /// struct wlr_render_pass *
+    /// wlr_output_begin_render_pass(
+    ///     struct wlr_output *output,
+    ///     struct wlr_output_state *state,
+    ///     struct wlr_buffer_pass_options *render_options
+    ///);
+    ///```
+    public @Nullable RenderPass beginRenderPass(OutputState outputState) {
+        var renderPassPtr = wlr_output_begin_render_pass(outputPtr, outputState.outputStatePtr, NULL, NULL);
+        assert renderPassPtr != NULL;
+        return new RenderPass(renderPassPtr);
+    }
+
+
+    public boolean commitState(OutputState state) {
+        return wlr_output_commit_state(outputPtr, state.outputStatePtr);
     }
 
 

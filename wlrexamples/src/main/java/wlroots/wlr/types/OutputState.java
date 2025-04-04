@@ -38,20 +38,16 @@ public final class OutputState {
     }
 
 
-    /**
-     * Sets the output mode of an output. An output mode will specify the resolution and refresh
-     * rate, among other things.
-     * <p>
-     * This state will be applied once {@link Output#commitState} is called.
-     */
+    /// Sets the output mode of an output. An output mode will specify the resolution and refresh
+    /// rate, among other things.
+    ///
+    /// This state will be applied once [#commitState] is called.
     public void setMode(OutputMode mode) {
         wlr_output_state_set_mode(outputStatePtr, mode.outputModePtr);
     }
 
 
-    /**
-     * Releases all resources associated with an output state.
-     */
+    /// Releases all resources associated with an output state.
     public void finish() {
         wlr_output_state_finish(outputStatePtr);
     }
