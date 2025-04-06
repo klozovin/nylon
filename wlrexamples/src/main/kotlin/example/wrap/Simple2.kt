@@ -1,12 +1,8 @@
 package example.wrap
 
 import jexwayland.*
-import jexwayland.wl_list
-import jexwayland.wl_listener
-import jexwayland.wl_notify_func_t
-import jexwayland.wl_signal
 import jexwlroots.backend_h
-import jexwlroots.types.*
+import jexwlroots.types.wlr_input_device
 import jexxkb.xkbcommon_h
 import wayland.server.Display
 import wlroots.Log
@@ -14,9 +10,7 @@ import wlroots.wlr.Backend
 import wlroots.wlr.render.Allocator
 import wlroots.wlr.render.RectOptions
 import wlroots.wlr.render.Renderer
-import wlroots.wlr.types.InputDevice
-import wlroots.wlr.types.Output
-import wlroots.wlr.types.OutputState
+import wlroots.wlr.types.*
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 import kotlin.system.exitProcess
@@ -46,7 +40,7 @@ object State {
     lateinit var outputDestroyPtr: MemorySegment        // struct wl_listener destroy;
 
     // Keyboard
-//    lateinit var keyboard: Keyboard
+    lateinit var keyboard: Keyboard
     lateinit var keyboardPtr: MemorySegment             // struct wlr_keyboard *wlr_keyboard;
     lateinit var keyboardKeyPtr: MemorySegment          // struct wl_listener key;
     lateinit var keyboardDestroyPtr: MemorySegment      // struct wl_listener destroy;
@@ -84,15 +78,14 @@ fun newInputNotify(inputDevice: InputDevice) {
     // struct wlr_input_device *device = data;
     // struct sample_state *sample = wl_container_of(listener, sample, new_input);
 
-    // switch (device->type) {
-    // case WLR_INPUT_DEVICE_KEYBOARD:;
-    if (wlr_input_device.type(inputDevice.inputDevicePtr) == wlr_input_device_h.WLR_INPUT_DEVICE_KEYBOARD()) {
+    if (inputDevice.type == InputDevice.Type.KEYBOARD) {
         // struct sample_keyboard *keyboard = calloc(1, sizeof(*keyboard));
 
         // keyboard->wlr_keyboard = wlr_keyboard_from_input_device(device);
-        State.keyboardPtr = wlr_keyboard_h.wlr_keyboard_from_input_device(inputDevice.inputDevicePtr)
+//        State.keyboardPtr = wlr_keyboard_h.wlr_keyboard_from_input_device(inputDevice.inputDevicePtr)
+        State.keyboard = inputDevice.keyboard
+//        State.keyboardPtr = State.keyboard.keyboardPtr
 
-        // keyboard->sample = sample;
 
         // wl_signal_add(&device->events.destroy, &keyboard->destroy);
         // keyboard->destroy.notify = keyboard_destroy_notify;
@@ -105,9 +98,12 @@ fun newInputNotify(inputDevice: InputDevice) {
 
         // wl_signal_add(&keyboard->wlr_keyboard->events.key, &keyboard->key);
         // keyboard->key.notify = keyboard_key_notify;
-        State.keyboardKeyPtr = wl_listener.allocate(arena)
-        wl_listener.notify(State.keyboardKeyPtr, wl_notify_func_t.allocate(::keyboardKeyNotify, arena))
-        wl_signal_add(wlr_keyboard.events.key(wlr_keyboard.events(State.keyboardPtr)), State.keyboardKeyPtr)
+//        State.keyboardKeyPtr = wl_listener.allocate(arena)
+//        wl_listener.notify(State.keyboardKeyPtr, wl_notify_func_t.allocate(::keyboardKeyNotify, arena))
+//        wl_signal_add(wlr_keyboard.events.key(wlr_keyboard.events(State.keyboardPtr)), State.keyboardKeyPtr)
+
+        State.keyboard.events.key.add(::keyboardKeyNotify)
+
 
         // struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
         // if (!context) {
@@ -136,7 +132,8 @@ fun newInputNotify(inputDevice: InputDevice) {
         }
 
         // wlr_keyboard_set_keymap(keyboard->wlr_keyboard, keymap);
-        wlr_keyboard_h.wlr_keyboard_set_keymap(State.keyboardPtr, xkbKeymapPtr)
+//        wlr_keyboard_h.wlr_keyboard_set_keymap(State.keyboardPtr, xkbKeymapPtr)
+        State.keyboard.setKeymap(xkbKeymapPtr)
 
         // xkb_keymap_unref(keymap);
         // xkb_context_unref(context);
@@ -178,19 +175,22 @@ fun outputFrameNotify() {
 }
 
 
-fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEventPtr: MemorySegment) {
+//fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEventPtr: MemorySegment) {
+fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
     // struct sample_keyboard *keyboard = wl_container_of(listener, keyboard, key);
     // struct sample_state *sample = keyboard->sample;
     // struct wlr_keyboard_key_event *event = data;
 
     // uint32_t keycode = event->keycode + 8;
-    val keycode = wlr_keyboard_key_event.keycode(keyboardKeyEventPtr) + 8
+//    val keycodex = KeyboardKeyEvent(keyboardKeyEventPtr)
+//    val keycode = wlr_keyboard_key_event.keycode(keyboardKeyEventPtr) + 8
+    val keycode = keyboardKeyEvent.keycode + 8
 
     // const xkb_keysym_t *syms;
     val symsPtr = arena.allocate(xkbcommon_h.C_POINTER)
 
     // int nsyms = xkb_state_key_get_syms(keyboard->wlr_keyboard->xkb_state, keycode, &syms);
-    val nsyms = xkbcommon_h.xkb_state_key_get_syms(wlr_keyboard.xkb_state(State.keyboardPtr), keycode, symsPtr)
+    val nsyms = xkbcommon_h.xkb_state_key_get_syms(State.keyboard.xkbState, keycode, symsPtr)
 
     // for (int i = 0; i < nsyms; i++) {
     //     xkb_keysym_t sym = syms[i];
@@ -204,7 +204,7 @@ fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEventPtr: MemorySegmen
         if (sym == xkbcommon_h.XKB_KEY_Escape()) {
             backend_h.wl_display_terminate(State.display.displayPtr)
         } else {
-            println("Key: $sym")
+            println("> keycode=$keycode, sym=$sym")
         }
     }
 }
@@ -219,12 +219,13 @@ fun outputRemoveNotify() {
 
 
 fun keyboardDestroyNotify(listener: MemorySegment, data: MemorySegment) {
-    // struct sample_keyboard *keyboard = wl_container_of(listener, keyboard, destroy);
+    Log.logDebug("Keyboard removed")
 
     // wl_list_remove(&keyboard->destroy.link);
     // wl_list_remove(&keyboard->key.link);
-    backend_h.wl_list_remove(wl_listener.link(State.keyboardDestroyPtr))
-    backend_h.wl_list_remove(wl_listener.link(State.keyboardKeyPtr))
+    // TODO: Handle list removal!
+//    backend_h.wl_list_remove(wl_listener.link(State.keyboardDestroyPtr))
+//    backend_h.wl_list_remove(wl_listener.link(State.keyboardKeyPtr))
 }
 
 

@@ -44,6 +44,7 @@ application {
     applicationDefaultJvmArgs = listOf(
         "-ea",
         "--enable-native-access=ALL-UNNAMED",
+//        "-XX:+UseCompactObjectHeaders",
 //        "-Dforeign.restricted=permit",
     )
 }
