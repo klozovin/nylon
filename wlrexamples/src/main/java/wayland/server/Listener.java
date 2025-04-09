@@ -3,13 +3,18 @@ package wayland.server;
 import jexwayland.wl_listener;
 import jexwayland.wl_notify_func_t;
 import org.jspecify.annotations.NonNull;
-import wayland.util.IList;
+import wayland.util.List;
+import wayland.util.List.ElementMetadata;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
 
-public class Listener implements IList<Listener> {
+public class Listener implements List.Element<Listener> {
+
+    public static ElementMetadata<Listener> listElementMeta =
+        new ElementMetadata<>(Listener.class, wl_listener.layout(), "link");
+
     public final @NonNull MemorySegment listenerPtr;
 
 
@@ -27,7 +32,7 @@ public class Listener implements IList<Listener> {
 
 
     @Override
-    public @NonNull MemorySegment getLink() {
-        return wl_listener.link(listenerPtr);
+    public MemorySegment getLinkMemberPtr() {
+        return listenerPtr;
     }
 }

@@ -1,9 +1,8 @@
 package wayland.server;
 
 import jexwayland.wl_signal;
-import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
-import wayland.util.IList;
+import wayland.util.List;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -21,31 +20,21 @@ import java.util.function.Function;
 /// @param <T> type of parameters that gets passed to signal callback function
 public class Signal<T> {
     public final @NonNull MemorySegment signalPtr;
-    public final @NonNull IList<Listener> listenerList;
+    public final @NonNull List<Listener> listenerList;
     public final @NonNull Function<MemorySegment, T> callbackArgumentCtor;
 
 
     public Signal(@NonNull MemorySegment signalPtr, @NonNull Function<MemorySegment, T> callbackArgumentCtor) {
         this.signalPtr = signalPtr;
         this.callbackArgumentCtor = callbackArgumentCtor;
-        this.listenerList = new IList<Listener>() {
-            @Override
-            public @NonNull MemorySegment getLink() {
-                return wl_signal.listener_list(signalPtr);
-            }
-        };
+        this.listenerList = new List<>(wl_signal.listener_list(signalPtr), Listener.listElementMeta);
     }
 
 
     public Signal(@NonNull MemorySegment signalPtr) {
         this.signalPtr = signalPtr;
         this.callbackArgumentCtor = (MemorySegment _) -> null;
-        this.listenerList = new IList<Listener>() {
-            @Override
-            public @NonNull MemorySegment getLink() {
-                return wl_signal.listener_list(signalPtr);
-            }
-        };
+        this.listenerList = new List<>(wl_signal.listener_list(signalPtr), Listener.listElementMeta);
     }
 
 
@@ -90,10 +79,5 @@ public class Signal<T> {
         });
         listenerList.append(listener);
         return listener;
-    }
-
-
-    public static Void nullhandler(MemorySegment _data) {
-        return null;
     }
 }

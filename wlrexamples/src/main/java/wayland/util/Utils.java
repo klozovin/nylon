@@ -1,7 +1,7 @@
 package wayland.util;
 
+import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.StructLayout;
 
 import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
 
@@ -16,7 +16,7 @@ public class Utils {
     /// @param memberPtr Pointer to a member of a struct
     /// @param layout    The way the struct looks in memory (specified with Panama)
     /// @param name      Name of the member link
-    public static MemorySegment containerOf(MemorySegment memberPtr, StructLayout layout, String name) {
+    public static MemorySegment containerOf(MemorySegment memberPtr, GroupLayout layout, String name) {
         var linkMemberByteOffset = layout.byteOffset(groupElement(name));
         var address = memberPtr.address() - linkMemberByteOffset;
 

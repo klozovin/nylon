@@ -5,8 +5,8 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.StructLayout;
 import java.lang.reflect.InvocationTargetException;
 
 import static jexwayland.util_h.*;
@@ -116,7 +116,7 @@ public final class List<T extends List.Element<@NonNull T>> {
 
     private T constructElement(@NonNull MemorySegment elementPtr) {
         try {
-            var element = meta.cls.getConstructor(MemorySegment.class).newInstance(elementPtr);
+            var element = meta.elementClass.getConstructor(MemorySegment.class).newInstance(elementPtr);
             return element;
         } catch (NoSuchMethodException | InvocationTargetException | InstantiationException |
                  IllegalAccessException e) {
@@ -124,15 +124,6 @@ public final class List<T extends List.Element<@NonNull T>> {
         }
     }
 
-
-    public record ElementMetadata<T extends List.Element<@NonNull T>>(
-        @NonNull Class<T> cls,
-        @NonNull StructLayout layout,
-        @NonNull String linkMemberName
-    ) {
-
-
-    }
 
     public interface Element<T extends Element<T>> {
         MemorySegment getLinkMemberPtr();
@@ -144,16 +135,12 @@ public final class List<T extends List.Element<@NonNull T>> {
         default @NonNull MemorySegment getPrev() {
             return wl_list.prev(getLinkMemberPtr());
         }
+    }
 
-//        default @NonNull T next() {
-//            try {
-//                var cls = (Class<Element<T>>) getClass();
-//                var ctor = cls.getConstructor(MemorySegment.class);
-//                var element = ctor.newInstance(wl_list.next(getLinkPtr()));
-//                return (T) element;
-//            } catch (Exception e) {
-//                throw new RuntimeException(e);
-//            }
-//        }
+    public record ElementMetadata<T extends List.Element<@NonNull T>>(
+        @NonNull Class<T> elementClass,
+        @NonNull GroupLayout layout,
+        @NonNull String linkMemberName
+    ) {
     }
 }
