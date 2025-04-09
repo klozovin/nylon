@@ -1,6 +1,7 @@
 package example.direct
 
 import jexwayland.*
+import jexwayland.util_h.wl_list_remove
 import jexwayland.wl_list
 import jexwayland.wl_listener
 import jexwayland.wl_notify_func_t
@@ -171,8 +172,8 @@ fun outputRemoveNotify(listener: MemorySegment, data: MemorySegment) {
 
     // wl_list_remove(&sample_output->frame.link);
     // wl_list_remove(&sample_output->destroy.link);
-    backend_h.wl_list_remove(wl_listener.link(Output.frame))
-    backend_h.wl_list_remove(wl_listener.link(Output.destroy))
+    wl_list_remove(wl_listener.link(Output.frame))
+    wl_list_remove(wl_listener.link(Output.destroy))
 
     // free(sample_output);
 }
@@ -261,8 +262,8 @@ fun keyboardDestroyNotify(listener: MemorySegment, data: MemorySegment) {
 
     // wl_list_remove(&keyboard->destroy.link);
     // wl_list_remove(&keyboard->key.link);
-    backend_h.wl_list_remove(wl_listener.link(Keyboard.destroy))
-    backend_h.wl_list_remove(wl_listener.link(Keyboard.key))
+    wl_list_remove(wl_listener.link(Keyboard.destroy))
+    wl_list_remove(wl_listener.link(Keyboard.key))
 
     // free(keyboard);
 }

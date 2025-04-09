@@ -81,8 +81,8 @@ public final class Output {
 
         Events(@NonNull MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
-            this.frame = new Signal<>(wlr_output.events.frame(eventsPtr), (_) -> null);
-            this.destroy = new Signal<>(wlr_output.events.destroy(eventsPtr), (_) -> null);
+            this.frame = new Signal<>(wlr_output.events.frame(eventsPtr));
+            this.destroy = new Signal<>(wlr_output.events.destroy(eventsPtr));
         }
     }
 }

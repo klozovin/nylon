@@ -2,6 +2,7 @@ package wlroots.wlr.types;
 
 import jexwlroots.types.wlr_input_device;
 import org.jspecify.annotations.NonNull;
+import wayland.server.Signal;
 
 import java.lang.foreign.MemorySegment;
 
@@ -11,10 +12,12 @@ import static jexwlroots.types.wlr_keyboard_h_1.wlr_keyboard_from_input_device;
 
 public final class InputDevice {
     public final @NonNull MemorySegment inputDevicePtr;
+    public final @NonNull Events events;
 
 
     public InputDevice(@NonNull MemorySegment inputDevicePtr) {
         this.inputDevicePtr = inputDevicePtr;
+        this.events = new Events(wlr_input_device.events(inputDevicePtr));
     }
 
 
@@ -45,6 +48,17 @@ public final class InputDevice {
 
         Type(int i) {
             this.constant = i;
+        }
+    }
+
+    public final static class Events {
+        public final @NonNull MemorySegment eventsPtr;
+        public final @NonNull Signal<Void> destroy;
+
+
+        public Events(@NonNull MemorySegment eventsPtr) {
+            this.eventsPtr = eventsPtr;
+            this.destroy = new Signal<>(wlr_input_device.events.destroy(eventsPtr));
         }
     }
 }

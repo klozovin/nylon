@@ -1,10 +1,10 @@
 package example.wrap
 
-import jexwayland.*
+import jexwayland.wl_listener
 import jexwlroots.backend_h
-import jexwlroots.types.wlr_input_device
 import jexxkb.xkbcommon_h
 import wayland.server.Display
+import wayland.server.Listener
 import wlroots.Log
 import wlroots.wlr.Backend
 import wlroots.wlr.render.Allocator
@@ -36,26 +36,30 @@ object State {
 
     // Output
     lateinit var output: Output
-    lateinit var outputFramePtr: MemorySegment          // struct wl_listener frame;
-    lateinit var outputDestroyPtr: MemorySegment        // struct wl_listener destroy;
+    lateinit var outputEventFrameListener: Listener         // struct wl_listener frame;
+    lateinit var outputEventDestroyListener: Listener       // struct wl_listener destroy;
 
     // Keyboard
     lateinit var keyboard: Keyboard
-    lateinit var keyboardPtr: MemorySegment             // struct wlr_keyboard *wlr_keyboard;
-    lateinit var keyboardKeyPtr: MemorySegment          // struct wl_listener key;
-    lateinit var keyboardDestroyPtr: MemorySegment      // struct wl_listener destroy;
+    lateinit var keyboardEventKeyListener: Listener         // struct wl_listener key;
+    lateinit var keyboardEventDestroyListener: Listener     // struct wl_listener destroy;
 }
 
 
 /**
- * ```static void new_output_notify(struct wl_listener *listener, void *data)```
+ * ```
+ * static void
+ * new_output_notify(
+ *      struct wl_listener *listener,
+ *      void *data)
+ * ```
  */
 fun newOutputNotify(output: Output) {
     State.output = output
 
     output.initRender(State.allocator, State.renderer)
-    output.events.frame.add(::outputFrameNotify)
-    output.events.destroy.add(::outputRemoveNotify)
+    State.outputEventFrameListener = output.events.frame.add(::outputFrameNotify)
+    State.outputEventDestroyListener = output.events.destroy.add(::outputRemoveNotify)
 
     // TODO: Memory lifetime - maybe use confined Arena?
     OutputState.allocate(autoArena).apply {
@@ -79,31 +83,9 @@ fun newInputNotify(inputDevice: InputDevice) {
     // struct sample_state *sample = wl_container_of(listener, sample, new_input);
 
     if (inputDevice.type == InputDevice.Type.KEYBOARD) {
-        // struct sample_keyboard *keyboard = calloc(1, sizeof(*keyboard));
-
-        // keyboard->wlr_keyboard = wlr_keyboard_from_input_device(device);
-//        State.keyboardPtr = wlr_keyboard_h.wlr_keyboard_from_input_device(inputDevice.inputDevicePtr)
         State.keyboard = inputDevice.keyboard
-//        State.keyboardPtr = State.keyboard.keyboardPtr
-
-
-        // wl_signal_add(&device->events.destroy, &keyboard->destroy);
-        // keyboard->destroy.notify = keyboard_destroy_notify;
-        State.keyboardDestroyPtr = wl_listener.allocate(arena)
-        wl_listener.notify(State.keyboardDestroyPtr, wl_notify_func_t.allocate(::keyboardDestroyNotify, arena))
-        wl_signal_add(
-            wlr_input_device.events.destroy(wlr_input_device.events(inputDevice.inputDevicePtr)),
-            State.keyboardDestroyPtr
-        )
-
-        // wl_signal_add(&keyboard->wlr_keyboard->events.key, &keyboard->key);
-        // keyboard->key.notify = keyboard_key_notify;
-//        State.keyboardKeyPtr = wl_listener.allocate(arena)
-//        wl_listener.notify(State.keyboardKeyPtr, wl_notify_func_t.allocate(::keyboardKeyNotify, arena))
-//        wl_signal_add(wlr_keyboard.events.key(wlr_keyboard.events(State.keyboardPtr)), State.keyboardKeyPtr)
-
-        State.keyboard.events.key.add(::keyboardKeyNotify)
-
+        State.keyboardEventDestroyListener = inputDevice.events.destroy.add(::keyboardDestroyNotify)
+        State.keyboardEventKeyListener = State.keyboard.events.key.add(::keyboardKeyNotify)
 
         // struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
         // if (!context) {
@@ -175,15 +157,8 @@ fun outputFrameNotify() {
 }
 
 
-//fun keyboardKeyNotify(listener: MemorySegment, keyboardKeyEventPtr: MemorySegment) {
 fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
-    // struct sample_keyboard *keyboard = wl_container_of(listener, keyboard, key);
-    // struct sample_state *sample = keyboard->sample;
-    // struct wlr_keyboard_key_event *event = data;
-
     // uint32_t keycode = event->keycode + 8;
-//    val keycodex = KeyboardKeyEvent(keyboardKeyEventPtr)
-//    val keycode = wlr_keyboard_key_event.keycode(keyboardKeyEventPtr) + 8
     val keycode = keyboardKeyEvent.keycode + 8
 
     // const xkb_keysym_t *syms;
@@ -202,7 +177,9 @@ fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
     for (i in 0..<nsyms) {
         val sym = symsPtr.get(xkbcommon_h.C_POINTER, i.toLong()).get(xkbcommon_h.xkb_keysym_t, 0)
         if (sym == xkbcommon_h.XKB_KEY_Escape()) {
-            backend_h.wl_display_terminate(State.display.displayPtr)
+            Log.logDebug("Before wl_display_terminate")
+            State.display.terminate()
+            Log.logDebug("After wl_display_terminate")
         } else {
             println("> keycode=$keycode, sym=$sym")
         }
@@ -213,19 +190,19 @@ fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
 fun outputRemoveNotify() {
     Log.logDebug("Output removed")
     // TODO: Handle list removal somehow?
-//    backend_h.wl_list_remove(wl_listener.link(State.outputFramePtr))
-//    backend_h.wl_list_remove(wl_listener.link(State.outputDestroyPtr))
+    backend_h.wl_list_remove(wl_listener.link(State.outputEventFrameListener.listenerPtr))
+    backend_h.wl_list_remove(wl_listener.link(State.outputEventDestroyListener.listenerPtr))
 }
 
 
-fun keyboardDestroyNotify(listener: MemorySegment, data: MemorySegment) {
+//fun keyboardDestroyNotify(listener: MemorySegment, data: MemorySegment) {
+fun keyboardDestroyNotify() {
     Log.logDebug("Keyboard removed")
-
     // wl_list_remove(&keyboard->destroy.link);
     // wl_list_remove(&keyboard->key.link);
     // TODO: Handle list removal!
-//    backend_h.wl_list_remove(wl_listener.link(State.keyboardDestroyPtr))
-//    backend_h.wl_list_remove(wl_listener.link(State.keyboardKeyPtr))
+    backend_h.wl_list_remove(wl_listener.link(State.keyboardEventDestroyListener.listenerPtr))
+    backend_h.wl_list_remove(wl_listener.link(State.keyboardEventKeyListener.listenerPtr))
 }
 
 
@@ -240,6 +217,7 @@ fun main() {
     backend.events.newOutput.add(::newOutputNotify)
     backend.events.newInput.add(::newInputNotify)
 
+
     State.lastFrame = System.currentTimeMillis()
 
     if (!backend.start()) {
@@ -250,23 +228,4 @@ fun main() {
 
     State.display.run()
     State.display.destroy()
-}
-
-
-/**
- * Add the specified listener to this signal.
- *
- * ```
- * static inline void wl_signal_add(struct wl_signal *signal, struct wl_listener *listener) {
- *     wl_list_insert(signal->listener_list.prev, &listener->link);
- * }
- * ```
- *
- *  @param signalPtr: The signal that will emit events to the listener
- *  @param listenerPtr: The listener to add
- */
-fun wl_signal_add(signalPtr: MemorySegment, listenerPtr: MemorySegment) {
-    val signal_listenerList_prev = wl_list.prev(wl_signal.listener_list(signalPtr))
-    val listener_link = wl_listener.link(listenerPtr)
-    server_h.wl_list_insert(signal_listenerList_prev, listener_link)
 }

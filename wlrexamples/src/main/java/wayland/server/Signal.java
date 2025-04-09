@@ -25,9 +25,21 @@ public class Signal<T> {
     public final @NonNull Function<MemorySegment, T> callbackArgumentCtor;
 
 
-    public Signal(@NotNull MemorySegment signalPtr, @NotNull Function<MemorySegment, T> callbackArgumentCtor) {
+    public Signal(@NonNull MemorySegment signalPtr, @NonNull Function<MemorySegment, T> callbackArgumentCtor) {
         this.signalPtr = signalPtr;
         this.callbackArgumentCtor = callbackArgumentCtor;
+        this.listenerList = new IList<Listener>() {
+            @Override
+            public @NonNull MemorySegment getLink() {
+                return wl_signal.listener_list(signalPtr);
+            }
+        };
+    }
+
+
+    public Signal(@NonNull MemorySegment signalPtr) {
+        this.signalPtr = signalPtr;
+        this.callbackArgumentCtor = (MemorySegment _) -> null;
         this.listenerList = new IList<Listener>() {
             @Override
             public @NonNull MemorySegment getLink() {
@@ -46,13 +58,16 @@ public class Signal<T> {
     ///```
     ///
     /// @param callback Callback function to call when the signal is emitted
-    public void add(@NonNull Consumer<T> callback) {
+    /// @return
+    public Listener add(@NonNull Consumer<T> callback) {
         // TODO: Memory ownership - can't be auto or confined/scope
-        listenerList.append(Listener.allocate(Arena.global(), (MemorySegment _, MemorySegment data) -> {
+        var listener = Listener.allocate(Arena.global(), (MemorySegment _, MemorySegment data) -> {
             assert data != null;
             assert data != MemorySegment.NULL;
             callback.accept(callbackArgumentCtor.apply(data));
-        }));
+        });
+        listenerList.append(listener);
+        return listener;
     }
 
 
@@ -65,12 +80,20 @@ public class Signal<T> {
     ///```
     ///
     /// @param callback Callback function to call when the signal is emitted
-    public void add(@NonNull Runnable callback) {
+    /// @return
+    public Listener add(@NonNull Runnable callback) {
         // TODO: Memory ownership - can't be auto or confined/scope
-        listenerList.append(Listener.allocate(Arena.global(), (MemorySegment _, MemorySegment data) -> {
+        var listener = Listener.allocate(Arena.global(), (MemorySegment _, MemorySegment data) -> {
             assert data != null;
             assert data != MemorySegment.NULL;
             callback.run();
-        }));
+        });
+        listenerList.append(listener);
+        return listener;
+    }
+
+
+    public static Void nullhandler(MemorySegment _data) {
+        return null;
     }
 }
