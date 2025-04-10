@@ -2,6 +2,7 @@ package example.wrap
 
 import jexwayland.wl_listener
 import jexwlroots.backend_h
+import jexwlroots.types.wlr_keyboard
 import jexxkb.xkbcommon_h
 import wayland.server.Display
 import wayland.server.Listener
@@ -11,6 +12,8 @@ import wlroots.wlr.render.Allocator
 import wlroots.wlr.render.RectOptions
 import wlroots.wlr.render.Renderer
 import wlroots.wlr.types.*
+import xkbcommon.XkbContext
+import xkbcommon.XkbKey
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 import kotlin.system.exitProcess
@@ -61,6 +64,9 @@ fun newOutputNotify(output: Output) {
     State.outputEventFrameListener = output.events.frame.add(::outputFrameNotify)
     State.outputEventDestroyListener = output.events.destroy.add(::outputRemoveNotify)
 
+    check(output.events.frame.listenerList.length() == 1)
+    check(output.events.destroy.listenerList.length() == 1)
+
     // TODO: Memory lifetime - maybe use confined Arena?
     OutputState.allocate(autoArena).apply {
         init()
@@ -84,6 +90,11 @@ fun newInputNotify(inputDevice: InputDevice) {
 
     if (inputDevice.type == InputDevice.Type.KEYBOARD) {
         State.keyboard = inputDevice.keyboard
+
+        check(State.keyboard.base.events.destroy.listenerList.length() == 0)
+        check(inputDevice.inputDevicePtr == wlr_keyboard.base(State.keyboard.keyboardPtr))
+        check(inputDevice.inputDevicePtr == State.keyboard.base.inputDevicePtr)
+
         State.keyboardEventDestroyListener = inputDevice.events.destroy.add(::keyboardDestroyNotify)
         State.keyboardEventKeyListener = State.keyboard.events.key.add(::keyboardKeyNotify)
 
@@ -92,8 +103,8 @@ fun newInputNotify(inputDevice: InputDevice) {
         //      wlr_log(WLR_ERROR, "Failed to create XKB context");
         //      exit(1);
         // }
-        val xkbContextPtr = xkbcommon_h.xkb_context_new(xkbcommon_h.XKB_CONTEXT_NO_FLAGS())
-        if (xkbContextPtr == MemorySegment.NULL) {
+        val xkbContext = XkbContext.newContext(XkbContext.Flags.NO_FLAGS)
+        if (xkbContext == null) {
             Log.logError("Failed to create XKB context")
             exitProcess(1)
         }
@@ -104,7 +115,7 @@ fun newInputNotify(inputDevice: InputDevice) {
         //     exit(1);
         // }
         val xkbKeymapPtr = xkbcommon_h.xkb_keymap_new_from_names(
-            xkbContextPtr,
+            xkbContext.xkbContextPtr,
             MemorySegment.NULL,
             xkbcommon_h.XKB_KEYMAP_COMPILE_NO_FLAGS()
         )
@@ -120,12 +131,14 @@ fun newInputNotify(inputDevice: InputDevice) {
         // xkb_keymap_unref(keymap);
         // xkb_context_unref(context);
         xkbcommon_h.xkb_keymap_unref(xkbKeymapPtr)
-        xkbcommon_h.xkb_context_unref(xkbContextPtr)
+        xkbcommon_h.xkb_context_unref(xkbContext.xkbContextPtr)
     }
 }
 
 
 fun outputFrameNotify() {
+    check(State.keyboard.base.events.destroy.listenerList.length() == 1)
+
     val now = System.currentTimeMillis()
     val ms = now - State.lastFrame
     val inc = (State.dec + 1) % 3
@@ -154,35 +167,24 @@ fun outputFrameNotify() {
         outputState.finish()
     }
     State.lastFrame = now
+
+    check(State.keyboard.base.events.destroy.listenerList.length() == 1)
 }
 
 
 fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
     // uint32_t keycode = event->keycode + 8;
+
     val keycode = keyboardKeyEvent.keycode + 8
+    val keySym = State.keyboard.xkbState.getOneSym(keycode)
 
-    // const xkb_keysym_t *syms;
-    val symsPtr = arena.allocate(xkbcommon_h.C_POINTER)
+    check(keySym != XkbKey.NoSymbol)
 
-    // int nsyms = xkb_state_key_get_syms(keyboard->wlr_keyboard->xkb_state, keycode, &syms);
-    val nsyms = xkbcommon_h.xkb_state_key_get_syms(State.keyboard.xkbState, keycode, symsPtr)
-
-    // for (int i = 0; i < nsyms; i++) {
-    //     xkb_keysym_t sym = syms[i];
-    //     if (sym == XKB_KEY_Escape) {
-    //         wl_display_terminate(sample->display);
-    //     }
-    // }
-    println("xkb: nsyms = $nsyms")
-    for (i in 0..<nsyms) {
-        val sym = symsPtr.get(xkbcommon_h.C_POINTER, i.toLong()).get(xkbcommon_h.xkb_keysym_t, 0)
-        if (sym == xkbcommon_h.XKB_KEY_Escape()) {
-            Log.logDebug("Before wl_display_terminate")
-            State.display.terminate()
-            Log.logDebug("After wl_display_terminate")
-        } else {
-            println("> keycode=$keycode, sym=$sym")
-        }
+    println("> keycode=$keycode, sym=$keySym")
+    if (keySym == XkbKey.Escape) {
+        Log.logDebug("Terminating display...")
+        State.display.terminate()
+        Log.logDebug("...terminated display!")
     }
 }
 
@@ -192,17 +194,28 @@ fun outputRemoveNotify() {
     // TODO: Handle list removal somehow?
     backend_h.wl_list_remove(wl_listener.link(State.outputEventFrameListener.listenerPtr))
     backend_h.wl_list_remove(wl_listener.link(State.outputEventDestroyListener.listenerPtr))
+    check(State.output.events.frame.listenerList.empty() == true)
+    println(State.output.events.destroy.listenerList.empty())
+    println(State.output.events.destroy.listenerList.length())
+//    check(State.output.events.destroy.listenerList.empty() == true)
 }
 
 
-//fun keyboardDestroyNotify(listener: MemorySegment, data: MemorySegment) {
 fun keyboardDestroyNotify() {
     Log.logDebug("Keyboard removed")
+//    check(State.keyboard.base.events.destroy.listenerList.length() == 1)
+
+    println("Keyboard.base.events.destroy listeners: ${State.keyboard.base.events.destroy.listenerList.length()}")
+
     // wl_list_remove(&keyboard->destroy.link);
     // wl_list_remove(&keyboard->key.link);
     // TODO: Handle list removal!
     backend_h.wl_list_remove(wl_listener.link(State.keyboardEventDestroyListener.listenerPtr))
     backend_h.wl_list_remove(wl_listener.link(State.keyboardEventKeyListener.listenerPtr))
+
+    check(State.keyboard.events.key.listenerList.empty() == true)
+    println("Keyboard.base.events.destroy listeners: ${State.keyboard.base.events.destroy.listenerList.length()}")
+//    check(State.keyboard.events.destroy.listenerList.empty() == true)
 }
 
 
@@ -217,6 +230,9 @@ fun main() {
     backend.events.newOutput.add(::newOutputNotify)
     backend.events.newInput.add(::newInputNotify)
 
+    check(backend.events.newOutput.listenerList.length() == 1)
+    check(backend.events.newInput.listenerList.length() == 1)
+
 
     State.lastFrame = System.currentTimeMillis()
 
@@ -227,5 +243,9 @@ fun main() {
     }
 
     State.display.run()
+
+    check(State.keyboard.base.events.destroy.listenerList.length() == 1)
+
+
     State.display.destroy()
 }
