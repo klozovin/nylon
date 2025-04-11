@@ -10,7 +10,7 @@ import jexwlroots.types.*
 import jexwlroots.wlr_backend
 import jexwlroots.wlr_output
 import jexwlroots.wlr_output_state
-import jexxkb.xkbcommon_h
+import jexxkbcommon.xkbcommon_h
 import wayland.server.Display
 import wlroots.Log
 import wlroots.wlr.Backend

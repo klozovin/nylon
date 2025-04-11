@@ -6,7 +6,7 @@ output="src/generated/java"
 
 #<editor-fold desc="xkbcommon">
 jextract --library "xkbcommon" --output $output \
-    --target-package jexxkb                        \
+    --target-package jexxkbcommon               \
     "/usr/include/xkbcommon/xkbcommon.h"
 #</editor-fold>
 

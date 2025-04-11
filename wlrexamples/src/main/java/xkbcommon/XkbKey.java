@@ -1,7 +1,7 @@
 package xkbcommon;
 
-import static jexxkb.xkbcommon_h.XKB_KEY_Escape;
-import static jexxkb.xkbcommon_h.XKB_KEY_NoSymbol;
+import static jexxkbcommon.xkbcommon_h.XKB_KEY_Escape;
+import static jexxkbcommon.xkbcommon_h.XKB_KEY_NoSymbol;
 
 public final class XkbKey {
     public static int Escape = XKB_KEY_Escape();

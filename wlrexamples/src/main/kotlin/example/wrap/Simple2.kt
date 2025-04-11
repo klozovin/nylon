@@ -3,7 +3,7 @@ package example.wrap
 import jexwayland.wl_listener
 import jexwlroots.backend_h
 import jexwlroots.types.wlr_keyboard
-import jexxkb.xkbcommon_h
+import jexxkbcommon.xkbcommon_h
 import wayland.server.Display
 import wayland.server.Listener
 import wlroots.Log

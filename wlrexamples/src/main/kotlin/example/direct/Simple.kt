@@ -13,7 +13,7 @@ import jexwlroots.util.log_h
 import jexwlroots.wlr_backend
 import jexwlroots.wlr_output
 import jexwlroots.wlr_output_state
-import jexxkb.xkbcommon_h
+import jexxkbcommon.xkbcommon_h
 import wlroots.Log
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
