@@ -1,6 +1,6 @@
 package wlroots.wlr.types;
 
-import jexwlroots.types.wlr_keyboard_key_event;
+import jextract.wlroots.types.wlr_keyboard_key_event;
 import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.MemorySegment;

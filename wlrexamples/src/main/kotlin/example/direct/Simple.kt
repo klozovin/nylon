@@ -1,19 +1,21 @@
 package example.direct
 
-import jexwayland.*
-import jexwayland.util_h.wl_list_remove
-import jexwayland.wl_list
-import jexwayland.wl_listener
-import jexwayland.wl_notify_func_t
-import jexwayland.wl_signal
-import jexwlroots.backend_h
-import jexwlroots.render.allocator_h
-import jexwlroots.types.*
-import jexwlroots.util.log_h
-import jexwlroots.wlr_backend
-import jexwlroots.wlr_output
-import jexwlroots.wlr_output_state
-import jexxkbcommon.xkbcommon_h
+import jextract.wayland.server.server_core_h.wl_display_create
+import jextract.wayland.server.server_core_h.wl_display_get_event_loop
+import jextract.wayland.server.wl_listener
+import jextract.wayland.server.wl_notify_func_t
+import jextract.wayland.server.wl_signal
+import jextract.wayland.util.util_h.wl_list_insert
+import jextract.wayland.util.util_h.wl_list_remove
+import jextract.wayland.util.wl_list
+import jextract.wlroots.backend_h
+import jextract.wlroots.render.allocator_h
+import jextract.wlroots.types.*
+import jextract.wlroots.util.log_h
+import jextract.wlroots.wlr_backend
+import jextract.wlroots.wlr_output
+import jextract.wlroots.wlr_output_state
+import jextract.xkbcommon.xkbcommon_h
 import wlroots.Log
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
@@ -142,7 +144,7 @@ fun outputFrameNotify(listener: MemorySegment, data: MemorySegment) {
             wlr_box.width(boxPtr, wlr_output.width(Output.output))
             wlr_box.height(boxPtr, wlr_output.height(Output.output))
         }
-        jexwlroots.wlr_render_rect_options.color(rectPtr).let { colorPtr ->
+        jextract.wlroots.wlr_render_rect_options.color(rectPtr).let { colorPtr ->
             wlr_render_color.r(colorPtr, State.color[0])
             wlr_render_color.g(colorPtr, State.color[1])
             wlr_render_color.b(colorPtr, State.color[2])
@@ -348,7 +350,7 @@ fun main() {
     log_h.wlr_log_init(log_h.WLR_DEBUG(), MemorySegment.NULL)
 
     // struct wl_display *display = wl_display_create();
-    val displayPtr = server_h.wl_display_create()
+    val displayPtr = wl_display_create()
     State.display = displayPtr
 
     // 	struct wlr_backend *backend = wlr_backend_autocreate(wl_display_get_event_loop(display), NULL);
@@ -356,7 +358,7 @@ fun main() {
     //      exit(1);
     //  }
     val backendPtr =
-        backend_h.wlr_backend_autocreate(server_h.wl_display_get_event_loop(displayPtr), MemorySegment.NULL)
+        backend_h.wlr_backend_autocreate(wl_display_get_event_loop(displayPtr), MemorySegment.NULL)
     if (backendPtr == MemorySegment.NULL)
         exitProcess(1)
 
@@ -414,5 +416,5 @@ fun main() {
 fun wl_signal_add(signalPtr: MemorySegment, listenerPtr: MemorySegment) {
     val signal_listenerList_prev = wl_list.prev(wl_signal.listener_list(signalPtr))
     val listener_link = wl_listener.link(listenerPtr)
-    server_h.wl_list_insert(signal_listenerList_prev, listener_link)
+    wl_list_insert(signal_listenerList_prev, listener_link)
 }

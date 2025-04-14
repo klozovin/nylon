@@ -1,6 +1,6 @@
 package wlroots.wlr.render;
 
-import jexwlroots.render.wlr_render_rect_options;
+import jextract.wlroots.render.wlr_render_rect_options;
 import org.jspecify.annotations.NullMarked;
 import wlroots.wlr.util.Box;
 

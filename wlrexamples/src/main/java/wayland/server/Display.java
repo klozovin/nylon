@@ -5,7 +5,7 @@ import org.jspecify.annotations.NullMarked;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jexwayland.server_h.*;
+import static jextract.wayland.server.server_core_h.*;
 
 
 @NullMarked

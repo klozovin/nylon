@@ -4,7 +4,7 @@ import wlroots.wlr.Backend;
 
 import java.lang.foreign.MemorySegment;
 
-import static jexwlroots.backend_h.wlr_renderer_autocreate;
+import static jextract.wlroots.backend_h.wlr_renderer_autocreate;
 
 
 public class Renderer {

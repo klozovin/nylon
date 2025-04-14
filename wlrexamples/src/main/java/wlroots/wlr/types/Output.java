@@ -1,6 +1,6 @@
 package wlroots.wlr.types;
 
-import jexwlroots.types.wlr_output;
+import jextract.wlroots.types.wlr_output;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -15,7 +15,7 @@ import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
-import static jexwlroots.types.wlr_output_h.*;
+import static jextract.wlroots.types.wlr_output_h.*;
 
 
 public final class Output {

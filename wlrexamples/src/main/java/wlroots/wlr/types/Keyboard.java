@@ -1,6 +1,6 @@
 package wlroots.wlr.types;
 
-import jexwlroots.types.wlr_keyboard;
+import jextract.wlroots.types.wlr_keyboard;
 import org.jspecify.annotations.NullMarked;
 import wayland.server.Signal;
 import xkbcommon.Keymap;
@@ -9,7 +9,7 @@ import xkbcommon.XkbState;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jexwlroots.types.wlr_keyboard_h.wlr_keyboard_set_keymap;
+import static jextract.wlroots.types.wlr_keyboard_h.wlr_keyboard_set_keymap;
 
 
 @NullMarked

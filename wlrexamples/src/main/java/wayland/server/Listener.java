@@ -1,7 +1,7 @@
 package wayland.server;
 
-import jexwayland.wl_listener;
-import jexwayland.wl_notify_func_t;
+import jextract.wayland.server.wl_listener;
+import jextract.wayland.server.wl_notify_func_t;
 import org.jspecify.annotations.NonNull;
 import wayland.util.List;
 import wayland.util.List.ElementMetadata;

@@ -5,8 +5,8 @@ import org.jspecify.annotations.NullMarked;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jexwlroots.render.pass_h.wlr_render_pass_add_rect;
-import static jexwlroots.render.pass_h.wlr_render_pass_submit;
+import static jextract.wlroots.render.pass_h.wlr_render_pass_add_rect;
+import static jextract.wlroots.render.pass_h.wlr_render_pass_submit;
 
 
 @NullMarked

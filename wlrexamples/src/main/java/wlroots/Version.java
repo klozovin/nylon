@@ -1,6 +1,6 @@
 package wlroots;
 
-import static jexwlroots.version_h.*;
+import static jextract.wlroots.version_h.*;
 
 
 public final class Version {

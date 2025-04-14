@@ -5,8 +5,8 @@ import org.jspecify.annotations.NullMarked;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jexxkbcommon.xkbcommon_h.XKB_KEYMAP_COMPILE_NO_FLAGS;
-import static jexxkbcommon.xkbcommon_h.xkb_keymap_unref;
+import static jextract.xkbcommon.xkbcommon_h.XKB_KEYMAP_COMPILE_NO_FLAGS;
+import static jextract.xkbcommon.xkbcommon_h.xkb_keymap_unref;
 
 
 @NullMarked

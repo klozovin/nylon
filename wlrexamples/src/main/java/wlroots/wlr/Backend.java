@@ -1,6 +1,6 @@
 package wlroots.wlr;
 
-import jexwlroots.wlr_backend;
+import jextract.wlroots.wlr_backend;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -13,7 +13,7 @@ import wlroots.wlr.types.Output;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jexwlroots.backend_h.*;
+import static jextract.wlroots.backend_h.*;
 
 
 /// A backend provides a set of input and output devices.

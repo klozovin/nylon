@@ -1,6 +1,6 @@
 package wlroots.wlr.render;
 
-import jexwlroots.render.wlr_render_color;
+import jextract.wlroots.render.wlr_render_color;
 import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.MemorySegment;

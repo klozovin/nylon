@@ -6,7 +6,7 @@ import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.equals.shouldNotBeEqual
 import io.kotest.matchers.nulls.shouldBeNull
-import jexwayland.wl_list
+import jextract.wayland.util.wl_list
 import java.lang.foreign.Arena
 import java.lang.foreign.MemoryLayout
 import java.lang.foreign.MemoryLayout.PathElement.groupElement

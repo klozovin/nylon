@@ -4,7 +4,7 @@ import wlroots.wlr.Backend;
 
 import java.lang.foreign.MemorySegment;
 
-import static jexwlroots.render.allocator_h.wlr_allocator_autocreate;
+import static jextract.wlroots.render.allocator_h.wlr_allocator_autocreate;
 
 
 public class Allocator {

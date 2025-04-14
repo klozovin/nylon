@@ -1,13 +1,13 @@
 package xkbcommon;
 
-import jexxkbcommon.xkbcommon_h;
+import jextract.xkbcommon.xkbcommon_h;
 import org.jspecify.annotations.NonNull;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
-import static jexxkbcommon.xkbcommon_h.xkb_state_key_get_one_sym;
-import static jexxkbcommon.xkbcommon_h.xkb_state_key_get_syms;
+import static jextract.xkbcommon.xkbcommon_h.xkb_state_key_get_one_sym;
+import static jextract.xkbcommon.xkbcommon_h.xkb_state_key_get_syms;
 
 
 public class XkbState {

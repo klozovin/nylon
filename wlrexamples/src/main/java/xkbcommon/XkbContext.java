@@ -6,7 +6,7 @@ import org.jspecify.annotations.Nullable;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jexxkbcommon.xkbcommon_h.*;
+import static jextract.xkbcommon.xkbcommon_h.*;
 
 
 public class XkbContext {

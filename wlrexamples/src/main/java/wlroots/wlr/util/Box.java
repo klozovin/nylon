@@ -1,6 +1,6 @@
 package wlroots.wlr.util;
 
-import jexwlroots.wlr_box;
+import jextract.wlroots.wlr_box;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 

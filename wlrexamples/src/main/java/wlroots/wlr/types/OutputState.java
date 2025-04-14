@@ -1,13 +1,13 @@
 package wlroots.wlr.types;
 
-import jexwlroots.types.wlr_output_state;
+import jextract.wlroots.types.wlr_output_state;
 import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jexwlroots.types.wlr_output_h.*;
+import static jextract.wlroots.types.wlr_output_h.*;
 
 
 /// Holds the double-buffered output state.

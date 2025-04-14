@@ -1,14 +1,14 @@
 package wlroots.wlr.types;
 
-import jexwlroots.types.wlr_input_device;
+import jextract.wlroots.types.wlr_input_device;
 import org.jspecify.annotations.NonNull;
 import wayland.server.Signal;
 
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jexwlroots.types.wlr_input_device_h.*;
-import static jexwlroots.types.wlr_keyboard_h.wlr_keyboard_from_input_device;
+import static jextract.wlroots.types.wlr_input_device_h.*;
+import static jextract.wlroots.types.wlr_keyboard_h.wlr_keyboard_from_input_device;
 
 
 public final class InputDevice {
