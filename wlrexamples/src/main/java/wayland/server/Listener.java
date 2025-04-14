@@ -9,16 +9,21 @@ import wayland.util.List.ElementMetadata;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
+import static java.lang.foreign.MemorySegment.NULL;
 
+/// ```
+/// struct wl_listener {
+///     struct wl_list link;
+///     wl_notify_func_t notify;
+///};
+///```
 public class Listener implements List.Element<Listener> {
-
-    public static ElementMetadata<Listener> listElementMeta =
-        new ElementMetadata<>(Listener.class, wl_listener.layout(), "link");
-
+    public static ElementMetadata<Listener> listElementMeta = new ElementMetadata<>(Listener.class, wl_listener.layout(), "link");
     public final @NonNull MemorySegment listenerPtr;
 
 
     private Listener(@NonNull MemorySegment listenerPtr) {
+        assert !listenerPtr.equals(NULL);
         this.listenerPtr = listenerPtr;
     }
 
@@ -33,6 +38,8 @@ public class Listener implements List.Element<Listener> {
 
     @Override
     public MemorySegment getLinkMemberPtr() {
-        return listenerPtr;
+        var linkPtr = wl_listener.link(listenerPtr);
+        assert linkPtr.equals(listenerPtr);
+        return linkPtr;
     }
 }

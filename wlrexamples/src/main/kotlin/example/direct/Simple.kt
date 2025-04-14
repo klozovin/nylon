@@ -180,7 +180,13 @@ fun outputRemoveNotify(listener: MemorySegment, data: MemorySegment) {
 
 
 /**
- * ```static void new_output_notify(struct wl_listener *listener, void *data)```
+ * ```
+ * static void
+ * new_output_notify(
+ *      struct wl_listener *listener,
+ *      void *data
+ * )
+ * ```
  */
 fun newOutputNotify(listenerPtr: MemorySegment, outputPtr: MemorySegment) {
     // struct wlr_output *output = data;
@@ -284,7 +290,7 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
         // struct sample_keyboard *keyboard = calloc(1, sizeof(*keyboard));
 
         // keyboard->wlr_keyboard = wlr_keyboard_from_input_device(device);
-        Keyboard.keyboard = wlr_keyboard_h_1.wlr_keyboard_from_input_device(inputDevicePtr)
+        Keyboard.keyboard = wlr_keyboard_h.wlr_keyboard_from_input_device(inputDevicePtr)
 
         // keyboard->sample = sample;
 
@@ -327,7 +333,7 @@ fun newInputNotify(listenerPtr: MemorySegment, inputDevicePtr: MemorySegment) {
         }
 
         // wlr_keyboard_set_keymap(keyboard->wlr_keyboard, keymap);
-        wlr_keyboard_h_1.wlr_keyboard_set_keymap(Keyboard.keyboard, xkbKeymapPtr)
+        wlr_keyboard_h.wlr_keyboard_set_keymap(Keyboard.keyboard, xkbKeymapPtr)
 
         // xkb_keymap_unref(keymap);
         // xkb_context_unref(context);

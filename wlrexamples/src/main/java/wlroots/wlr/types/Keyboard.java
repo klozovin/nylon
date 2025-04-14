@@ -1,46 +1,49 @@
 package wlroots.wlr.types;
 
 import jexwlroots.types.wlr_keyboard;
-import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import wayland.server.Signal;
+import xkbcommon.Keymap;
 import xkbcommon.XkbState;
 
 import java.lang.foreign.MemorySegment;
 
-import static jexwlroots.types.wlr_keyboard_h_1.wlr_keyboard_set_keymap;
+import static java.lang.foreign.MemorySegment.NULL;
+import static jexwlroots.types.wlr_keyboard_h.wlr_keyboard_set_keymap;
 
 
+@NullMarked
 public class Keyboard {
-    public final @NonNull MemorySegment keyboardPtr;
-    public final @NonNull InputDevice base;
-    public final @NonNull Events events;
+    public final MemorySegment keyboardPtr;
+    public final InputDevice base;
+    public final Events events;
 
 
-    public Keyboard(@NotNull MemorySegment keyboardPtr) {
+    public Keyboard(MemorySegment keyboardPtr) {
+        assert !keyboardPtr.equals(NULL);
         this.keyboardPtr = keyboardPtr;
         this.base = new InputDevice(wlr_keyboard.base(keyboardPtr));
         this.events = new Events(wlr_keyboard.events(keyboardPtr));
     }
 
 
-    @Deprecated
-    public boolean setKeymap(MemorySegment keymap) {
-        return wlr_keyboard_set_keymap(keyboardPtr, keymap);
+    public boolean setKeymap(Keymap keymap) {
+        return wlr_keyboard_set_keymap(keyboardPtr, keymap.keymapPtr);
     }
 
 
-    public XkbState getXkbState() {
+    public XkbState xkbState() {
         return new XkbState(wlr_keyboard.xkb_state(keyboardPtr));
     }
 
 
+    @NullMarked
     public final static class Events {
-        public final @NonNull MemorySegment eventsPtr;
-        public final @NonNull Signal<KeyboardKeyEvent> key;
+        public final MemorySegment eventsPtr;
+        public final Signal<KeyboardKeyEvent> key;
 
 
-        public Events(@NotNull MemorySegment eventsPtr) {
+        public Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
             this.key = new Signal<>(wlr_keyboard.events.key(eventsPtr), KeyboardKeyEvent::new);
         }

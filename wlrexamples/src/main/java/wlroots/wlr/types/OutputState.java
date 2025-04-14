@@ -1,20 +1,24 @@
 package wlroots.wlr.types;
 
 import jexwlroots.types.wlr_output_state;
+import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
+import static java.lang.foreign.MemorySegment.NULL;
 import static jexwlroots.types.wlr_output_h.*;
 
 
 /// Holds the double-buffered output state.
+@NullMarked
 public final class OutputState {
 
     public final MemorySegment outputStatePtr;
 
 
     public OutputState(MemorySegment outputStatePtr) {
+        assert !outputStatePtr.equals(NULL);
         this.outputStatePtr = outputStatePtr;
     }
 
@@ -41,7 +45,7 @@ public final class OutputState {
     /// Sets the output mode of an output. An output mode will specify the resolution and refresh
     /// rate, among other things.
     ///
-    /// This state will be applied once [#commitState] is called.
+    /// This state will be applied once {@link Output#commitState(OutputState)} is called.
     public void setMode(OutputMode mode) {
         wlr_output_state_set_mode(outputStatePtr, mode.outputModePtr);
     }

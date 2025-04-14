@@ -1,17 +1,20 @@
 package wayland.server;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.MemorySegment;
 
+import static java.lang.foreign.MemorySegment.NULL;
 import static jexwayland.server_h.*;
 
 
+@NullMarked
 public class Display {
-    public final @NonNull MemorySegment displayPtr;
+    public final MemorySegment displayPtr;
 
 
-    private Display(@NonNull MemorySegment displayPtr) {
+    private Display(MemorySegment displayPtr) {
+        assert !displayPtr.equals(NULL);
         this.displayPtr = displayPtr;
     }
 

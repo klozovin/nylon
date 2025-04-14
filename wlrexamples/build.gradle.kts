@@ -28,23 +28,22 @@ tasks.withType<Test> {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_22
-    targetCompatibility = JavaVersion.VERSION_22
+    sourceCompatibility = JavaVersion.VERSION_23
+    targetCompatibility = JavaVersion.VERSION_23
+    toolchain.languageVersion = JavaLanguageVersion.of(24)
 }
 
 kotlin.compilerOptions {
-    languageVersion = KotlinVersion.KOTLIN_2_0
-    apiVersion = KotlinVersion.KOTLIN_2_0
-    jvmTarget = JvmTarget.JVM_22
+    jvmTarget = JvmTarget.JVM_23
+    apiVersion = KotlinVersion.KOTLIN_2_1
+    languageVersion = KotlinVersion.KOTLIN_2_1
 }
 
 application {
-//    mainClass.set("example.wrap.simple.SimpleKt")
-    mainClass.set("example.wrap.Simple2Kt")
+    mainClass.set("example.wrap.SimpleKt")
     applicationDefaultJvmArgs = listOf(
         "-ea",
         "--enable-native-access=ALL-UNNAMED",
-//        "-XX:+UseCompactObjectHeaders",
 //        "-Dforeign.restricted=permit",
     )
 }

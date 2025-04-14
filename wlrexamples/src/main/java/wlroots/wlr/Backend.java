@@ -1,8 +1,8 @@
 package wlroots.wlr;
 
 import jexwlroots.wlr_backend;
-import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.EventLoop;
 import wayland.server.Signal;
@@ -12,6 +12,7 @@ import wlroots.wlr.types.Output;
 
 import java.lang.foreign.MemorySegment;
 
+import static java.lang.foreign.MemorySegment.NULL;
 import static jexwlroots.backend_h.*;
 
 
@@ -25,19 +26,9 @@ public final class Backend {
 
 
     public Backend(@NonNull MemorySegment backendPtr) {
-        assert backendPtr != MemorySegment.NULL;
+        assert !backendPtr.equals(NULL);
         this.backendPtr = backendPtr;
         this.events = new Events(wlr_backend.events(backendPtr));
-    }
-
-
-    public boolean start() {
-        return wlr_backend_start(backendPtr);
-    }
-
-
-    public void destroy() {
-        wlr_backend_destroy(backendPtr);
     }
 
 
@@ -52,30 +43,38 @@ public final class Backend {
     ///
     /// `struct wlr_backend *wlr_backend_autocreate(​struct wl_event_loop *loop, struct wlr_session **session_ptr);`
     public static @Nullable Backend autocreate(@NonNull EventLoop eventLoop, @Nullable Session session) {
-        var sessionPtr = switch (session) {
-            case null -> MemorySegment.NULL;
-            case Session s -> s.sessionPtr;
-        };
-        var backendPtr = wlr_backend_autocreate(eventLoop.eventLoopPtr, sessionPtr);
-        assert backendPtr != null;
-
-        if (backendPtr != MemorySegment.NULL)
-            return new Backend(backendPtr);
-        else
-            return null;
+        var backendPtr = wlr_backend_autocreate(
+            eventLoop.eventLoopPtr,
+            switch (session) {
+                case Session s -> s.sessionPtr;
+                case null -> NULL;
+            });
+        return !backendPtr.equals(NULL) ? new Backend(backendPtr) : null;
     }
 
 
+    public boolean start() {
+        return wlr_backend_start(backendPtr);
+    }
+
+
+    public void destroy() {
+        wlr_backend_destroy(backendPtr);
+    }
+
+
+    @NullMarked
     public final static class Events {
-        public final @NonNull MemorySegment eventsPtr;
-        public final @NonNull Signal<Output> newOutput;
-        public final @NonNull Signal<InputDevice> newInput;
+        public final MemorySegment eventsPtr;
+        public final Signal<Output> newOutput;
+        public final Signal<InputDevice> newInput;
 
 
-        Events(@NotNull MemorySegment eventsPtr) {
+        Events(MemorySegment eventsPtr) {
+            assert !eventsPtr.equals(NULL);
             this.eventsPtr = eventsPtr;
             newOutput = new Signal<>(wlr_backend.events.new_output(eventsPtr), Output::new);
-            newInput  = new Signal<>(wlr_backend.events.new_input(eventsPtr), InputDevice::new);
+            newInput = new Signal<>(wlr_backend.events.new_input(eventsPtr), InputDevice::new);
         }
     }
 }

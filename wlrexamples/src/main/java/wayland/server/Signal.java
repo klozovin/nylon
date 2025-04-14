@@ -9,6 +9,8 @@ import java.lang.foreign.MemorySegment;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static java.lang.foreign.MemorySegment.NULL;
+
 
 /// A source of a type of observable event.
 ///
@@ -16,6 +18,12 @@ import java.util.function.Function;
 /// the server can provide signals. Observers are wl_listener's that are added through
 /// wl_signal_add. Signals are emitted using wl_signal_emit, which will invoke all listeners until
 /// that listener is removed by wl_list_remove() (or whenever the signal is destroyed).
+///
+/// ```c
+/// struct wl_signal {
+///     struct wl_list listener_list;
+///};
+///```
 ///
 /// @param <T> type of parameters that gets passed to signal callback function
 public class Signal<T> {
@@ -48,12 +56,14 @@ public class Signal<T> {
     ///
     /// @param callback Callback function to call when the signal is emitted
     /// @return
-    public Listener add(@NonNull Consumer<T> callback) {
+    public @NonNull Listener add(@NonNull Consumer<T> callback) {
         // TODO: Memory ownership - can't be auto or confined/scope
-        var listener = Listener.allocate(Arena.global(), (MemorySegment _, MemorySegment data) -> {
-            assert data != null;
-            assert data != MemorySegment.NULL;
-            callback.accept(callbackArgumentCtor.apply(data));
+        var listener = Listener.allocate(Arena.global(), (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
+            assert listenerPtr != null;
+            assert !listenerPtr.equals(NULL);
+            assert dataPtr != null;
+            assert !dataPtr.equals(NULL);
+            callback.accept(callbackArgumentCtor.apply(dataPtr));
         });
         listenerList.append(listener);
         return listener;
@@ -70,14 +80,22 @@ public class Signal<T> {
     ///
     /// @param callback Callback function to call when the signal is emitted
     /// @return
-    public Listener add(@NonNull Runnable callback) {
+    public @NonNull Listener add(@NonNull Runnable callback) {
         // TODO: Memory ownership - can't be auto or confined/scope
-        var listener = Listener.allocate(Arena.global(), (MemorySegment _, MemorySegment data) -> {
-            assert data != null;
-            assert data != MemorySegment.NULL;
+        var listener = Listener.allocate(Arena.global(), (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
+            assert listenerPtr != null;
+            assert !listenerPtr.equals(NULL);
+            assert dataPtr != null;
+            assert !dataPtr.equals(NULL);
             callback.run();
         });
         listenerList.append(listener);
         return listener;
+    }
+
+
+    /// Convenience function to remove a listener from the signal. Does not existst in C code.
+    public void remove(@NonNull Listener listener) {
+        listenerList.remove(listener);
     }
 }

@@ -135,10 +135,10 @@ class ListTest : FunSpec({
             list.last.shouldBeNull()
         }
         test("List.prev should point to list head") {
-            list.prev shouldBeEqual list.listPtr
+            list.prev() shouldBeEqual list.listPtr
         }
         test("Pointer .next should point to list head") {
-            list.next shouldBeEqual list.listPtr
+            list.next() shouldBeEqual list.listPtr
         }
     }
 
@@ -169,8 +169,8 @@ class ListTest : FunSpec({
             element.getZ() shouldBeEqual 300
         }
         test("List.prev and List.next point to the same element") {
-            list.prev shouldBeEqual element.linkMemberPtr
-            list.next shouldBeEqual element.linkMemberPtr
+            list.prev() shouldBeEqual element.linkMemberPtr
+            list.next() shouldBeEqual element.linkMemberPtr
         }
         test("List.first is structurally the same object as the inserted element") {
             val first = list.first!!
@@ -214,13 +214,13 @@ class ListTest : FunSpec({
             list.last!! shouldBeEqual element3
         }
         test("List.next pointers") {
-            list.next shouldBeEqual element1.linkMemberPtr
+            list.next() shouldBeEqual element1.linkMemberPtr
             element1.next shouldBeEqual element2.linkMemberPtr
             element2.next shouldBeEqual element3.linkMemberPtr
             element3.next shouldBeEqual list.listPtr
         }
         test("List.prev pointers") {
-            list.prev shouldBeEqual element3.linkMemberPtr
+            list.prev() shouldBeEqual element3.linkMemberPtr
             element3.prev shouldBeEqual element2.linkMemberPtr
             element2.prev shouldBeEqual element1.linkMemberPtr
             element1.prev shouldBeEqual list.listPtr

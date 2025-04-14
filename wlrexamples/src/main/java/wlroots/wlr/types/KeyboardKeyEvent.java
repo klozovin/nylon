@@ -1,22 +1,25 @@
 package wlroots.wlr.types;
 
 import jexwlroots.types.wlr_keyboard_key_event;
-import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.MemorySegment;
 
+import static java.lang.foreign.MemorySegment.NULL;
 
+
+@NullMarked
 public class KeyboardKeyEvent {
-    public final @NonNull MemorySegment keyboardKeyEventPtr;
+    public final MemorySegment keyboardKeyEventPtr;
 
 
-    public int getKeycode() {
-        return wlr_keyboard_key_event.keycode(keyboardKeyEventPtr);
+    public KeyboardKeyEvent(MemorySegment keyboardKeyEventPtr) {
+        assert !keyboardKeyEventPtr.equals(NULL);
+        this.keyboardKeyEventPtr = keyboardKeyEventPtr;
     }
 
 
-    public KeyboardKeyEvent(@NotNull MemorySegment keyboardKeyEventPtr) {
-        this.keyboardKeyEventPtr = keyboardKeyEventPtr;
+    public int keycode() {
+        return wlr_keyboard_key_event.keycode(keyboardKeyEventPtr);
     }
 }

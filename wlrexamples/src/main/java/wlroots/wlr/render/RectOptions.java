@@ -1,27 +1,30 @@
 package wlroots.wlr.render;
 
 import jexwlroots.render.wlr_render_rect_options;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import wlroots.wlr.util.Box;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
+import static java.lang.foreign.MemorySegment.NULL;
 
-public class RectOptions {
-    public final @NonNull MemorySegment rectOptionsPtr;
-    public final @NonNull Box box;
-    public final @NonNull Color color;
+@NullMarked
+public final class RectOptions {
+    public final MemorySegment rectOptionsPtr;
+    public final Box box;
+    public final Color color;
 
 
-    public RectOptions(@NonNull MemorySegment rectOptionsPtr) {
+    public RectOptions(MemorySegment rectOptionsPtr) {
+        assert !rectOptionsPtr.equals(NULL);
         this.rectOptionsPtr = rectOptionsPtr;
         this.box = new Box(wlr_render_rect_options.box(rectOptionsPtr));
         this.color = new Color(wlr_render_rect_options.color(rectOptionsPtr));
     }
 
 
-    public static @NonNull RectOptions allocate(Arena arena) {
+    public static RectOptions allocate(Arena arena) {
         return new RectOptions(wlr_render_rect_options.allocate(arena));
     }
 }

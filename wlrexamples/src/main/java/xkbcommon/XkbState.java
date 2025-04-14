@@ -21,13 +21,20 @@ public class XkbState {
 
     /// Get the single keysym obtained from pressing a particular key in a given keyboard state.
     ///
-    /// @return The keysym. If the key does not have exactly one keysym, returns XKB_KEY_NoSymbol
-    public int getOneSym(int keycode) {
+    /// This function is similar to {@link #keyGetSyms(int)}, but intended for users which cannot or do
+    /// not want to handle the case where multiple keysyms are returned (in which case this
+    /// function is preferred).
+    ///
+    /// This function performs Capitalization [keysym transformation](https://xkbcommon.org/doc/current/group__keysyms.html).
+    ///
+    /// @return The keysym. If the key does not have exactly one keysym, returns {@link XkbKey#NoSymbol}.
+    public int keyGetOneSym(int keycode) {
         return xkb_state_key_get_one_sym(xkbStatePtr, keycode);
     }
 
 
-    public int[] getSyms(int keycode) {
+    /// Get the keysyms obtained from pressing a particular key in a given keyboard state.
+    public int[] keyGetSyms(int keycode) {
         try (var arena = Arena.ofConfined()) {
             var keySymsPtr = arena.allocate(xkbcommon_h.C_POINTER);
             var numKeySyms = xkb_state_key_get_syms(xkbStatePtr, keycode, keySymsPtr);

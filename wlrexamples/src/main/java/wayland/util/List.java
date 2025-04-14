@@ -18,13 +18,6 @@ public final class List<T extends List.Element<@NonNull T>> {
     public final @NonNull ElementMetadata<T> meta;
 
 
-    @Deprecated()
-    public List(@NonNull MemorySegment listPtr) {
-        this.listPtr = listPtr;
-        this.meta = null;
-    }
-
-
     public List(@NonNull MemorySegment listPtr, List.@NonNull ElementMetadata<T> meta) {
         this.listPtr = listPtr;
         this.meta = meta;
@@ -39,38 +32,14 @@ public final class List<T extends List.Element<@NonNull T>> {
 
 
     ///  Get `wl_list.prev` field.
-    public @NonNull MemorySegment getPrev() {
+    public @NonNull MemorySegment prev() {
         return wl_list.prev(listPtr);
     }
 
 
     /// Get `wl_list.next` field
-    public @NonNull MemorySegment getNext() {
+    public @NonNull MemorySegment next() {
         return wl_list.next(listPtr);
-    }
-
-
-    public @Nullable T getFirst() {
-        var nextElementLinkPtr = getNext();
-
-        // wl_list.next points to list head => List is empty
-        if (nextElementLinkPtr.equals(listPtr))
-            return null;
-
-        var firstPtr = containerOf(nextElementLinkPtr, meta.layout, meta.linkMemberName);
-        return constructElement(firstPtr);
-    }
-
-
-    public @Nullable T getLast() {
-        var lastElementLinkPtr = getPrev();
-
-        // wl_list.prev points to list head => List is empty
-        if (lastElementLinkPtr.equals(listPtr))
-            return null;
-
-        var lastPtr = containerOf(lastElementLinkPtr, meta.layout, meta.linkMemberName);
-        return constructElement(lastPtr);
     }
 
 
@@ -90,20 +59,55 @@ public final class List<T extends List.Element<@NonNull T>> {
     }
 
 
-    /// Determines the length of the list.
-    public int length() {
-        return wl_list_length(listPtr);
-    }
-
-
     /// Insert `element` after `after` element.
     public void insert(@NonNull T after, @NonNull T element) {
         wl_list_insert(after.getLinkMemberPtr(), element.getLinkMemberPtr());
     }
 
 
+    /// Removes an element from the list. This operation leaves `element` in an invalid state.
+    public void remove(@NonNull T element) {
+        // TODO: Check if element previously removed (.prev.next==null)
+        // TODO: Maybe delegate to List.Element#remove()
+        wl_list_remove(element.getLinkMemberPtr());
+    }
+
+
+    /// Determines the length of the list.
+    public int length() {
+        return wl_list_length(listPtr);
+    }
+
+
+    /*** Additional helper methods not present in C implementation. ***/
+
+
+    public @Nullable T getFirst() {
+        var nextElementLinkPtr = next();
+
+        // wl_list.next points to list head => List is empty
+        if (nextElementLinkPtr.equals(listPtr))
+            return null;
+
+        var firstPtr = containerOf(nextElementLinkPtr, meta.layout, meta.linkMemberName);
+        return constructElement(firstPtr);
+    }
+
+
+    public @Nullable T getLast() {
+        var lastElementLinkPtr = prev();
+
+        // wl_list.prev points to list head => List is empty
+        if (lastElementLinkPtr.equals(listPtr))
+            return null;
+
+        var lastPtr = containerOf(lastElementLinkPtr, meta.layout, meta.linkMemberName);
+        return constructElement(lastPtr);
+    }
+
+
     ///  Add `element` to the end of the list.
-    public void append(T element) {
+    public void append(@NonNull T element) {
         var previous = getLast();
         if (previous != null) {
             wl_list_insert(previous.getLinkMemberPtr(), element.getLinkMemberPtr());
@@ -114,7 +118,7 @@ public final class List<T extends List.Element<@NonNull T>> {
     }
 
 
-    private T constructElement(@NonNull MemorySegment elementPtr) {
+    private @NonNull T constructElement(@NonNull MemorySegment elementPtr) {
         try {
             var element = meta.elementClass.getConstructor(MemorySegment.class).newInstance(elementPtr);
             return element;
@@ -134,6 +138,11 @@ public final class List<T extends List.Element<@NonNull T>> {
 
         default @NonNull MemorySegment getPrev() {
             return wl_list.prev(getLinkMemberPtr());
+        }
+
+        default void remove() {
+            // TODO: Check if element previously removed
+            wl_list_remove(getLinkMemberPtr());
         }
     }
 
