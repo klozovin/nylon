@@ -68,6 +68,13 @@ jextract --library $lib --output $output    \
     --include-dir "/usr/include/pixman-1/"  \
     "$libDir/wlr/types/wlr_output.h"
 
+jextract --library $lib --output $output    \
+    --target-package jextract.wlroots.types \
+    --define-macro WLR_USE_UNSTABLE         \
+    --include-dir $libDir                   \
+    --include-dir "/usr/include/pixman-1/"  \
+    "$libDir/wlr/types/wlr_scene.h"
+
 jextract --library $lib --output $output  \
     --target-package jextract.wlroots.util\
     "$libDir/wlr/util/log.h"
