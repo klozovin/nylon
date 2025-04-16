@@ -84,7 +84,7 @@ public final class Output {
     }
 
 
-    public boolean commitState(OutputState state) {
+    public boolean commitState(@NonNull OutputState state) {
         return wlr_output_commit_state(outputPtr, state.outputStatePtr);
     }
 

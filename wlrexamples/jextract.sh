@@ -4,6 +4,12 @@ lib="wlroots-0.18"
 libDir="/usr/include/wlroots-0.18"
 output="src/generated/java"
 
+
+jextract --library "drm" --output $output \
+    --target-package jextract.drm         \
+    "/usr/include/libdrm/drm_fourcc.h"
+
+
 #<editor-fold desc="xkbcommon">
 jextract --library "xkbcommon" --output $output \
     --target-package jextract.xkbcommon               \
@@ -48,6 +54,18 @@ jextract --library $lib --output $output    \
     --define-macro WLR_USE_UNSTABLE         \
     --include-dir $libDir                   \
     "$libDir/wlr/render/wlr_renderer.h"
+
+# IMPORTANT: Only jextract files in wlr/interfaces/, don't also jextract their corresponding
+#            /wlr/types/ file because jextract will overwrite already extracted code.
+
+# wlr/interfaces/
+jextract --library $lib --output $output    \
+    --target-package jextract.wlroots.types \
+    --define-macro WLR_USE_UNSTABLE         \
+    --include-dir "/usr/include/pixman-1/"  \
+    --include-dir $libDir                   \
+    "$libDir/wlr/interfaces/wlr_buffer.h"
+
 
 jextract --library $lib --output $output    \
     --target-package jextract.wlroots.types \

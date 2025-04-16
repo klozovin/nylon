@@ -1,6 +1,7 @@
 package wlroots.wlr.render;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import wayland.server.Display;
 import wlroots.wlr.Backend;
 
@@ -11,6 +12,7 @@ import static jextract.wlroots.backend_h.wlr_renderer_autocreate;
 import static jextract.wlroots.backend_h.wlr_renderer_init_wl_display;
 
 
+/// A renderer for basic 2D operations.
 @NullMarked
 public class Renderer {
     public final MemorySegment rendererPtr;
@@ -22,8 +24,13 @@ public class Renderer {
     }
 
 
-    public static Renderer autocreate(Backend backend) {
-        return new Renderer(wlr_renderer_autocreate(backend.backendPtr));
+    /// Automatically initializes the most suitable backend given the environment. Will always
+    /// return a multi-backend. The backend is created but not started.
+    ///
+    /// @return null on failure.
+    public static @Nullable Renderer autocreate(Backend backend) {
+        var rendererPtr = wlr_renderer_autocreate(backend.backendPtr);
+        return !rendererPtr.equals(NULL) ? new Renderer(rendererPtr) : null;
     }
 
 

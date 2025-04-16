@@ -168,7 +168,7 @@ fun main() {
 
     State.display = Display.create()
     val backend = Backend.autocreate(State.display.eventLoop, null) ?: exitProcess(1)
-    State.renderer = Renderer.autocreate(backend)
+    State.renderer = Renderer.autocreate(backend) ?: exitProcess(1)
     State.allocator = Allocator.autocreate(backend, State.renderer)
 
     backend.events.newOutput.add(::newOutputNotify)
