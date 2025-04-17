@@ -1,5 +1,3 @@
-package example.wrap
-
 import wayland.server.Display
 import wayland.server.Listener
 import wlroots.Log
@@ -162,9 +160,8 @@ fun keyboardDestroyNotify() {
 
 fun main() {
     Log.init(Log.Importance.DEBUG)
-    Log.log(Log.Importance.INFO, "This is Java version: ${System.getProperty("java.version")}")
-    Log.log(Log.Importance.INFO, "Running on wlroots version: ${Version.STR}")
-
+    Log.logInfo("This is Java version: ${System.getProperty("java.version")}")
+    Log.logDebug("Running on wlroots version: ${Version.STR}")
 
     State.display = Display.create()
     val backend = Backend.autocreate(State.display.eventLoop, null) ?: exitProcess(1)

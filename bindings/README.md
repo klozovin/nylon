@@ -1,1 +1,1 @@
-# Port of wlroots/examples to Java / Kotlin
+# Bindings to wayland, wlroots, xkbcommon and other libraries

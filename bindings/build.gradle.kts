@@ -14,44 +14,32 @@ repositories {
 
 sourceSets.create("generated")
 
-//sourceSets {
-//    main {
-//        java {
-//            srcDir()
-//        }
-//    }
-//}
-
 dependencies {
+    implementation(sourceSets["generated"].output)
     implementation("org.jspecify", "jspecify", "1.0.0")
-    implementation(sourceSets.named("generated").get().output)
+
     testImplementation("io.kotest", "kotest-runner-junit5", "5.9.1")
     testImplementation("io.kotest", "kotest-assertions-core", "5.9.1")
 }
 
-tasks.withType<Jar> {
-//    dependsOn(sourceSets.get("generat
-//    ed"))\
-
-//    dependsOn(tasks.named("classes"))
-    from(sourceSets.get("generated").output)
+tasks {
+    jar {
+//        dependsOn(tasks.named("classes"))
+//        dependsOn(tasks.name)
+        from(sourceSets["generated"].output)
+    }
+    test {
+        useJUnitPlatform()
+        jvmArgs("-ea", "--enable-native-access=ALL-UNNAMED")
+    }
 }
-
-tasks.withType<Test> {
-    useJUnitPlatform()
-    jvmArgs(
-        "-ea",
-        "--enable-native-access=ALL-UNNAMED"
-    )
-}
-
-
 
 java {
     sourceCompatibility = JavaVersion.VERSION_23
     targetCompatibility = JavaVersion.VERSION_23
     toolchain.languageVersion = JavaLanguageVersion.of(24)
 
+    // TODO: Necessary?
     registerFeature("generated") {
         usingSourceSet(sourceSets["generated"])
     }
@@ -59,6 +47,6 @@ java {
 
 kotlin.compilerOptions {
     jvmTarget = JvmTarget.JVM_23
-    apiVersion = KotlinVersion.KOTLIN_2_1
-    languageVersion = KotlinVersion.KOTLIN_2_1
+    apiVersion = KotlinVersion.KOTLIN_2_2
+    languageVersion = KotlinVersion.KOTLIN_2_2
 }

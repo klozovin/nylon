@@ -1,5 +1,3 @@
-package example
-
 import jextract.drm.drm_fourcc_h.C_INT
 import jextract.drm.drm_fourcc_h.C_POINTER
 import jextract.wlroots.types.wlr_buffer_h.WLR_BUFFER_DATA_PTR_ACCESS_WRITE
