@@ -40,11 +40,12 @@ class CairoImageSurfaceBuffer(val width: Int, val height: Int) : Buffer.Impl(Are
 
 
 object CairoBuffer {
-    lateinit var output: Output
     lateinit var display: Display
+
     lateinit var backend: Backend
-    lateinit var allocator: Allocator
     lateinit var renderer: Renderer
+    lateinit var allocator: Allocator
+    lateinit var output: Output
 
     lateinit var scene: Scene
     lateinit var sceneOutput: SceneOutput
@@ -57,10 +58,11 @@ object CairoBuffer {
 
         display = Display.create()
         backend = Backend.autocreate(display.eventLoop, null) ?: error("Can't proceed without Backend")
-        scene = Scene.create()
         renderer = Renderer.autocreate(backend) ?: error("Can't proceed without Renderer")
-        renderer.initWlDisplay(display)
         allocator = Allocator.autocreate(backend, renderer)
+
+        scene = Scene.create()
+        renderer.initWlDisplay(display)
 
         backend.events.newOutput.add(::handleNewOutput)
         if (!backend.start()) {

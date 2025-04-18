@@ -8,6 +8,7 @@ import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wayland.server.server_core_h.*;
 
 
+/// Represents a connection to the compositor and acts as a proxy to the wl_display singleton object.
 @NullMarked
 public class Display {
     public final MemorySegment displayPtr;

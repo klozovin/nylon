@@ -10,6 +10,7 @@ import static jextract.wlroots.types.wlr_scene_h.wlr_scene_create;
 import static jextract.wlroots.types.wlr_scene_h.wlr_scene_output_create;
 
 
+/// The root scene-graph node.
 @NullMarked
 public class Scene {
     MemorySegment scenePtr;
