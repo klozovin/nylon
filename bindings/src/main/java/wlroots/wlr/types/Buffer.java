@@ -3,7 +3,7 @@ package wlroots.wlr.types;
 import jextract.wlroots.types.wlr_buffer_impl;
 import jextract.wlroots.wlr_buffer;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
+import wlroots.wlr.render.DmabufAttributes;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -11,13 +11,6 @@ import java.util.EnumSet;
 
 import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wlroots.types.wlr_buffer_h.*;
-
-/*
-use one class to model the base wlr_buffer, and possible wlr_buffer_impl classes
-there's no need to have separate bufferimpl java class
-
-expected use is to derive from buffer, not use it directly (in java code)
- */
 
 
 /// A buffer containing pixel data.
@@ -29,7 +22,6 @@ expected use is to derive from buffer, not use it directly (in java code)
 @NullMarked
 public class Buffer {
     public MemorySegment bufferPtr;
-    public @Nullable MemorySegment bufferImplPtr = null;
 
 
     public Buffer(MemorySegment bufferPtr) {
@@ -38,86 +30,8 @@ public class Buffer {
     }
 
 
-    /// Allocate wlr_buffer, wlr_buffer_impl
-    public Buffer(Arena arena) {
-        // TODO: Memory management - maybe everything can be confined?
-        this(wlr_buffer.allocate(arena), wlr_buffer_impl.allocate(arena));
-
-        wlr_buffer_impl.destroy(
-            bufferImplPtr,
-            wlr_buffer_impl.destroy.allocate(
-                (MemorySegment wlrBufferPtr) -> {
-                    assert wlrBufferPtr.equals(this.bufferPtr);
-                    this.implDestroy();
-                }, arena
-            ));
-
-
-        wlr_buffer_impl.begin_data_ptr_access(
-            bufferImplPtr,
-            wlr_buffer_impl.begin_data_ptr_access.allocate(
-                (MemorySegment wlrBufferPtr, int flags, MemorySegment data, MemorySegment format, MemorySegment stride) -> {
-                    assert wlrBufferPtr.equals(this.bufferPtr);
-                    // TODO: BUG: Flags are enum, bug passed around as bitfields!!! use enumset
-                    // TODO: Move this to the access flags enum
-                    var flagsSet = EnumSet.noneOf(AccessFlag.class);
-                    if ((flags & AccessFlag.READ.idx) != 0) flagsSet.add(AccessFlag.READ);
-                    if ((flags & AccessFlag.WRITE.idx) != 0) flagsSet.add(AccessFlag.WRITE);
-
-                    var result = this.implBeginDataAccess(flagsSet);
-                    data.set(C_POINTER, 0, result.data);
-                    format.set(C_INT, 0, result.format);
-                    stride.set(C_INT, 0, result.stride);
-                    return result.result;
-                },
-                arena
-            ));
-
-        wlr_buffer_impl.end_data_ptr_access(
-            bufferImplPtr,
-            wlr_buffer_impl.end_data_ptr_access.allocate(
-                (MemorySegment wlrBufferPtr) -> {
-                    assert wlrBufferPtr.equals(this.bufferPtr);
-                    this.implEndDataAccess();
-                },
-                arena
-            )
-        );
-
-        // TODO: Implement get_dmabuf, get_shm functions
-    }
-
-
-    public Buffer(MemorySegment bufferPtr, MemorySegment bufferImplPtr) {
-        assert !bufferPtr.equals(NULL);
-        assert !bufferImplPtr.equals(NULL);
-        this.bufferPtr = bufferPtr;
-        this.bufferImplPtr = bufferImplPtr;
-    }
-
-
-    static public Buffer allocate(Arena arena) {
-        return new Buffer(wlr_buffer.allocate(arena));
-    }
-
-
-    /// Initialize a buffer. This function should be called by producers. The initialized buffer
-    /// is referenced: once the producer is done with the buffer they should call {@link #drop()}.
-    @Deprecated
-    public void init(BufferImpl impl, int width, int height) {
-        wlr_buffer_init(bufferPtr, impl.bufferImplPtr, width, height);
-    }
-
-
-    ///  Only makes sense to call when deriving this class
-    public void init(int width, int height) {
-        assert bufferImplPtr != null;
-        wlr_buffer_init(bufferPtr, bufferImplPtr, width, height);
-    }
-
-
     public void finish() {
-        // TODO: This function appears wlroots 0.19
+        // TODO: This function appears wlroots 0.19 (finis v. drop?)
 //        wlr_buffer_finish(bufferPtr)
         System.out.println("!!! WARNING !!! wlr_buffer.finish() not implemented in wlroots 0.18 !!!");
     }
@@ -129,35 +43,128 @@ public class Buffer {
     }
 
 
-    /*** BufferImpl: Methods to override ***/
+    /// ```c
+    ///
+    /// struct wlr_buffer_impl {
+    /// 	void (*destroy)(struct wlr_buffer *buffer);
+    /// 	bool (*get_dmabuf)(struct wlr_buffer *buffer, struct wlr_dmabuf_attributes *attribs);
+    /// 	bool (*get_shm)(struct wlr_buffer *buffer, struct wlr_shm_attributes *attribs);
+    /// 	bool (*begin_data_ptr_access)(struct wlr_buffer *buffer, uint32_t flags, void **data, uint32_t *format, size_t *stride);
+    /// 	void (*end_data_ptr_access)(struct wlr_buffer *buffer);
+    ///};
+    ///```
+    @NullMarked
+    public abstract static class Impl extends Buffer {
+        MemorySegment implPtr;
 
 
-    public BufferDataFormat implBeginDataAccess(EnumSet<AccessFlag> flags) {
-        throw new RuntimeException("Override me");
+        public Impl(Arena arena) {
+            this(wlr_buffer.allocate(arena), wlr_buffer_impl.allocate(arena));
+        }
+
+
+        public Impl(MemorySegment bufferPtr, MemorySegment implPtr) {
+            super(bufferPtr);
+            assert !implPtr.equals(NULL);
+            this.implPtr = implPtr;
+
+            // TODO: Memory lifetime: Use confined here instead of global?
+
+            wlr_buffer_impl.destroy(implPtr, wlr_buffer_impl.destroy.allocate(
+                (MemorySegment wlrBufferPtr) -> {
+                    assert wlrBufferPtr.equals(this.bufferPtr);
+                    this.destroy();
+                },
+                Arena.global()
+            ));
+
+            // TODO: JAVA24, use instanceof in switch
+            if (this instanceof DataSource dataSource) {
+                switch (dataSource) {
+
+                    // Buffer is in RAM memory
+                    case DataSource.Memory buf -> {
+                        wlr_buffer_impl.begin_data_ptr_access(implPtr, wlr_buffer_impl.begin_data_ptr_access.allocate(
+                            (MemorySegment wlrBufferPtr, int flags, MemorySegment data, MemorySegment format, MemorySegment stride) -> {
+                                assert wlrBufferPtr.equals(this.bufferPtr);
+                                var flagsSet = AccessFlag.setFromBitmask(flags);
+                                var result = buf.beginDataAccess(flagsSet);
+                                // TODO: When resul.result false, should we return without setting the out parameters?
+                                data.set(C_POINTER, 0, result.data);
+                                format.set(C_INT, 0, result.format);
+                                stride.set(C_INT, 0, result.stride);
+                                return result.result;
+                            },
+                            Arena.global()
+                        ));
+
+                        wlr_buffer_impl.end_data_ptr_access(implPtr, wlr_buffer_impl.end_data_ptr_access.allocate(
+                            (MemorySegment wlrBufferPtr) -> {
+                                assert wlrBufferPtr.equals(this.bufferPtr);
+                                buf.endDataAccess();
+                            },
+                            Arena.global()
+                        ));
+                    }
+
+                    // Buffer is Linux DMA-BUF pixel buffer
+                    case DataSource.Dmabuf buf -> {
+                        wlr_buffer_impl.get_dmabuf(implPtr, wlr_buffer_impl.get_dmabuf.allocate(
+                            (MemorySegment wlrBufferPtr, MemorySegment attribs) -> {
+                                assert wlrBufferPtr.equals(bufferPtr);
+                                return buf.getDmabuf(new DmabufAttributes(attribs));
+                            },
+                            Arena.global()
+                        ));
+                    }
+
+                    // Buffer is in shared memory
+                    case DataSource.Shm buf -> {
+                        wlr_buffer_impl.get_shm(implPtr, wlr_buffer_impl.get_shm.allocate(
+                            (MemorySegment wlrBufferPtr, MemorySegment attribs) -> {
+                                assert wlrBufferPtr.equals(bufferPtr);
+                                return buf.getShm(new ShmAttributes(attribs));
+                            },
+                            Arena.global()
+                        ));
+                    }
+                }
+            }
+        }
+
+
+        public void init(int width, int height) {
+            wlr_buffer_init(bufferPtr, implPtr, width, height);
+        }
+
+
+        public abstract void destroy();
+    }
+
+    /// In C, wlr_buffer_impl struct can actually implement three different interfaces (memory, shm, dmabuf). To pick
+    /// an interface, implement those callbacks, leave others unassigned. To make it more idiomatic in Java, there are
+    /// separeate interfaces for those.
+    public sealed interface DataSource {
+
+        non-sealed interface Memory extends DataSource {
+            MemoryBufferFormat beginDataAccess(EnumSet<AccessFlag> flags);
+
+            void endDataAccess();
+        }
+
+        non-sealed interface Shm extends DataSource {
+            boolean getShm(ShmAttributes attributes);
+        }
+
+        non-sealed interface Dmabuf extends DataSource {
+            boolean getDmabuf(DmabufAttributes attributes);
+        }
     }
 
 
-    public boolean implGetDmaBuf() {
-        throw new RuntimeException("Override me");
-    }
-
-
-    public boolean implGetShm() {
-        throw new RuntimeException("Override me");
-    }
-
-
-    public void implEndDataAccess() {
-        throw new RuntimeException("Override me");
-    }
-
-
-    public void implDestroy() {
-        throw new RuntimeException("Override me");
-    }
-
-
-    public record BufferDataFormat(
+    /// Describe how the data is laid out for a buffer that keeps it's data in RAM memory. Used only in
+    /// {@link DataSource.Memory} interface.
+    public record MemoryBufferFormat(
         boolean result,
         int format,
         MemorySegment data,
@@ -184,6 +191,18 @@ public class Buffer {
 
         AccessFlag(int idx) {
             this.idx = idx;
+        }
+
+
+        public static EnumSet<AccessFlag> setFromBitmask(int flags) {
+            var flagsSet = EnumSet.noneOf(AccessFlag.class);
+            for (var e: values()) {
+                if ((flags & e.idx) != 0)
+                    flagsSet.add(e);
+            }
+            return flagsSet;
+//            if ((flags & AccessFlag.READ.idx) != 0) flagsSet.add(AccessFlag.READ);
+//            if ((flags & AccessFlag.WRITE.idx) != 0) flagsSet.add(AccessFlag.WRITE);
         }
     }
 }

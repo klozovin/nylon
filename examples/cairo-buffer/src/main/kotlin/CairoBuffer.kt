@@ -1,6 +1,4 @@
-import jextract.drm.drm_fourcc_h.C_INT
-import jextract.drm.drm_fourcc_h.C_POINTER
-import jextract.wlroots.types.wlr_buffer_h.WLR_BUFFER_DATA_PTR_ACCESS_WRITE
+import jextract.drm.drm_fourcc_h
 import org.freedesktop.cairo.Context
 import org.freedesktop.cairo.Format
 import org.freedesktop.cairo.ImageSurface
@@ -11,49 +9,47 @@ import wlroots.wlr.render.Allocator
 import wlroots.wlr.render.Renderer
 import wlroots.wlr.types.*
 import java.lang.foreign.Arena
-import java.lang.foreign.MemorySegment
 import java.util.*
 import kotlin.system.exitProcess
 
 
+class CairoImageSurfaceBuffer(val width: Int, val height: Int) : Buffer.Impl(Arena.global()), Buffer.DataSource.Memory {
+    val surface = ImageSurface.create(Format.ARGB32, width, height)
+
+    fun init() {
+        super.init(width, height)
+    }
+
+    override fun destroy() {
+        finish()
+        surface.destroy()
+    }
+
+    override fun beginDataAccess(flags: EnumSet<AccessFlag>): MemoryBufferFormat =
+        MemoryBufferFormat(
+            flags.contains(AccessFlag.READ),
+            drm_fourcc_h.DRM_FORMAT_ARGB8888(), // TODO: turn into enum
+            surface.data,
+            surface.stride
+        )
+
+    override fun endDataAccess() {
+        println("Ending data access, nothing to do right now")
+    }
+}
+
+
 object CairoBuffer {
+    lateinit var output: Output
     lateinit var display: Display
     lateinit var backend: Backend
+    lateinit var allocator: Allocator
+    lateinit var renderer: Renderer
+
     lateinit var scene: Scene
     lateinit var sceneOutput: SceneOutput
-    lateinit var renderer: Renderer
-    lateinit var allocator: Allocator
-    lateinit var output: Output
 
-//    lateinit var buffer: Buffer
-//    lateinit var cairoBuffer: BufferImpl
-
-    lateinit var cairoSurface: ImageSurface
-
-    lateinit var cisBuffer: CairoImageSurfaceBuffer
-
-
-    class CairoImageSurfaceBuffer(arena: Arena) : Buffer(arena) {
-        val surface = ImageSurface.create(Format.ARGB32, 256, 256)
-
-        override fun implDestroy() {
-            finish()
-            surface.destroy()
-            println("Seek & destroy")
-        }
-
-        override fun implBeginDataAccess(flags: EnumSet<AccessFlag>): BufferDataFormat =
-            BufferDataFormat(
-                flags.contains(AccessFlag.READ),
-                jextract.drm.drm_fourcc_h.DRM_FORMAT_ARGB8888(), // TODO: turn into enum
-                surface.data,
-                surface.stride
-            )
-
-        override fun implEndDataAccess() {
-            println("Ending data access, nothing to do right now")
-        }
-    }
+    lateinit var cairoSurfaceBuffer: CairoImageSurfaceBuffer
 
 
     fun run() {
@@ -72,21 +68,10 @@ object CairoBuffer {
             exitProcess(1)
         }
 
-        cisBuffer = CairoImageSurfaceBuffer(Arena.global())
-        cisBuffer.init(256, 256)
-
-
-//        cairoBuffer = BufferImpl.allocate(Arena.global()).apply {
-//            destroy(::cairoBufferDestroy)
-//            begin_data_ptr_access(::beginDataPtrAccess)
-//            end_data_ptr_access(::endDataPtrAccess)
-//        }
-//        buffer = Buffer.allocate(Arena.global())
-//        buffer.init(cairoBuffer, 256, 256)
-
-
-        // Cairo: Initialize surface and context
-        val cairoContext = Context.create(cisBuffer.surface)
+        // Cairo: Initialize everything
+        cairoSurfaceBuffer = CairoImageSurfaceBuffer(256, 256)
+        cairoSurfaceBuffer.init()
+        val cairoContext = Context.create(cairoSurfaceBuffer.surface)
 
         // Cairo: Start drawing
         cairoContext.setSourceRGB(1.0, 1.0, 1.0)
@@ -99,52 +84,23 @@ object CairoBuffer {
         cairoContext.destroy()
 
         // Scene buffer
-        val sceneBuffer = SceneBuffer.create(scene.tree(), cisBuffer)
+        val sceneBuffer = SceneBuffer.create(scene.tree(), cairoSurfaceBuffer)
         sceneBuffer.node().setPosition(50, 50)
-        cisBuffer.drop()
+        cairoSurfaceBuffer.drop()
         display.run()
-
-        // Cleanup
         display.destroy()
-//        surface.close()
     }
 
-    // static void cairo_buffer_destroy(struct wlr_buffer *wlr_buffer) {
-    // TODO: create object automatically
-    fun cairoBufferDestroy(bufferPtr: MemorySegment) {
-//        struct cairo_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
-//        cairo_surface_destroy(buffer->surface);
-//        free(buffer);
-        cairoSurface.destroy()
-    }
 
-    fun beginDataPtrAccess(
-        bufferPtr: MemorySegment,
-        flags: Int,
-        data: MemorySegment,
-        format: MemorySegment,
-        stride: MemorySegment
-    ): Boolean {
-        if (flags and WLR_BUFFER_DATA_PTR_ACCESS_WRITE() != 0)
-            return false
-
-        format.set(C_INT, 0, jextract.drm.drm_fourcc_h.DRM_FORMAT_ARGB8888())
-        data.set(C_POINTER, 0, cairoSurface.data)
-        stride.set(C_INT, 0, cairoSurface.stride)
-
-        return true
-    }
-
-    fun endDataPtrAccess(bufferPtr: MemorySegment) {}
-
-    fun outputHandleFrame() {
+    fun handleFrame() {
         sceneOutput.commit()
     }
+
 
     fun handleNewOutput(output: Output) {
         output.initRender(allocator, renderer)
         CairoBuffer.output = output
-        output.events.frame.add(::outputHandleFrame)
+        output.events.frame.add(::handleFrame)
         sceneOutput = scene.outputCreate(CairoBuffer.output)
 
         Arena.ofConfined().use { arena ->
