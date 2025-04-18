@@ -65,4 +65,20 @@ public class BufferImpl {
         // TODO: Memory lifetime
         wlr_buffer_impl.end_data_ptr_access(bufferImplPtr, end_data_ptr_access.allocate(method, Arena.global()));
     }
+
+
+    @NullMarked
+    class BufferDataAccess {
+        int format;
+        MemorySegment data;
+        int stride;
+
+
+        public BufferDataAccess(int format, MemorySegment data, int stride) {
+            this.format = format;
+            this.data = data;
+            this.stride = stride;
+        }
+    }
+
 }

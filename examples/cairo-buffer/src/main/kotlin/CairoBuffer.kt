@@ -12,11 +12,11 @@ import wlroots.wlr.render.Renderer
 import wlroots.wlr.types.*
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
+import java.util.*
 import kotlin.system.exitProcess
 
 
 object CairoBuffer {
-
     lateinit var display: Display
     lateinit var backend: Backend
     lateinit var scene: Scene
@@ -25,9 +25,35 @@ object CairoBuffer {
     lateinit var allocator: Allocator
     lateinit var output: Output
 
-    lateinit var buffer: Buffer
-    lateinit var cairoBuffer: BufferImpl
-    lateinit var surface: ImageSurface
+//    lateinit var buffer: Buffer
+//    lateinit var cairoBuffer: BufferImpl
+
+    lateinit var cairoSurface: ImageSurface
+
+    lateinit var cisBuffer: CairoImageSurfaceBuffer
+
+
+    class CairoImageSurfaceBuffer(arena: Arena) : Buffer(arena) {
+        val surface = ImageSurface.create(Format.ARGB32, 256, 256)
+
+        override fun implDestroy() {
+            finish()
+            surface.destroy()
+            println("Seek & destroy")
+        }
+
+        override fun implBeginDataAccess(flags: EnumSet<AccessFlag>): BufferDataFormat =
+            BufferDataFormat(
+                flags.contains(AccessFlag.READ),
+                jextract.drm.drm_fourcc_h.DRM_FORMAT_ARGB8888(), // TODO: turn into enum
+                surface.data,
+                surface.stride
+            )
+
+        override fun implEndDataAccess() {
+            println("Ending data access, nothing to do right now")
+        }
+    }
 
 
     fun run() {
@@ -46,41 +72,36 @@ object CairoBuffer {
             exitProcess(1)
         }
 
-        buffer = Buffer.allocate(Arena.global())
-        cairoBuffer = BufferImpl.allocate(Arena.global()).apply {
-            destroy(::cairoBufferDestroy)
-            begin_data_ptr_access(::beginDataPtrAccess)
-            end_data_ptr_access(::endDataPtrAccess)
-        }
-        buffer.init(cairoBuffer, 256, 256)
+        cisBuffer = CairoImageSurfaceBuffer(Arena.global())
+        cisBuffer.init(256, 256)
 
 
-        // Cairo: Initialize context and surface
-        surface = ImageSurface.create(Format.ARGB32, 256, 256)
-        val cr = Context.create(surface)
+//        cairoBuffer = BufferImpl.allocate(Arena.global()).apply {
+//            destroy(::cairoBufferDestroy)
+//            begin_data_ptr_access(::beginDataPtrAccess)
+//            end_data_ptr_access(::endDataPtrAccess)
+//        }
+//        buffer = Buffer.allocate(Arena.global())
+//        buffer.init(cairoBuffer, 256, 256)
+
+
+        // Cairo: Initialize surface and context
+        val cairoContext = Context.create(cisBuffer.surface)
 
         // Cairo: Start drawing
-        cr.setSourceRGB(1.0, 1.0, 1.0)
-        cr.paint()
-        cr.setSourceRGB(0.0, 0.0, 0.0)
-        val x = 25.6
-        val y = 128.0
-        val x1 = 102.4
-        val y1 = 230.4
-        val x2 = 153.6
-        val y2 = 25.6
-        val x3 = 230.4
-        val y3 = 128.0
-        cr.moveTo(x, y)
-        cr.curveTo(x1, y1, x2, y2, x3, y3)
-        cr.lineWidth = 10.0
-        cr.stroke()
-        cr.destroy()
+        cairoContext.setSourceRGB(1.0, 1.0, 1.0)
+        cairoContext.paint()
+        cairoContext.setSourceRGB(0.0, 0.0, 0.0)
+        cairoContext.moveTo(25.6, 128.0)
+        cairoContext.curveTo(102.4, 230.4, 153.6, 25.6, 230.4, 128.0)
+        cairoContext.lineWidth = 10.0
+        cairoContext.stroke()
+        cairoContext.destroy()
 
         // Scene buffer
-        val sceneBuffer = SceneBuffer.create(scene.tree(), buffer)
+        val sceneBuffer = SceneBuffer.create(scene.tree(), cisBuffer)
         sceneBuffer.node().setPosition(50, 50)
-        buffer.drop()
+        cisBuffer.drop()
         display.run()
 
         // Cleanup
@@ -94,7 +115,7 @@ object CairoBuffer {
 //        struct cairo_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
 //        cairo_surface_destroy(buffer->surface);
 //        free(buffer);
-        surface.destroy()
+        cairoSurface.destroy()
     }
 
     fun beginDataPtrAccess(
@@ -108,8 +129,9 @@ object CairoBuffer {
             return false
 
         format.set(C_INT, 0, jextract.drm.drm_fourcc_h.DRM_FORMAT_ARGB8888())
-        data.set(C_POINTER, 0, surface.data)
-        stride.set(C_INT, 0, surface.stride)
+        data.set(C_POINTER, 0, cairoSurface.data)
+        stride.set(C_INT, 0, cairoSurface.stride)
+
         return true
     }
 
@@ -117,7 +139,6 @@ object CairoBuffer {
 
     fun outputHandleFrame() {
         sceneOutput.commit()
-
     }
 
     fun handleNewOutput(output: Output) {
