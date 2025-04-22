@@ -2,7 +2,13 @@
 
 lib="wlroots-0.18"
 libDir="/usr/include/wlroots-0.18"
+includeLibDir="--include-dir $libDir"
+includePixman="--include-dir /usr/include/pixman-1/"
 output="src/generated/java"
+
+
+# TODO: Output directory must exist
+wayland-scanner server-header /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml src/generated/c/xdg-shell-protocol.h
 
 
 jextract --library "drm" --output $output \
@@ -63,9 +69,17 @@ jextract --library $lib --output $output    \
     --target-package jextract.wlroots.types \
     --define-macro WLR_USE_UNSTABLE         \
     --include-dir "/usr/include/pixman-1/"  \
-    --include-dir $libDir                   \
+    $includeLibDir                          \
     "$libDir/wlr/interfaces/wlr_buffer.h"
 
+# wlr/types
+
+jextract --library $lib --output $output    \
+    --target-package jextract.wlroots.types \
+    --define-macro WLR_USE_UNSTABLE         \
+    --include-dir $libDir                   \
+    --include-dir "/usr/include/pixman-1/"  \
+    "$libDir/wlr/types/wlr_compositor.h"
 
 jextract --library $lib --output $output    \
     --target-package jextract.wlroots.types \
@@ -92,6 +106,17 @@ jextract --library $lib --output $output    \
     --include-dir $libDir                   \
     --include-dir "/usr/include/pixman-1/"  \
     "$libDir/wlr/types/wlr_scene.h"
+
+jextract --library $lib --output $output    \
+    --target-package jextract.wlroots.types \
+    --define-macro WLR_USE_UNSTABLE         \
+    --include-dir $libDir                   \
+    --include-dir "/usr/include/pixman-1/"  \
+    --include-dir "src/generated/c"         \
+    "$libDir/wlr/types/wlr_xdg_shell.h"
+
+
+# wlr/util
 
 jextract --library $lib --output $output  \
     --target-package jextract.wlroots.util\

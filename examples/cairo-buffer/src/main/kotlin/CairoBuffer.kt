@@ -57,8 +57,8 @@ object CairoBuffer {
         Log.init(Log.Importance.INFO)
 
         display = Display.create()
-        backend = Backend.autocreate(display.eventLoop, null) ?: error("Can't proceed without Backend")
-        renderer = Renderer.autocreate(backend) ?: error("Can't proceed without Renderer")
+        backend = Backend.autocreate(display.eventLoop, null) ?: error("Failed to create wlr_backend")
+        renderer = Renderer.autocreate(backend) ?: error("Failed to create wlr_renderer")
         allocator = Allocator.autocreate(backend, renderer)
 
         scene = Scene.create()

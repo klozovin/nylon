@@ -54,8 +54,8 @@ fun newOutputNotify(output: Output) {
     State.outputFrameListener = output.events.frame.add(::outputFrameNotify)
     State.outputDestroyListener = output.events.destroy.add(::outputRemoveNotify)
 
-    Arena.ofConfined().use {
-        OutputState.allocate(it).apply {
+    OutputState.allocateConfined { outputState ->
+        outputState.apply {
             init()
             setEnabled(true)
             output.preferredMode()?.let { mode -> setMode(mode) }

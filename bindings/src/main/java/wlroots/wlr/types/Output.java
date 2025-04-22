@@ -4,6 +4,7 @@ import jextract.wlroots.types.wlr_output;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import wayland.server.Display;
 import wayland.server.Signal;
 import wlroots.wlr.render.Allocator;
 import wlroots.wlr.render.BufferPassOptions;
@@ -74,7 +75,7 @@ public final class Output {
         var renderPassPtr = wlr_output_begin_render_pass(
             outputPtr,
             state.outputStatePtr,
-            Arena.global().allocateFrom(JAVA_INT, bufferAge), // TODO: Memory lifetime
+            Arena.global().allocateFrom(JAVA_INT, bufferAge), // TODO: Memory lifetime, why not confined?
             switch (renderOptions) {
                 case BufferPassOptions bpo -> bpo.bufferPassOptionsPtr;
                 case null -> NULL;
@@ -86,6 +87,11 @@ public final class Output {
 
     public boolean commitState(@NonNull OutputState state) {
         return wlr_output_commit_state(outputPtr, state.outputStatePtr);
+    }
+
+
+    public void createGlobal(Display display) {
+        wlr_output_create_global(outputPtr, display.displayPtr);
     }
 
 

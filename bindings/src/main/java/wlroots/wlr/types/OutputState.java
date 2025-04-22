@@ -5,6 +5,7 @@ import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.util.function.Consumer;
 
 import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wlroots.types.wlr_output_h.*;
@@ -25,6 +26,14 @@ public final class OutputState {
 
     public static OutputState allocate(Arena arena) {
         return new OutputState(wlr_output_state.allocate(arena));
+    }
+
+
+    public static void allocateConfined(Consumer<OutputState> block) {
+        try (var arena = Arena.ofConfined()) {
+            var outputState = allocate(arena);
+            block.accept(outputState);
+        }
     }
 
 
