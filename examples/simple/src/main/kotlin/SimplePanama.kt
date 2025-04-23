@@ -14,7 +14,7 @@ import jextract.wlroots.wlr_backend
 import jextract.wlroots.wlr_output
 import jextract.wlroots.wlr_output_state
 import jextract.xkbcommon.xkbcommon_h
-import wlroots.Log
+import wlroots.util.Log
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 import kotlin.system.exitProcess

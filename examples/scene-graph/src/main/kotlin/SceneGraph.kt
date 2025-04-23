@@ -1,9 +1,18 @@
 import wayland.server.Display
-import wlroots.Log
-import wlroots.wlr.Backend
-import wlroots.wlr.render.Allocator
-import wlroots.wlr.render.Renderer
-import wlroots.wlr.types.*
+import wlroots.util.Log
+import wlroots.backend.Backend
+import wlroots.render.Allocator
+import wlroots.render.Renderer
+import wlroots.types.compositor.Compositor
+import wlroots.types.compositor.Surface
+import wlroots.types.output.Output
+import wlroots.types.output.OutputState
+import wlroots.types.scene.Scene
+import wlroots.types.scene.SceneOutput
+import wlroots.types.scene.SceneRect
+import wlroots.types.scene.SceneSurface
+import wlroots.types.xdgshell.XdgShell
+import wlroots.types.xdgshell.XdgToplevel
 import java.util.*
 import kotlin.concurrent.schedule
 import kotlin.system.exitProcess
@@ -53,7 +62,7 @@ object SceneGraph {
         }
 
         ProcessBuilder().apply {
-            command("/usr/bin/gimp")
+            command("/usr/bin/gthumb", "/home/karlo")
             environment().put("WAYLAND_DISPLAY", socket)
             start()
         }
