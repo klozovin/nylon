@@ -5,6 +5,8 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Display;
 import wayland.server.Signal;
+import wayland.server.Signal.Signal0;
+import wayland.server.Signal.Signal1;
 import wlroots.render.Renderer;
 
 import java.lang.foreign.MemorySegment;
@@ -45,15 +47,15 @@ public class Compositor {
 
     public final static class Events {
         public final MemorySegment eventsPtr;
-        public final Signal<Surface> newSurface;
-        public final Signal<Void> destroy;
+        public final Signal1<Surface> newSurface;
+        public final Signal0 destroy;
 
 
         public Events(MemorySegment eventsPtr) {
             assert !eventsPtr.equals(NULL);
             this.eventsPtr = eventsPtr;
-            this.newSurface = new Signal<>(wlr_compositor.events.new_surface(eventsPtr), Surface::new);
-            this.destroy = new Signal<>(wlr_compositor.events.destroy(eventsPtr));
+            this.newSurface = Signal.of(wlr_compositor.events.new_surface(eventsPtr), Surface::new);
+            this.destroy = Signal.of(wlr_compositor.events.destroy(eventsPtr));
         }
     }
 }

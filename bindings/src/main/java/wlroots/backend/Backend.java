@@ -6,6 +6,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.EventLoop;
 import wayland.server.Signal;
+import wayland.server.Signal.Signal1;
 import wlroots.types.InputDevice;
 import wlroots.types.output.Output;
 
@@ -40,7 +41,12 @@ public final class Backend {
     /// The multi-backend will be destroyed if one of the primary underlying backends is destroyed
     /// (e.g. if the primary DRM device is unplugged).
     ///
-    /// `struct wlr_backend *wlr_backend_autocreate(​struct wl_event_loop *loop, struct wlr_session **session_ptr);`
+    /// ```c
+    /// struct wlr_backend *wlr_backend_autocreate(
+    ///     struct wl_event_loop *loop,
+    ///     struct wlr_session **session_ptr
+    /// );
+    ///```
     public static @Nullable Backend autocreate(@NonNull EventLoop eventLoop, @Nullable Session session) {
         var backendPtr = wlr_backend_autocreate(
             eventLoop.eventLoopPtr,
@@ -65,15 +71,15 @@ public final class Backend {
     @NullMarked
     public final static class Events {
         public final MemorySegment eventsPtr;
-        public final Signal<Output> newOutput;
-        public final Signal<InputDevice> newInput;
+        public final Signal1<Output> newOutput;
+        public final Signal1<InputDevice> newInput;
 
 
         Events(MemorySegment eventsPtr) {
             assert !eventsPtr.equals(NULL);
             this.eventsPtr = eventsPtr;
-            newOutput = new Signal<>(wlr_backend.events.new_output(eventsPtr), Output::new);
-            newInput = new Signal<>(wlr_backend.events.new_input(eventsPtr), InputDevice::new);
+            newOutput = Signal.of(wlr_backend.events.new_output(eventsPtr), Output::new);
+            newInput = Signal.of(wlr_backend.events.new_input(eventsPtr), InputDevice::new);
         }
     }
 }

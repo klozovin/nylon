@@ -1,7 +1,7 @@
 package wayland.server;
 
 import jextract.wayland.server.wl_signal;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import wayland.util.List;
 
 import java.lang.foreign.Arena;
@@ -24,78 +24,81 @@ import static java.lang.foreign.MemorySegment.NULL;
 ///     struct wl_list listener_list;
 ///};
 ///```
-///
-/// @param <T> type of parameters that gets passed to signal callback function
-public class Signal<T> {
-    public final @NonNull MemorySegment signalPtr;
-    public final @NonNull List<Listener> listenerList;
-    public final @NonNull Function<MemorySegment, T> callbackArgumentCtor;
+@NullMarked
+public abstract class Signal {
+    public final MemorySegment signalPtr;
+    public final List<Listener> listenerList;
 
 
-    public Signal(@NonNull MemorySegment signalPtr, @NonNull Function<MemorySegment, T> callbackArgumentCtor) {
+    public Signal(MemorySegment signalPtr) {
         this.signalPtr = signalPtr;
-        this.callbackArgumentCtor = callbackArgumentCtor;
         this.listenerList = new List<>(wl_signal.listener_list(signalPtr), Listener.listElementMeta);
+        assert !signalPtr.equals(NULL);
+        assert signalPtr.equals(listenerList.listPtr);
     }
 
 
-    public Signal(@NonNull MemorySegment signalPtr) {
-        this.signalPtr = signalPtr;
-        this.callbackArgumentCtor = (MemorySegment _) -> null;
-        this.listenerList = new List<>(wl_signal.listener_list(signalPtr), Listener.listElementMeta);
+    public static Signal0 of(MemorySegment signalPtr) {
+        return new Signal0(signalPtr);
     }
 
 
-    /// Add the specified listener to this signal.
-    ///
-    /// ```
-    /// static inline void
-    /// wl_signal_add(struct wl_signal *signal,
-    ///               struct wl_listener *listener)
-    ///```
-    ///
-    /// @param callback Callback function to call when the signal is emitted
-    /// @return
-    public @NonNull Listener add(@NonNull Consumer<T> callback) {
-        // TODO: Memory ownership - can't be auto or confined/scope
-        var listener = Listener.allocate(Arena.global(), (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
-            assert listenerPtr != null;
-            assert !listenerPtr.equals(NULL);
-            assert dataPtr != null;
-            assert !dataPtr.equals(NULL);
-            callback.accept(callbackArgumentCtor.apply(dataPtr));
-        });
-        listenerList.append(listener);
-        return listener;
+    public static <T> Signal1<T> of(MemorySegment signalPtr, Function<MemorySegment, T> function) {
+        return new Signal1<>(signalPtr, function);
     }
 
 
-    /// Add the specified listener to this signal. Callback with no passed argument.
+    /// Remove a listener from the signal.
     ///
-    /// ```
-    /// static inline void
-    /// wl_signal_add(struct wl_signal *signal,
-    ///               struct wl_listener *listener)
-    ///```
-    ///
-    /// @param callback Callback function to call when the signal is emitted
-    /// @return
-    public @NonNull Listener add(@NonNull Runnable callback) {
-        // TODO: Memory ownership - can't be auto or confined/scope
-        var listener = Listener.allocate(Arena.global(), (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
-            assert listenerPtr != null;
-            assert !listenerPtr.equals(NULL);
-            assert dataPtr != null;
-            assert !dataPtr.equals(NULL);
-            callback.run();
-        });
-        listenerList.append(listener);
-        return listener;
-    }
-
-
-    /// Convenience function to remove a listener from the signal. Does not existst in C code.
-    public void remove(@NonNull Listener listener) {
+    /// Convenience function, does not exist in C code.
+    public void remove(Listener listener) {
         listenerList.remove(listener);
+    }
+
+
+    /// Signal that doesn't emit any value (i.e. observer function takes no parameters)
+    public static class Signal0 extends Signal {
+
+        Signal0(MemorySegment signalPtr) {
+            super(signalPtr);
+        }
+
+
+        public Listener add(Runnable callback) {
+            // TODO: Memory ownership - can't be auto or confined/scope
+            var listener = Listener.allocate(
+                Arena.global(),
+                (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
+                    assert !listenerPtr.equals(NULL) && !dataPtr.equals(NULL);
+                    callback.run();
+                });
+            listenerList.append(listener);
+            return listener;
+        }
+    }
+
+
+    /// Signal that emits one value (i.e. observer function takes one parameter)
+    public static class Signal1<T> extends Signal {
+        public final Function<MemorySegment, T> observerParameterCtor;
+
+
+        Signal1(MemorySegment signalPtr, Function<MemorySegment, T> function) {
+            super(signalPtr);
+            this.observerParameterCtor = function;
+        }
+
+
+        public Listener add(Consumer<T> observer) {
+            // TODO: Memory ownership - can't be auto or confined/scope
+            var listener = Listener.allocate(
+                Arena.global(),
+                (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
+                    assert !listenerPtr.equals(NULL) && !dataPtr.equals(NULL);
+                    observer.accept(observerParameterCtor.apply(dataPtr));
+                });
+            listenerList.append(listener);
+            return listener;
+        }
     }
 }

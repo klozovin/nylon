@@ -3,6 +3,7 @@ package wlroots.types;
 import jextract.wlroots.types.wlr_keyboard;
 import org.jspecify.annotations.NullMarked;
 import wayland.server.Signal;
+import wayland.server.Signal.Signal1;
 import xkbcommon.Keymap;
 import xkbcommon.XkbState;
 
@@ -40,12 +41,12 @@ public class Keyboard {
     @NullMarked
     public final static class Events {
         public final MemorySegment eventsPtr;
-        public final Signal<KeyboardKeyEvent> key;
+        public final Signal1<KeyboardKeyEvent> key;
 
 
         public Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
-            this.key = new Signal<>(wlr_keyboard.events.key(eventsPtr), KeyboardKeyEvent::new);
+            this.key = Signal.of(wlr_keyboard.events.key(eventsPtr), KeyboardKeyEvent::new);
         }
     }
 }

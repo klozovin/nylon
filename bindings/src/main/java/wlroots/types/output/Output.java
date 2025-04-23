@@ -5,6 +5,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Display;
 import wayland.server.Signal;
+import wayland.server.Signal.Signal0;
 import wlroots.render.Allocator;
 import wlroots.render.BufferPassOptions;
 import wlroots.render.RenderPass;
@@ -105,14 +106,14 @@ public final class Output {
 
     public final static class Events {
         public final MemorySegment eventsPtr;
-        public final Signal<Void> frame;
-        public final Signal<Void> destroy;
+        public final Signal0 frame;
+        public final Signal0 destroy;
 
 
         Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
-            this.frame = new Signal<>(wlr_output.events.frame(eventsPtr));
-            this.destroy = new Signal<>(wlr_output.events.destroy(eventsPtr));
+            this.frame = Signal.of(wlr_output.events.frame(eventsPtr));
+            this.destroy = Signal.of(wlr_output.events.destroy(eventsPtr));
         }
     }
 }
