@@ -5,6 +5,7 @@ import org.jspecify.annotations.NullMarked;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
+import static jextract.wlroots.types.wlr_scene_h.wlr_scene_node_destroy;
 import static jextract.wlroots.types.wlr_scene_h.wlr_scene_node_set_position;
 
 
@@ -21,5 +22,11 @@ public class SceneNode {
 
     public void setPosition(int x, int y) {
         wlr_scene_node_set_position(sceneNodePtr, x, y);
+    }
+
+
+    /// Immediately destroy the scene-graph node.
+    public void destroy() {
+        wlr_scene_node_destroy(sceneNodePtr);
     }
 }

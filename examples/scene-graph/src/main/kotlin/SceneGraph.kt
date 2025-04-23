@@ -1,5 +1,4 @@
 import wayland.server.Display
-import wlroots.util.Log
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
@@ -13,14 +12,22 @@ import wlroots.types.scene.SceneRect
 import wlroots.types.scene.SceneSurface
 import wlroots.types.xdgshell.XdgShell
 import wlroots.types.xdgshell.XdgToplevel
+import wlroots.util.Log
+import java.lang.foreign.MemorySegment
 import java.util.*
 import kotlin.concurrent.schedule
 import kotlin.system.exitProcess
 
 
+data class SurfaceExtra(
+    val sceneSurface: SceneSurface,
+    val border: SceneRect,
+)
+
+
 object SceneGraph {
-    var surfaceOffset = 0
-    val borderWidth = 3
+    val borderWidth = 4
+    var surfaceOffset = 20
 
     lateinit var display: Display
     lateinit var backend: Backend
@@ -31,22 +38,23 @@ object SceneGraph {
     lateinit var scene: Scene
     lateinit var sceneOutput: SceneOutput
 
-    lateinit var surface: Surface
-    lateinit var surfaceBorder: SceneRect
-    lateinit var sceneSurface: SceneSurface
+    val surfaceExtras = mutableMapOf<MemorySegment, SurfaceExtra>()
 
 
-    fun main() {
+    fun main(args: Array<String>) {
         Log.init(Log.Importance.DEBUG)
+
         display = Display.create()
         backend = Backend.autocreate(display.eventLoop, null) ?: error("Failed to create wlr_backend")
+        scene = Scene.create()
+
         renderer = Renderer.autocreate(backend) ?: error("Failed to create wlr_renderer")
         renderer.initWlDisplay(display)
+
         allocator = Allocator.autocreate(backend, renderer)
+
         compositor = Compositor.create(display, 5, renderer)
 
-
-        scene = Scene.create()
         XdgShell.create(display, 2)
 
         backend.events.newOutput.add(::newOutputHandler)
@@ -56,83 +64,96 @@ object SceneGraph {
             display.destroy()
             exitProcess(1)
         }
+
         if (!backend.start()) {
             display.destroy()
             exitProcess(1)
         }
 
+        Timer(true).schedule(4000) {
+            display.terminate()
+        }
+
         ProcessBuilder().apply {
-            command("/usr/bin/gthumb", "/home/karlo")
+            if (args.size == 0) command("/usr/bin/gthumb")
+            else command(*args)
             environment().put("WAYLAND_DISPLAY", socket)
             start()
         }
 
         Log.logInfo("Running Wayland compositor on WAYLAND_DISPLAY=$socket")
-
-        Timer().schedule(10000) {
-            display.terminate()
-        }
-
         display.run()
+
         display.destroyClients()
         display.destroy()
-        exitProcess(0)
     }
+
 
     fun newOutputHandler(output: Output) {
         output.initRender(allocator, renderer)
         output.events.frame.add(::outputFrameHandler)
         sceneOutput = scene.outputCreate(output)
 
-        OutputState.allocateConfined { outputState ->
-            outputState.init()
-            outputState.setEnabled(true)
-            output.preferredMode()?.let { outputState.setMode(it) }
-            output.commitState(outputState)
-            outputState.finish()
+        OutputState.allocateConfined { state ->
+            state.init()
+            state.setEnabled(true)
+            output.preferredMode()?.let { state.setMode(it) }
+            output.commitState(state)
+            state.finish()
             output.createGlobal(display)
         }
     }
 
+
+    // wlr_output.events.frame
     fun outputFrameHandler() {
         if (!sceneOutput.commit())
             return
         sceneOutput.sendFrameDone()
     }
 
-    fun newSurfaceHandler(surface: Surface) {
-        println("New surface")
 
+    fun newSurfaceHandler(surface: Surface) {
         surface.events.commit.add(::surfaceCommitHandler)
         surface.events.destroy.add(::surfaceDestroyHandler)
 
-        SceneGraph.surface = surface
-        surfaceBorder = SceneRect.create(scene.tree(), 0, 0, floatArrayOf(0.5f, 0.5f, 0.5f, 1.0f))
+        val surfaceBorder = SceneRect.create(scene.tree(), 0, 0, floatArrayOf(0.8f, 0.2f, 0.2f, 1.0f))
         surfaceBorder.node().setPosition(surfaceOffset, surfaceOffset)
-        sceneSurface = SceneSurface.create(scene.tree(), surface)
+
+        val sceneSurface = SceneSurface.create(scene.tree(), surface)
         sceneSurface.buffer().node().setPosition(surfaceOffset + borderWidth, surfaceOffset + borderWidth)
 
+        surfaceExtras.put(surface.surfacePtr, SurfaceExtra(sceneSurface, surfaceBorder))
         surfaceOffset += 50
     }
 
-    fun surfaceCommitHandler() {
-        println("Surface commit")
-        surfaceBorder.setSize(surface.current().width() + 2 * borderWidth, surface.current().height() + 2 * borderWidth)
-        val xdgToplevel = XdgToplevel.tryFromSurface(surface)
-        if (xdgToplevel != null && xdgToplevel.base().initialCommit())
-            xdgToplevel.setSize(0, 0)
 
+    // wlr_surface.events.commit
+    fun surfaceCommitHandler(surface: Surface) {
+        val surfaceBorder = surfaceExtras[surface.surfacePtr]!!.border
+
+        surfaceBorder.setSize(surface.current().width() + 2 * borderWidth, surface.current().height() + 2 * borderWidth)
+
+        XdgToplevel.tryFromSurface(surface)?.let { topLevel ->
+            if (topLevel.base().initialCommit())
+                topLevel.setSize(0, 0)
+        }
     }
 
-    fun surfaceDestroyHandler() {
-        println("Surface destroy")
 
+    // wlr_surface.events.destroy
+    fun surfaceDestroyHandler(surface: Surface) {
+        val sceneSurface = surfaceExtras[surface.surfacePtr]!!.sceneSurface
+        val surfaceBorder = surfaceExtras[surface.surfacePtr]!!.border
+
+        sceneSurface.buffer().node().destroy()
+        surfaceBorder.node().destroy()
     }
 }
 
 
-fun main() {
-    SceneGraph.main()
+fun main(args: Array<String>) {
+    SceneGraph.main(args)
 }
 
 

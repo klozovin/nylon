@@ -24,8 +24,8 @@ public class SceneOutput {
 
     /// Call wlr_surface_send_frame_done() on all surfaces in the scene rendered by
     /// {@link #commit()} for which wlr_scene_surface.primary_output matches the given scene_output.
-    /// TODO: Implement the overload with time parameter (Instant, getEpochSeconds(), getNano)
     public void sendFrameDone() {
+        // TODO: Implement the overload with time parameter (Instant, getEpochSeconds(), getNano)
         try (var arena = Arena.ofConfined()) {
             var timeSpecPtr = timespec.allocate(arena);
             clock_gettime(CLOCK_MONOTONIC(), timeSpecPtr);
@@ -35,7 +35,7 @@ public class SceneOutput {
 
 
     public boolean commit() {
-        // TODO: Implement overload for when options are not null
+        // TODO: Implement commit() overload when options are not null
         return wlr_scene_output_commit(sceneOutputPtr, NULL);
     }
 }

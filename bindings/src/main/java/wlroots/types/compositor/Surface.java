@@ -3,14 +3,14 @@ package wlroots.types.compositor;
 import jextract.wlroots.types.wlr_surface;
 import org.jspecify.annotations.NullMarked;
 import wayland.server.Signal;
-import wayland.server.Signal.Signal0;
+import wayland.server.Signal.Signal1;
 
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
 
 
-/// `struct wlr_surface {};`
+/// `struct wlr_surface {}`
 @NullMarked
 public class Surface {
     public final MemorySegment surfacePtr;
@@ -24,7 +24,7 @@ public class Surface {
     }
 
 
-    /// Cntains the current, committed surface state.
+    /// Contains the current, committed surface state.
     public SurfaceState current() {
         return new SurfaceState(wlr_surface.current(surfacePtr));
     }
@@ -41,15 +41,16 @@ public class Surface {
         public final MemorySegment eventsPtr;
 
         /// Signals that a commit has been applied. The new state can be accessed in {@link #current()}.
-        public final Signal0 commit;
+        public final Signal1<Surface> commit;
 
-        public final Signal0 destroy;
+        /// Signals that the surface is being destroyed.
+        public final Signal1<Surface> destroy;
 
 
         public Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
-            this.commit = Signal.of(wlr_surface.events.commit(eventsPtr));
-            this.destroy = Signal.of(wlr_surface.events.destroy(eventsPtr));
+            this.commit = Signal.of(wlr_surface.events.commit(eventsPtr), Surface::new);
+            this.destroy = Signal.of(wlr_surface.events.destroy(eventsPtr), Surface::new);
         }
     }
 }
