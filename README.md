@@ -10,4 +10,8 @@ Bindings to various libraries useful for writing Wayland compositors: currently 
 
 ## Examples
 
-Various examples and demo programs, currently ports of wlroots/examples: simple.c, cairo-buffer.c, scene-graph.
+Various examples and demo programs, currently ports of wlroots/examples:
+
+* simple.c
+* cairo-buffer.c
+* scene-graph.c
