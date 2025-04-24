@@ -2,6 +2,7 @@ package wlroots.types;
 
 import jextract.wlroots.types.wlr_keyboard_key_event;
 import org.jspecify.annotations.NullMarked;
+import wayland.KeyboardKeyState;
 
 import java.lang.foreign.MemorySegment;
 
@@ -21,5 +22,10 @@ public class KeyboardKeyEvent {
 
     public int keycode() {
         return wlr_keyboard_key_event.keycode(keyboardKeyEventPtr);
+    }
+
+
+    public KeyboardKeyState state() {
+        return KeyboardKeyState.of(wlr_keyboard_key_event.state(keyboardKeyEventPtr));
     }
 }

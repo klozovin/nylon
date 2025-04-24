@@ -41,6 +41,10 @@ public class Keyboard {
     @NullMarked
     public final static class Events {
         public final MemorySegment eventsPtr;
+
+        /// The `key` event signals with a struct wlr_keyboard_key_event that a key has been
+        /// pressed or released on the keyboard. This event is emitted before the xkb state of the
+        /// keyboard has been updated (including modifiers).
         public final Signal1<KeyboardKeyEvent> key;
 
 

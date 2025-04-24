@@ -1,6 +1,6 @@
 package xkbcommon;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.foreign.MemorySegment;
@@ -9,11 +9,12 @@ import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.xkbcommon.xkbcommon_h.*;
 
 
+@NullMarked
 public class XkbContext {
-    public final @NonNull MemorySegment xkbContextPtr;
+    public final MemorySegment xkbContextPtr;
 
 
-    public XkbContext(@NonNull MemorySegment xkbContextPtr) {
+    public XkbContext(MemorySegment xkbContextPtr) {
         assert !xkbContextPtr.equals(NULL);
         this.xkbContextPtr = xkbContextPtr;
     }
@@ -23,7 +24,7 @@ public class XkbContext {
     ///
     /// @param flags Optional flags for the context, or 0.
     /// @return A new context, or NULL on failure.
-    public static @Nullable XkbContext of(@NonNull Flags flags) {
+    public static @Nullable XkbContext of(Flags flags) {
         var xkbContextPtr = xkb_context_new(flags.idx);
         return !xkbContextPtr.equals(NULL) ? new XkbContext(xkbContextPtr) : null;
     }

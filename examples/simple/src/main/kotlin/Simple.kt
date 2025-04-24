@@ -1,3 +1,4 @@
+import wayland.KeyboardKeyState
 import wayland.server.Display
 import wayland.server.Listener
 import wlroots.util.Log
@@ -138,7 +139,9 @@ fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
     check(keySym != XkbKey.NoSymbol)
     println("> keycode=$keycode, sym=$keySym")
 
-    if (keySym == XkbKey.Escape) {
+    // BUGFIX: Have to check for Escape release, because on some keyboard setups both PRESSED and RELEASED events come
+    //         together, when the key is depressed.
+    if (keySym == XkbKey.Escape && keyboardKeyEvent.state() == KeyboardKeyState.RELEASED) {
         Log.logDebug("Terminating display...")
         State.display.terminate()
         Log.logDebug("...terminated display!")

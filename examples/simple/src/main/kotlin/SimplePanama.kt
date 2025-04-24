@@ -1,5 +1,5 @@
-import jextract.wayland.server.server_core_h.wl_display_create
-import jextract.wayland.server.server_core_h.wl_display_get_event_loop
+import jextract.wayland.server.server_h.wl_display_create
+import jextract.wayland.server.server_h.wl_display_get_event_loop
 import jextract.wayland.server.wl_listener
 import jextract.wayland.server.wl_notify_func_t
 import jextract.wayland.server.wl_signal

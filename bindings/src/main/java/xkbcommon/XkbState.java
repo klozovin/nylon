@@ -1,7 +1,7 @@
 package xkbcommon;
 
 import jextract.xkbcommon.xkbcommon_h;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -10,11 +10,12 @@ import static jextract.xkbcommon.xkbcommon_h.xkb_state_key_get_one_sym;
 import static jextract.xkbcommon.xkbcommon_h.xkb_state_key_get_syms;
 
 
+@NullMarked
 public class XkbState {
-    private final @NonNull MemorySegment xkbStatePtr;
+    private final MemorySegment xkbStatePtr;
 
 
-    public XkbState(@NonNull MemorySegment xkbStatePtr) {
+    public XkbState(MemorySegment xkbStatePtr) {
         this.xkbStatePtr = xkbStatePtr;
     }
 
