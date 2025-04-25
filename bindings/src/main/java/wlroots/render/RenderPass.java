@@ -11,7 +11,7 @@ import static jextract.wlroots.render.pass_h.wlr_render_pass_submit;
 
 @NullMarked
 public class RenderPass {
-    private final MemorySegment renderPassPtr;
+    public final MemorySegment renderPassPtr;
 
 
     public RenderPass(MemorySegment renderPassPtr) {

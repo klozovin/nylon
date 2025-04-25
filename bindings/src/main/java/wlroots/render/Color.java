@@ -25,12 +25,26 @@ public class Color {
         wlr_render_color.b(colorPtr, colors[2]);
         wlr_render_color.a(colorPtr, colors[3]);
     }
-
-
     public void rgba(float r, float g, float b, float a) {
         wlr_render_color.r(colorPtr, r);
         wlr_render_color.g(colorPtr, g);
         wlr_render_color.b(colorPtr, b);
         wlr_render_color.a(colorPtr, a);
+    }
+
+
+    public void rgba(double[] colors) {
+        wlr_render_color.r(colorPtr, (float) colors[0]);
+        wlr_render_color.g(colorPtr, (float) colors[1]);
+        wlr_render_color.b(colorPtr, (float) colors[2]);
+        wlr_render_color.a(colorPtr, (float) colors[3]);
+    }
+
+
+    public void rgba(double r, double g, double b, double a) {
+        wlr_render_color.r(colorPtr, (float) r);
+        wlr_render_color.g(colorPtr, (float) g);
+        wlr_render_color.b(colorPtr, (float) b);
+        wlr_render_color.a(colorPtr, (float) a);
     }
 }

@@ -72,6 +72,16 @@ public class Cursor {
     }
 
 
+    /// Warp the cursor to the given x and y in absolute 0..1 coordinates. If the given point is
+    /// out of the layout boundaries or constraints, the closest point will be used. If one
+    /// coordinate is NAN, it will be ignored.
+    ///
+    /// @param device May be passed to respect device mapping constraints, if NULL, device mapping constraints will be ignored.
+    public void warpAbsolute(InputDevice device,  double x, double y) {
+        wlr_cursor_warp_absolute(cursorPtr, device.inputDevicePtr, x, y);
+    }
+
+
     /// Set the cursor image from an XCursor theme.
     ///
     /// The image will be loaded from the {@link XcursorManager}.

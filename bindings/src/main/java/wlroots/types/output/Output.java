@@ -79,12 +79,16 @@ public final class Output {
     /// @param state     describes the output changes the rendered frame will be committed with. A NULL state indicates no change.
     /// @param bufferAge If non-NULL, buffer_age is set to the drawing buffer age in number of frames or -1 if unknown. This is useful for damage tracking.
     /// @return On error, NULL is returned. Creating a render pass on a disabled output is an error.
-    public @Nullable RenderPass beginRenderPass(OutputState state, int bufferAge, @Nullable BufferPassOptions renderOptions) {
+    public @Nullable RenderPass beginRenderPass(OutputState state, @Nullable Integer bufferAge, @Nullable BufferPassOptions renderOptions) {
         // TODO: overload with renderoptions=null for cleaner API
         var renderPassPtr = wlr_output_begin_render_pass(
             outputPtr,
             state.outputStatePtr,
-            Arena.global().allocateFrom(JAVA_INT, bufferAge), // TODO: Memory lifetime, why not confined?
+            switch (bufferAge) {
+                case Integer ba -> Arena.global().allocateFrom(JAVA_INT, ba); // TODO: Memory lifetime, why not confined?
+                case null -> NULL;
+            },
+            //Arena.global().allocateFrom(JAVA_INT, bufferAge), // TODO: Memory lifetime, why not confined?
             switch (renderOptions) {
                 case BufferPassOptions bpo -> bpo.bufferPassOptionsPtr;
                 case null -> NULL;
@@ -96,6 +100,15 @@ public final class Output {
 
     public boolean commitState(OutputState state) {
         return wlr_output_commit_state(outputPtr, state.outputStatePtr);
+    }
+
+
+    /// Render software cursors. The damage is in buffer-local coordinate space.
+    ///
+    /// This is a utility function that can be called when compositors render.
+    public void addSoftwareCursorsToRenderPass(RenderPass pass) {
+        // TODO: Add overload for damage parameter
+        wlr_output_add_software_cursors_to_render_pass(outputPtr, pass.renderPassPtr, NULL);
     }
 
 

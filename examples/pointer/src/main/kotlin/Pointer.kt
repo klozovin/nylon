@@ -1,7 +1,9 @@
 import wayland.KeyboardKeyState
+import wayland.PointerButtonState
 import wayland.server.Display
 import wlroots.backend.Backend
 import wlroots.render.Allocator
+import wlroots.render.RectOptions
 import wlroots.render.Renderer
 import wlroots.types.*
 import wlroots.types.InputDevice.Type.*
@@ -21,19 +23,21 @@ import wlroots.util.Log
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
 import xkbcommon.XkbKey
-import java.util.*
-import kotlin.concurrent.schedule
+import java.lang.foreign.Arena
 import kotlin.system.exitProcess
 
 
 object Pointer {
-    var lastFrame: Long = 0
+    var currentX: Double = 0.0
+    var currentY: Double = 0.0
+    var clearColor = doubleArrayOf(0.25, 0.25, 0.25)
+    var defaultColor = doubleArrayOf(0.25, 0.25, 0.25)
 
     val display = Display.create()
 
     val backend = Backend.autocreate(display.eventLoop, null)?.apply {
-        events.newInput.add(::newInputHandler)
-        events.newOutput.add(::newOutputHandler)
+        events.newInput.add(::onNewInput)
+        events.newOutput.add(::onNewOutput)
     } ?: error("Failed to create wlr_backend")
 
     val renderer = Renderer.autocreate(backend) ?: error("Failed to create wlr_renderer")
@@ -48,9 +52,9 @@ object Pointer {
     val cursor = Cursor.create().apply {
         with(events) {
             motion.add(::cursorMotionHandler)
-            motionAbsolute.add(::cursorMotionAbsoluteHandler)
-            button.add(::cursorButtonHandler)
-            axis.add(::cursorAxisHandler)
+            motionAbsolute.add(::onCursorMotionAbsolute)
+            button.add(::onCursorButton)
+            axis.add(::onCursorAxis)
 
             touchUp.add(::cursorTouchUpHandler)
             touchDown.add(::cursorTouchDownHandler)
@@ -66,18 +70,11 @@ object Pointer {
 
 
     fun main() {
-        lastFrame = System.nanoTime()
-
         if (!backend.start()) {
             Log.logError("Failed to start backend")
             backend.destroy()
             exitProcess(1)
         }
-
-        Timer(true).schedule(30_000) {
-            display.terminate()
-        }
-
         display.run()
         display.destroy()
         xcursorManager.destroy()
@@ -88,10 +85,10 @@ object Pointer {
     // Output: Signal listeners
     //
 
-    fun newOutputHandler(output: Output) {
+    fun onNewOutput(output: Output) {
         Pointer.output = output
         output.initRender(allocator, renderer)
-        output.events.frame.add(::outputFrameHandler)
+        output.events.frame.add(::onOutputFrame)
         output.events.destroy.add(::outputDestroyHandler)
         outputLayout.addAuto(output)
 
@@ -106,8 +103,22 @@ object Pointer {
         }
     }
 
-    fun outputFrameHandler() {
 
+    fun onOutputFrame() {
+        Arena.ofConfined().use { arena ->
+            val state = OutputState.allocate(arena)
+            state.init()
+            val pass = output.beginRenderPass(state, null, null) ?: error("Failed to create wlr_render_pass")
+            pass.addRect(RectOptions.allocate(arena).apply {
+                box.setWidth(output.width())
+                box.setHeight(output.height())
+                color.rgba(clearColor[0], clearColor[1], clearColor[2], 1.0)
+            })
+            output.addSoftwareCursorsToRenderPass(pass)
+            pass.submit()
+            output.commitState(state)
+            state.finish()
+        }
     }
 
 
@@ -119,12 +130,12 @@ object Pointer {
     // Keyboard: signal listeners
     //
 
-    fun newInputHandler(device: InputDevice) {
+    fun onNewInput(device: InputDevice) {
         when (device.type()) {
             POINTER, TOUCH, TABLET -> cursor.attachInputDevice(device)
             KEYBOARD -> {
                 keyboard = device.keyboardFromInputDevice()
-                keyboard.events.key.add(::keyboardKeyHandler)
+                keyboard.events.key.add(::onKeyboardKey)
                 device.events.destroy.add(::keyboardDestroyHandler)
 
                 val context = XkbContext.of(XkbContext.Flags.NO_FLAGS) ?: error {
@@ -146,7 +157,7 @@ object Pointer {
         }
     }
 
-    fun keyboardKeyHandler(key: KeyboardKeyEvent) {
+    fun onKeyboardKey(key: KeyboardKeyEvent) {
         val keycode = key.keycode() + 8 // Convert from libinput/evdev raw hardware code to xkbcommon ones.
         val keysym = keyboard.xkbState().keyGetOneSym(keycode)
         check(keysym != XkbKey.NoSymbol)
@@ -172,19 +183,31 @@ object Pointer {
     }
 
 
-    fun cursorMotionAbsoluteHandler(motion: PointerMotionAbsoluteEvent) {
-
+    fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
+        currentX = event.x
+        currentY = event.y
+        cursor.warpAbsolute(event.pointer.base(), currentX, currentY)
     }
 
 
-    fun cursorButtonHandler(button: PointerButtonEvent) {
-
+    fun onCursorButton(event: PointerButtonEvent) {
+        if (event.state == PointerButtonState.RELEASED) {
+            val color = defaultColor.copyOf()
+            clearColor = color.copyOf()
+        } else {
+            val color = doubleArrayOf(0.25, 0.25, 0.25, 1.0)
+            color[event.button % 3] = 1.0
+            clearColor = color.copyOf()
+        }
     }
 
 
-    fun cursorAxisHandler(axis: PointerAxisEvent) {
+    fun onCursorAxis(event: PointerAxisEvent) {
+        // Depending on the scroll direction, increase/decrease every channel by 0.05, clamping at 0.0 and 1.0
+        val channel = (defaultColor[0] + if (event.delta > 0) -0.05 else 0.05).coerceIn(0.0, 1.0)
 
-
+        defaultColor = DoubleArray(3) { channel }
+        clearColor = defaultColor
     }
 
     fun cursorTouchUpHandler(touch: TouchUpEvent) {}

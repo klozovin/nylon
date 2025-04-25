@@ -15,3 +15,4 @@ Various examples and demo programs, currently ports of wlroots/examples:
 * simple.c
 * cairo-buffer.c
 * scene-graph.c
+* pointer.c
