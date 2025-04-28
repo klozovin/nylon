@@ -7,8 +7,7 @@ import wayland.server.Display;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_output_layout_h.wlr_output_layout_add_auto;
-import static jextract.wlroots.types.wlr_output_layout_h.wlr_output_layout_create;
+import static jextract.wlroots.types.wlr_output_layout_h.*;
 
 
 /// Helper to arrange outputs in a 2D coordinate space. The output effective resolution is used,
@@ -40,5 +39,12 @@ public class OutputLayout {
     public @Nullable OutputLayoutOutput addAuto(Output output) {
         var outputLayoutOutputPtr = wlr_output_layout_add_auto(outputLayoutPtr, output.outputPtr);
         return outputLayoutOutputPtr.equals(NULL) ? new OutputLayoutOutput(outputLayoutOutputPtr) : null;
+    }
+
+
+    /// Remove the output from the layout. If the output is already not a part of the layout, this
+    /// function is a no-op.
+    public void remove(Output output) {
+        wlr_output_layout_remove(outputLayoutPtr, output.outputPtr);
     }
 }

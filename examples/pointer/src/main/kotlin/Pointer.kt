@@ -1,6 +1,7 @@
 import wayland.KeyboardKeyState
 import wayland.PointerButtonState
 import wayland.server.Display
+import wayland.server.Listener
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.RectOptions
@@ -46,7 +47,12 @@ object Pointer {
     val xcursorManager = XcursorManager.create(null, 24) ?: error("Failed to load default cursor")
 
     lateinit var output: Output
+    lateinit var outputFrameListener: Listener
+    lateinit var outputDestroyListener: Listener
+
     lateinit var keyboard: Keyboard
+    lateinit var keyboardKeyListener: Listener
+    lateinit var inputDeviceDestroyListener: Listener
 
 
     val cursor = Cursor.create().apply {
@@ -88,8 +94,10 @@ object Pointer {
     fun onNewOutput(output: Output) {
         Pointer.output = output
         output.initRender(allocator, renderer)
+
         output.events.frame.add(::onOutputFrame)
-        output.events.destroy.add(::outputDestroyHandler)
+        output.events.destroy.add(::onOutputDestroy)
+
         outputLayout.addAuto(output)
 
         OutputState.allocateConfined { state ->
@@ -122,8 +130,10 @@ object Pointer {
     }
 
 
-    fun outputDestroyHandler() {
-
+    fun onOutputDestroy() {
+        outputLayout.remove(output)
+        outputFrameListener.remove()
+        outputDestroyListener.remove()
     }
 
     //
@@ -135,8 +145,8 @@ object Pointer {
             POINTER, TOUCH, TABLET -> cursor.attachInputDevice(device)
             KEYBOARD -> {
                 keyboard = device.keyboardFromInputDevice()
-                keyboard.events.key.add(::onKeyboardKey)
-                device.events.destroy.add(::keyboardDestroyHandler)
+                keyboardKeyListener = keyboard.events.key.add(::onKeyboardKey)
+                inputDeviceDestroyListener = device.events.destroy.add(::onKeyboardDestroy)
 
                 val context = XkbContext.of(XkbContext.Flags.NO_FLAGS) ?: error {
                     Log.logError("Failed to create XKB keymap")
@@ -172,7 +182,10 @@ object Pointer {
     }
 
 
-    fun keyboardDestroyHandler() {}
+    fun onKeyboardDestroy() {
+        keyboardKeyListener.remove()
+        inputDeviceDestroyListener.remove()
+    }
 
     //
     // Input handlers: mouse, touchscreen
@@ -209,6 +222,10 @@ object Pointer {
         defaultColor = DoubleArray(3) { channel }
         clearColor = defaultColor
     }
+
+    //
+    // Touch input: unimplemented because of lack of hardware to test on.
+    //
 
     fun cursorTouchUpHandler(touch: TouchUpEvent) {}
     fun cursorTouchDownHandler(touch: TouchDownEvent) {}

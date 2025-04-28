@@ -15,6 +15,8 @@ import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wlroots.types.wlr_compositor_h.wlr_compositor_create;
 
 
+///  Bridge between wlroots and libwayland's "wl_compositor". Provides surfaces for the clients to
+///  render onto.
 @NullMarked
 public class Compositor {
     public final MemorySegment compositorPtr;
@@ -33,6 +35,8 @@ public class Compositor {
     ///
     /// If a renderer is supplied, the compositor will create struct wlr_texture objects from
     /// client buffers on surface commit.
+    ///
+    /// @param version Maximum supported version to pass to wl_compositor, to advertise to clients
     public static Compositor create(Display display, int version, @Nullable Renderer renderer) {
         return new Compositor(wlr_compositor_create(
             display.displayPtr,

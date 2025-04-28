@@ -70,8 +70,7 @@ public class Buffer {
             assert !implPtr.equals(NULL);
             this.implPtr = implPtr;
 
-            // TODO: Memory lifetime: Use confined here instead of global?
-
+            // TODO: Memory lifetime: Use confined here instead of global? -- nope??
             wlr_buffer_impl.destroy(implPtr, wlr_buffer_impl.destroy.allocate(
                 (MemorySegment wlrBufferPtr) -> {
                     assert wlrBufferPtr.equals(this.bufferPtr);
@@ -80,56 +79,56 @@ public class Buffer {
                 Arena.global()
             ));
 
-            // TODO: JAVA24, use instanceof in switch
-            if (this instanceof DataSource dataSource) {
-                switch (dataSource) {
+            if (!(this instanceof DataSource dataSource))
+                return;
 
-                    // Buffer is in RAM memory
-                    case DataSource.Memory buf -> {
-                        wlr_buffer_impl.begin_data_ptr_access(implPtr, wlr_buffer_impl.begin_data_ptr_access.allocate(
-                            (MemorySegment wlrBufferPtr, int flags, MemorySegment data, MemorySegment format, MemorySegment stride) -> {
-                                assert wlrBufferPtr.equals(this.bufferPtr);
-                                var flagsSet = AccessFlag.setFromBitmask(flags);
-                                var result = buf.beginDataAccess(flagsSet);
-                                // TODO: When resul.result false, should we return without setting the out parameters?
-                                data.set(C_POINTER, 0, result.data);
-                                format.set(C_INT, 0, result.format);
-                                stride.set(C_INT, 0, result.stride);
-                                return result.result;
-                            },
-                            Arena.global()
-                        ));
+            switch (dataSource) {
 
-                        wlr_buffer_impl.end_data_ptr_access(implPtr, wlr_buffer_impl.end_data_ptr_access.allocate(
-                            (MemorySegment wlrBufferPtr) -> {
-                                assert wlrBufferPtr.equals(this.bufferPtr);
-                                buf.endDataAccess();
-                            },
-                            Arena.global()
-                        ));
-                    }
+                // Buffer is in RAM memory
+                case DataSource.Memory buf -> {
+                    wlr_buffer_impl.begin_data_ptr_access(implPtr, wlr_buffer_impl.begin_data_ptr_access.allocate(
+                        (MemorySegment wlrBufferPtr, int flags, MemorySegment data, MemorySegment format, MemorySegment stride) -> {
+                            assert wlrBufferPtr.equals(this.bufferPtr);
+                            var flagsSet = AccessFlag.setFromBitmask(flags);
+                            var result = buf.beginDataAccess(flagsSet);
+                            // TODO: When resul.result false, should we return without setting the out parameters?
+                            data.set(C_POINTER, 0, result.data);
+                            format.set(C_INT, 0, result.format);
+                            stride.set(C_INT, 0, result.stride);
+                            return result.result;
+                        },
+                        Arena.global()
+                    ));
 
-                    // Buffer is Linux DMA-BUF pixel buffer
-                    case DataSource.Dmabuf buf -> {
-                        wlr_buffer_impl.get_dmabuf(implPtr, wlr_buffer_impl.get_dmabuf.allocate(
-                            (MemorySegment wlrBufferPtr, MemorySegment attribs) -> {
-                                assert wlrBufferPtr.equals(bufferPtr);
-                                return buf.getDmabuf(new DmabufAttributes(attribs));
-                            },
-                            Arena.global()
-                        ));
-                    }
+                    wlr_buffer_impl.end_data_ptr_access(implPtr, wlr_buffer_impl.end_data_ptr_access.allocate(
+                        (MemorySegment wlrBufferPtr) -> {
+                            assert wlrBufferPtr.equals(this.bufferPtr);
+                            buf.endDataAccess();
+                        },
+                        Arena.global()
+                    ));
+                }
 
-                    // Buffer is in shared memory
-                    case DataSource.Shm buf -> {
-                        wlr_buffer_impl.get_shm(implPtr, wlr_buffer_impl.get_shm.allocate(
-                            (MemorySegment wlrBufferPtr, MemorySegment attribs) -> {
-                                assert wlrBufferPtr.equals(bufferPtr);
-                                return buf.getShm(new ShmAttributes(attribs));
-                            },
-                            Arena.global()
-                        ));
-                    }
+                // Buffer is Linux DMA-BUF pixel buffer
+                case DataSource.Dmabuf buf -> {
+                    wlr_buffer_impl.get_dmabuf(implPtr, wlr_buffer_impl.get_dmabuf.allocate(
+                        (MemorySegment wlrBufferPtr, MemorySegment attribs) -> {
+                            assert wlrBufferPtr.equals(bufferPtr);
+                            return buf.getDmabuf(new DmabufAttributes(attribs));
+                        },
+                        Arena.global()
+                    ));
+                }
+
+                // Buffer is in shared memory
+                case DataSource.Shm buf -> {
+                    wlr_buffer_impl.get_shm(implPtr, wlr_buffer_impl.get_shm.allocate(
+                        (MemorySegment wlrBufferPtr, MemorySegment attribs) -> {
+                            assert wlrBufferPtr.equals(bufferPtr);
+                            return buf.getShm(new ShmAttributes(attribs));
+                        },
+                        Arena.global()
+                    ));
                 }
             }
         }
@@ -203,8 +202,6 @@ public class Buffer {
                     flagsSet.add(e);
             }
             return flagsSet;
-//            if ((flags & AccessFlag.READ.idx) != 0) flagsSet.add(AccessFlag.READ);
-//            if ((flags & AccessFlag.WRITE.idx) != 0) flagsSet.add(AccessFlag.WRITE);
         }
     }
 }

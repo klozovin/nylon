@@ -44,7 +44,7 @@ public final class OutputState {
     /// Enables or disables an output. A disabled output is turned off and doesn't
     /// emit `frame` events.
     ///
-    /// This state will be applied once [#commitState] is called.
+    /// This state will be applied once {@link Output#commitState(OutputState)} is called.
     public void setEnabled(boolean enabled) {
         wlr_output_state_set_enabled(outputStatePtr, enabled);
     }
