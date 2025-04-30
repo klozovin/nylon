@@ -85,7 +85,9 @@ public final class Output {
             outputPtr,
             state.outputStatePtr,
             switch (bufferAge) {
-                case Integer ba -> Arena.global().allocateFrom(JAVA_INT, ba); // TODO: Memory lifetime, why not confined?
+                // TODO: Use something platform independent instead of JAVA_INT
+                // TODO: Memory lifetime, why not confined?
+                case Integer ba -> Arena.global().allocateFrom(JAVA_INT, ba);
                 case null -> NULL;
             },
             //Arena.global().allocateFrom(JAVA_INT, bufferAge), // TODO: Memory lifetime, why not confined?

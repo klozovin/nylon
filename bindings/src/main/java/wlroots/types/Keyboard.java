@@ -11,6 +11,7 @@ import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wlroots.types.wlr_keyboard_h.wlr_keyboard_set_keymap;
+import static jextract.wlroots.types.wlr_keyboard_h.wlr_keyboard_set_repeat_info;
 
 
 @NullMarked
@@ -33,6 +34,15 @@ public class Keyboard {
     }
 
 
+    /// Set the keyboard repeat info.
+    ///
+    /// @param rateHz  Key repeats per second
+    /// @param delayMs Delay in milliseconds
+    public void setRepeatInfo(int rateHz, int delayMs) {
+        wlr_keyboard_set_repeat_info(keyboardPtr, rateHz, delayMs);
+    }
+
+
     public XkbState xkbState() {
         return new XkbState(wlr_keyboard.xkb_state(keyboardPtr));
     }
@@ -42,15 +52,20 @@ public class Keyboard {
     public final static class Events {
         public final MemorySegment eventsPtr;
 
-        /// The `key` event signals with a struct wlr_keyboard_key_event that a key has been
-        /// pressed or released on the keyboard. This event is emitted before the xkb state of the
-        /// keyboard has been updated (including modifiers).
+        /// Raised when a key has been pressed or released on the keyboard. Emitted before the xkb state of
+        /// the keyboard has been updated (including modifiers).
         public final Signal1<KeyboardKeyEvent> key;
+
+        /// Raised when the modifier state of the {@link Keyboard} has been updated. At this time, you can
+        /// read the modifier state of the struct wlr_keyboard and handle the updated state by sending it to
+        /// clients.
+        public final Signal.Signal0 modifiers;
 
 
         public Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
             this.key = Signal.of(wlr_keyboard.events.key(eventsPtr), KeyboardKeyEvent::new);
+            this.modifiers = Signal.of(wlr_keyboard.events.modifiers(eventsPtr));
         }
     }
 }

@@ -23,6 +23,11 @@ import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wlroots.types.wlr_cursor_h.*;
 
 
+/// Used by wlroots for tracking the cursor image shown on screen.
+///
+/// It only displays an image on screen, it does not move it around with the pointer.
+///
+/// `struct wlr_cursor {}`
 @NullMarked
 public class Cursor {
     public final MemorySegment cursorPtr;
@@ -40,25 +45,26 @@ public class Cursor {
     }
 
 
-    /// Uses the given layout to establish the boundaries and movement semantics of this cursor.
-    /// Cursors without an output layout allow infinite movement in any direction and do not
-    /// support absolute input events.
+    /// Uses the given layout to establish the boundaries and movement semantics of this cursor. Cursors
+    /// without an output layout allow infinite movement in any direction and do not support absolute input
+    /// events.
     public void attachOutputLayout(OutputLayout layout) {
         wlr_cursor_attach_output_layout(cursorPtr, layout.outputLayoutPtr);
     }
 
 
-    /// Attaches this input device to this cursor. The input device must be one of:{@link InputDevice.Type#POINTER},
-    ///  {@link InputDevice.Type#TOUCH}, {@link InputDevice.Type#TABLET}
+    /// Attaches this input device to this cursor. The input device must be one
+    /// of:{@link InputDevice.Type#POINTER}, {@link InputDevice.Type#TOUCH}, {@link InputDevice.Type#TABLET}
     public void attachInputDevice(InputDevice device) {
         wlr_cursor_attach_input_device(cursorPtr, device.inputDevicePtr);
     }
 
 
-    /// Move the cursor in the direction of the given x and y layout coordinates. If one
-    /// coordinate is NAN, it will be ignored.
+    /// Move the cursor in the direction of the given x and y layout coordinates. If one coordinate is NAN, it
+    /// will be ignored.
     ///
-    /// @param device May be passed to respect device mapping constraints. If NULL, device mapping constraints will be ignored.
+    /// @param device May be passed to respect device mapping constraints. If NULL, device mapping constraints
+    ///               will be ignored.
     public void move(@Nullable InputDevice device, double deltaX, double deltaY) {
         wlr_cursor_move(
             cursorPtr,
@@ -72,12 +78,13 @@ public class Cursor {
     }
 
 
-    /// Warp the cursor to the given x and y in absolute 0..1 coordinates. If the given point is
-    /// out of the layout boundaries or constraints, the closest point will be used. If one
-    /// coordinate is NAN, it will be ignored.
+    /// Warp the cursor to the given x and y in absolute 0..1 coordinates. If the given point is out of the
+    /// layout boundaries or constraints, the closest point will be used. If one coordinate is NAN, it will be
+    /// ignored.
     ///
-    /// @param device May be passed to respect device mapping constraints, if NULL, device mapping constraints will be ignored.
-    public void warpAbsolute(InputDevice device,  double x, double y) {
+    /// @param device May be passed to respect device mapping constraints, if NULL, device mapping constraints
+    ///               will be ignored.
+    public void warpAbsolute(InputDevice device, double x, double y) {
         wlr_cursor_warp_absolute(cursorPtr, device.inputDevicePtr, x, y);
     }
 
@@ -105,6 +112,11 @@ public class Cursor {
         public final Signal1<PointerButtonEvent> button;
         public final Signal1<PointerAxisEvent> axis;
 
+        /// Forwarded by the cursor when a pointer emits a frame event, which are sent after regular pointer
+        /// events to group multiple events together, i.e. two axis events may happen at the same time, in
+        /// which case a frame event won't be sent in between.
+        public final Signal.Signal0 frame;
+
         public final Signal1<TouchUpEvent> touchUp;
         public final Signal1<TouchDownEvent> touchDown;
         public final Signal1<TouchMotionEvent> touchMotion;
@@ -116,17 +128,18 @@ public class Cursor {
         Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
 
-            this.motion         = Signal.of(wlr_cursor.events.motion(eventsPtr),            PointerMotionEvent::new);
-            this.motionAbsolute = Signal.of(wlr_cursor.events.motion_absolute(eventsPtr),   PointerMotionAbsoluteEvent::new);
-            this.button         = Signal.of(wlr_cursor.events.button(eventsPtr),            PointerButtonEvent::new);
-            this.axis           = Signal.of(wlr_cursor.events.axis(eventsPtr),              PointerAxisEvent::new);
+            this.motion = Signal.of(wlr_cursor.events.motion(eventsPtr), PointerMotionEvent::new);
+            this.motionAbsolute = Signal.of(wlr_cursor.events.motion_absolute(eventsPtr), PointerMotionAbsoluteEvent::new);
+            this.button = Signal.of(wlr_cursor.events.button(eventsPtr), PointerButtonEvent::new);
+            this.axis = Signal.of(wlr_cursor.events.axis(eventsPtr), PointerAxisEvent::new);
+            this.frame = Signal.of(wlr_cursor.events.frame(eventsPtr));
 
-            this.touchUp        = Signal.of(wlr_cursor.events.touch_up(eventsPtr),          TouchUpEvent::new);
-            this.touchDown      = Signal.of(wlr_cursor.events.touch_down(eventsPtr),        TouchDownEvent::new);
-            this.touchMotion    = Signal.of(wlr_cursor.events.touch_motion(eventsPtr),      TouchMotionEvent::new);
-            this.touchCancel    = Signal.of(wlr_cursor.events.touch_cancel(eventsPtr),      TouchCancelEvent::new);
+            this.touchUp = Signal.of(wlr_cursor.events.touch_up(eventsPtr), TouchUpEvent::new);
+            this.touchDown = Signal.of(wlr_cursor.events.touch_down(eventsPtr), TouchDownEvent::new);
+            this.touchMotion = Signal.of(wlr_cursor.events.touch_motion(eventsPtr), TouchMotionEvent::new);
+            this.touchCancel = Signal.of(wlr_cursor.events.touch_cancel(eventsPtr), TouchCancelEvent::new);
 
-            this.tabletToolAxis = Signal.of(wlr_cursor.events.tablet_tool_axis(eventsPtr),  TabletToolAxisEvent::new);
+            this.tabletToolAxis = Signal.of(wlr_cursor.events.tablet_tool_axis(eventsPtr), TabletToolAxisEvent::new);
         }
     }
 }

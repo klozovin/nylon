@@ -11,6 +11,8 @@ import static jextract.wlroots.types.wlr_xcursor_manager_h.wlr_xcursor_manager_c
 import static jextract.wlroots.types.wlr_xcursor_manager_h.wlr_xcursor_manager_destroy;
 
 
+/// Loads Xcursor themes to source cursor images, makes sure that cursor images are available at all scale
+/// factors on the screen (for HiDPI).
 @NullMarked
 public class XcursorManager {
     public final MemorySegment xcursorManagerPtr;
@@ -22,8 +24,7 @@ public class XcursorManager {
     }
 
 
-    /// Creates a new XCursor manager with the given xcursor theme name and base size (for use when
-    /// scale=1).
+    /// Creates a new XCursor manager with the given xcursor theme name and base size (for use when scale=1).
     public static @Nullable XcursorManager create(@Nullable String name, int size) {
         try (var arena = Arena.ofConfined()) {
             var xcursorManagerPtr = wlr_xcursor_manager_create(switch (name) {

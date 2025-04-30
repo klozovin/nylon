@@ -8,8 +8,7 @@ import wlroots.backend.Backend;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.backend_h.wlr_renderer_autocreate;
-import static jextract.wlroots.backend_h.wlr_renderer_init_wl_display;
+import static jextract.wlroots.backend_h.*;
 
 
 /// A renderer for basic 2D operations.
@@ -24,8 +23,8 @@ public class Renderer {
     }
 
 
-    /// Automatically initializes the most suitable backend given the environment. Will always
-    /// return a multi-backend. The backend is created but not started.
+    /// Automatically initializes the most suitable backend given the environment. Will always return a
+    /// multi-backend. The backend is created but not started.
     ///
     /// @return null on failure.
     public static @Nullable Renderer autocreate(Backend backend) {
@@ -39,5 +38,13 @@ public class Renderer {
     /// @return false on failure
     public boolean initWlDisplay(Display display) {
         return wlr_renderer_init_wl_display(rendererPtr, display.displayPtr);
+    }
+
+
+    /// Destroys the renderer.
+    ///
+    /// Textures must be destroyed separately.
+    public void destroy() {
+        wlr_renderer_destroy(rendererPtr);
     }
 }

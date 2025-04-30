@@ -72,6 +72,8 @@ public final class Backend {
     public final static class Events {
         public final MemorySegment eventsPtr;
         public final Signal1<Output> newOutput;
+
+        /// Raised when a new input device becomes available.
         public final Signal1<InputDevice> newInput;
 
 

@@ -51,7 +51,7 @@ object SceneGraph {
         renderer = Renderer.autocreate(backend) ?: error("Failed to create wlr_renderer")
         renderer.initWlDisplay(display)
 
-        allocator = Allocator.autocreate(backend, renderer)
+        allocator = Allocator.autocreate(backend, renderer) ?: error("Failed to create wlr_allocator")
 
         compositor = Compositor.create(display, 5, renderer)
 
@@ -75,7 +75,7 @@ object SceneGraph {
         }
 
         ProcessBuilder().apply {
-            if (args.size == 0) command("/usr/bin/gthumb")
+            if (args.isEmpty()) command("/usr/bin/gthumb")
             else command(*args)
             environment().put("WAYLAND_DISPLAY", socket)
             start()

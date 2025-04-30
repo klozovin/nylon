@@ -94,6 +94,13 @@ jextract --library $lib --output $output    \
     --target-package jextract.wlroots.types \
     --define-macro WLR_USE_UNSTABLE         \
     --include-dir $libDir                   \
+    --include-dir "/usr/include/pixman-1/"  \
+    "$libDir/wlr/types/wlr_data_device.h"
+
+jextract --library $lib --output $output    \
+    --target-package jextract.wlroots.types \
+    --define-macro WLR_USE_UNSTABLE         \
+    --include-dir $libDir                   \
     "$libDir/wlr/types/wlr_input_device.h"
 
 jextract --library $lib --output $output    \
@@ -129,6 +136,21 @@ jextract --library $lib --output $output    \
     --include-dir $libDir                   \
     --include-dir "/usr/include/pixman-1/"  \
     "$libDir/wlr/types/wlr_scene.h"
+
+jextract --library $lib --output $output    \
+    --target-package jextract.wlroots.types \
+    --define-macro WLR_USE_UNSTABLE         \
+    --include-dir $libDir                   \
+    --include-dir "/usr/include/pixman-1/"  \
+    "$libDir/wlr/types/wlr_seat.h"
+
+jextract --library $lib --output $output    \
+    --target-package jextract.wlroots.types \
+    --define-macro WLR_USE_UNSTABLE         \
+    --include-dir $libDir                   \
+    --include-dir "/usr/include/pixman-1/"  \
+    "$libDir/wlr/types/wlr_subcompositor.h"
+
 
 jextract --library $lib --output $output    \
     --target-package jextract.wlroots.types \

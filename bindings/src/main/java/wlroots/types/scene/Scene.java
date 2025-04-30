@@ -3,17 +3,17 @@ package wlroots.types.scene;
 import jextract.wlroots.types.wlr_scene;
 import org.jspecify.annotations.NullMarked;
 import wlroots.types.output.Output;
+import wlroots.types.output.OutputLayout;
 
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_scene_h.wlr_scene_create;
-import static jextract.wlroots.types.wlr_scene_h.wlr_scene_output_create;
+import static jextract.wlroots.types.wlr_scene_h.*;
 
 
 /// The root scene-graph node.
 ///
-/// `struct wlr_scene {};`
+/// `struct wlr_scene {}`
 @NullMarked
 public class Scene {
     MemorySegment scenePtr;
@@ -31,19 +31,20 @@ public class Scene {
     }
 
 
-    /*** Struct getters ***/
-
     public SceneTree tree() {
         return new SceneTree(wlr_scene.tree(scenePtr));
     }
 
-
-    /*** Methods ***/
 
     /// Add a viewport for the specified output to the scene-graph.
     ///
     /// An output can only be added once to the scene-graph.
     public SceneOutput outputCreate(Output output) {
         return new SceneOutput(wlr_scene_output_create(scenePtr, output.outputPtr));
+    }
+
+
+    public SceneOutputLayout attachOutputLayout(OutputLayout outputLayout) {
+        return new SceneOutputLayout(wlr_scene_attach_output_layout(scenePtr, outputLayout.outputLayoutPtr));
     }
 }
