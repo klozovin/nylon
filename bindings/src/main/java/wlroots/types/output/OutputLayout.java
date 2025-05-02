@@ -35,10 +35,22 @@ public class OutputLayout {
     /// the layout changes. If the output is already a part of the layout, it will become automatically
     /// configured.
     ///
+    /// Automatically arranges output from left-to-right in the order they appear.
+    ///
+    /// Automatically add `wl_output` global to the display, which Wayland clients can use to find out
+    /// information about the output (DPI, scale factor, manufacturer, etc.)
+    ///
     /// @return Output's output layout or NULL on error
     public @Nullable OutputLayoutOutput addAuto(Output output) {
-        var outputLayoutOutputPtr = wlr_output_layout_add_auto(outputLayoutPtr, output.outputPtr);
-        return outputLayoutOutputPtr.equals(NULL) ? new OutputLayoutOutput(outputLayoutOutputPtr) : null;
+        return OutputLayoutOutput.ofPtrOrNull(wlr_output_layout_add_auto(outputLayoutPtr, output.outputPtr));
+    }
+
+
+    /// Get the output layout for the specified output.
+    ///
+    /// @return NULL if no output matches.
+    public @Nullable OutputLayoutOutput get(Output output) {
+        return OutputLayoutOutput.ofPtrOrNull(wlr_output_layout_get(outputLayoutPtr, output.outputPtr));
     }
 
 

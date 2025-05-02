@@ -10,8 +10,7 @@ import xkbcommon.XkbState;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_keyboard_h.wlr_keyboard_set_keymap;
-import static jextract.wlroots.types.wlr_keyboard_h.wlr_keyboard_set_repeat_info;
+import static jextract.wlroots.types.wlr_keyboard_h.*;
 
 
 @NullMarked
@@ -29,8 +28,24 @@ public class Keyboard {
     }
 
 
+    public XkbState xkbState() {
+        return new XkbState(wlr_keyboard.xkb_state(keyboardPtr));
+    }
+
+
+    public KeyboardModifiers modifiers() {
+        return new KeyboardModifiers(wlr_keyboard.modifiers(keyboardPtr));
+    }
+
+
     public boolean setKeymap(Keymap keymap) {
         return wlr_keyboard_set_keymap(keyboardPtr, keymap.keymapPtr);
+    }
+
+
+    /// Get the set of currently depressed or latched modifiers.
+    public Modifiers getModifiers() {
+        return new Modifiers(wlr_keyboard_get_modifiers(keyboardPtr));
     }
 
 
@@ -43,12 +58,6 @@ public class Keyboard {
     }
 
 
-    public XkbState xkbState() {
-        return new XkbState(wlr_keyboard.xkb_state(keyboardPtr));
-    }
-
-
-    @NullMarked
     public final static class Events {
         public final MemorySegment eventsPtr;
 
@@ -64,8 +73,23 @@ public class Keyboard {
 
         public Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
-            this.key = Signal.of(wlr_keyboard.events.key(eventsPtr), KeyboardKeyEvent::new);
+
+            this.key       = Signal.of(wlr_keyboard.events.key(eventsPtr), KeyboardKeyEvent::new);
             this.modifiers = Signal.of(wlr_keyboard.events.modifiers(eventsPtr));
+        }
+    }
+
+    public final static class Modifiers {
+        private final int modifiers;
+
+
+        public Modifiers(int modifiers) {
+            this.modifiers = modifiers;
+        }
+
+
+        public boolean isAltDown() {
+            return (modifiers & WLR_MODIFIER_ALT()) != 0;
         }
     }
 }

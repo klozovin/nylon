@@ -64,7 +64,7 @@ object CairoBuffer {
         display = Display.create()
         backend = Backend.autocreate(display.eventLoop, null) ?: error("Failed to create wlr_backend")
         renderer = Renderer.autocreate(backend) ?: error("Failed to create wlr_renderer")
-        allocator = Allocator.autocreate(backend, renderer)
+        allocator = Allocator.autocreate(backend, renderer) ?: error("Failed to create wlr_allocator")
 
         scene = Scene.create()
         renderer.initWlDisplay(display)
@@ -104,11 +104,12 @@ object CairoBuffer {
     }
 
 
-    fun handleNewOutput(output: Output) {
+    fun handleNewOutput(newOutput: Output) {
+        output = newOutput
         output.initRender(allocator, renderer)
-        CairoBuffer.output = output
         output.events.frame.add(::handleFrame)
-        sceneOutput = scene.outputCreate(CairoBuffer.output)
+        sceneOutput = SceneOutput.create(scene, output)
+
 
         Arena.ofConfined().use { arena ->
             val outputState = OutputState.allocate(arena)

@@ -92,7 +92,7 @@ object SceneGraph {
     fun newOutputHandler(output: Output) {
         output.initRender(allocator, renderer)
         output.events.frame.add(::outputFrameHandler)
-        sceneOutput = scene.outputCreate(output)
+        sceneOutput = SceneOutput.create(scene, output)
 
         OutputState.allocateConfined { state ->
             state.init()

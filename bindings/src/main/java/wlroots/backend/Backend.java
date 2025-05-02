@@ -71,9 +71,11 @@ public final class Backend {
     @NullMarked
     public final static class Events {
         public final MemorySegment eventsPtr;
+
+        /// Raised when a new output (display, monitor, VR) becomes available
         public final Signal1<Output> newOutput;
 
-        /// Raised when a new input device becomes available.
+        /// Raised when a new input device becomes available
         public final Signal1<InputDevice> newInput;
 
 

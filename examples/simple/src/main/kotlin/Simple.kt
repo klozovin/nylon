@@ -171,7 +171,7 @@ fun main() {
     State.display = Display.create()
     val backend = Backend.autocreate(State.display.eventLoop, null) ?: exitProcess(1)
     State.renderer = Renderer.autocreate(backend) ?: exitProcess(1)
-    State.allocator = Allocator.autocreate(backend, State.renderer)
+    State.allocator = Allocator.autocreate(backend, State.renderer) ?: error("Failed to create wlr_allocator")
 
     backend.events.newOutput.add(::newOutputNotify)
     backend.events.newInput.add(::newInputNotify)

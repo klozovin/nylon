@@ -42,7 +42,7 @@ object Pointer {
     } ?: error("Failed to create wlr_backend")
 
     val renderer = Renderer.autocreate(backend) ?: error("Failed to create wlr_renderer")
-    val allocator = Allocator.autocreate(backend, renderer)
+    val allocator = Allocator.autocreate(backend, renderer) ?: error("Failed to create wlr_renderer")
     val outputLayout = OutputLayout.create(display)
     val xcursorManager = XcursorManager.create(null, 24) ?: error("Failed to load default cursor")
 
@@ -98,7 +98,7 @@ object Pointer {
         output.events.frame.add(::onOutputFrame)
         output.events.destroy.add(::onOutputDestroy)
 
-        outputLayout.addAuto(output)
+        outputLayout.addAuto(output) ?: error("Can't add wlr_output to wlr_output_layout")
 
         OutputState.allocateConfined { state ->
             state.init()

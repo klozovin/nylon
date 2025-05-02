@@ -2,13 +2,13 @@ package wlroots.types.scene;
 
 import jextract.wlroots.types.wlr_scene;
 import org.jspecify.annotations.NullMarked;
-import wlroots.types.output.Output;
 import wlroots.types.output.OutputLayout;
 
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_scene_h.*;
+import static jextract.wlroots.types.wlr_scene_h.wlr_scene_attach_output_layout;
+import static jextract.wlroots.types.wlr_scene_h.wlr_scene_create;
 
 
 /// The root scene-graph node.
@@ -33,14 +33,6 @@ public class Scene {
 
     public SceneTree tree() {
         return new SceneTree(wlr_scene.tree(scenePtr));
-    }
-
-
-    /// Add a viewport for the specified output to the scene-graph.
-    ///
-    /// An output can only be added once to the scene-graph.
-    public SceneOutput outputCreate(Output output) {
-        return new SceneOutput(wlr_scene_output_create(scenePtr, output.outputPtr));
     }
 
 

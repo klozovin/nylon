@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 import wayland.server.Display;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal0;
+import wayland.server.Signal.Signal1;
 import wlroots.render.Allocator;
 import wlroots.render.BufferPassOptions;
 import wlroots.render.RenderPass;
@@ -56,6 +57,8 @@ public final class Output {
     }
 
 
+    /// Configures the output to use the allocator and renderer, must be done once, before commiting the
+    /// output.
     public boolean initRender(Allocator allocator, Renderer renderer) {
         return wlr_output_init_render(outputPtr, allocator.allocatorPtr, renderer.rendererPtr);
     }
@@ -63,8 +66,8 @@ public final class Output {
 
     /// Begin a render pass on this output.
     ///
-    /// Compositors can call this function to begin rendering. After the render pass has been
-    /// submitted, they should call {@link #commitState(OutputState)} to submit the new frame.
+    /// Compositors can call this function to begin rendering. After the render pass has been submitted, they
+    /// should call {@link #commitState(OutputState)} to submit the new frame.
     ///
     /// ```c
     /// struct wlr_render_pass *
@@ -76,8 +79,10 @@ public final class Output {
     ///)
     ///```
     ///
-    /// @param state     describes the output changes the rendered frame will be committed with. A NULL state indicates no change.
-    /// @param bufferAge If non-NULL, buffer_age is set to the drawing buffer age in number of frames or -1 if unknown. This is useful for damage tracking.
+    /// @param state     describes the output changes the rendered frame will be committed with. A NULL state
+    ///                  indicates no change.
+    /// @param bufferAge If non-NULL, buffer_age is set to the drawing buffer age in number of frames or -1 if
+    ///                  unknown. This is useful for damage tracking.
     /// @return On error, NULL is returned. Creating a render pass on a disabled output is an error.
     public @Nullable RenderPass beginRenderPass(OutputState state, @Nullable Integer bufferAge, @Nullable BufferPassOptions renderOptions) {
         // TODO: overload with renderoptions=null for cleaner API
@@ -121,14 +126,19 @@ public final class Output {
 
     public final static class Events {
         public final MemorySegment eventsPtr;
-        public final Signal0 frame;
-        public final Signal0 destroy;
+
+        /// Raised every time an output is ready to display a frame, generally at the output's refresh rate
+        public final Signal0                    frame;
+        public final Signal0                    destroy;
+        public final Signal1<EventRequestState> requestState;
 
 
         Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
-            this.frame = Signal.of(wlr_output.events.frame(eventsPtr));
-            this.destroy = Signal.of(wlr_output.events.destroy(eventsPtr));
+
+            this.frame         = Signal.of(wlr_output.events.frame(eventsPtr));
+            this.destroy       = Signal.of(wlr_output.events.destroy(eventsPtr));
+            this.requestState  = Signal.of(wlr_output.events.request_state(eventsPtr), EventRequestState::new);
         }
     }
 }

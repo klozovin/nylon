@@ -1,3 +1,6 @@
+import jextract.wlroots.types.wlr_keyboard_grab_interface
+import jextract.xkbcommon.xkbcommon_h_1
+import wayland.KeyboardKeyState
 import wayland.SeatCapability
 import wayland.server.Display
 import wlroots.backend.Backend
@@ -6,13 +9,16 @@ import wlroots.render.Renderer
 import wlroots.types.*
 import wlroots.types.compositor.Compositor
 import wlroots.types.compositor.Subcompositor
+import wlroots.types.output.EventRequestState
 import wlroots.types.output.Output
 import wlroots.types.output.OutputLayout
+import wlroots.types.output.OutputState
 import wlroots.types.pointer.PointerAxisEvent
 import wlroots.types.pointer.PointerButtonEvent
 import wlroots.types.pointer.PointerMotionAbsoluteEvent
 import wlroots.types.pointer.PointerMotionEvent
 import wlroots.types.scene.Scene
+import wlroots.types.scene.SceneOutput
 import wlroots.types.scene.SceneOutputLayout
 import wlroots.types.seat.PointerRequestSetCursorEvent
 import wlroots.types.seat.RequestSetSelectionEvent
@@ -23,6 +29,7 @@ import wlroots.types.xdgshell.XdgToplevel
 import wlroots.util.Log
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
+import xkbcommon.XkbKey
 import java.util.*
 import kotlin.system.exitProcess
 
@@ -52,7 +59,7 @@ object Tiny {
     fun main(args: Array<String>) {
         display = Display.create()
         backend = Backend.autocreate(display.eventLoop, null) ?: error("Failed to create wlr_backend")
-        renderer = Renderer.autocreate(backend)?: error("Failed to create wlr_renderer")
+        renderer = Renderer.autocreate(backend) ?: error("Failed to create wlr_renderer")
 
         renderer.initWlDisplay(display)
 
@@ -65,8 +72,9 @@ object Tiny {
         Subcompositor.create(display)
         DataDeviceManager.create(display)
 
-        scene = Scene.create()
         outputLayout = OutputLayout.create(display)
+
+        scene = Scene.create()
         sceneOutputLayout = scene.attachOutputLayout(outputLayout)
 
         xdgShell = XdgShell.create(display, 3)
@@ -125,22 +133,38 @@ object Tiny {
 
 
     //
-    // Backend events
+    // Backend events: newOutput, newInput
     //
 
-    fun onNewOutput(output: Output) {
+    fun onNewOutput(newOutput: Output) {
+        require(!::output.isInitialized) { "Only one output supported." }
 
+        output = newOutput
+        output.initRender(allocator, renderer)
+
+        OutputState.allocateConfined { outputState ->
+            outputState.init()
+            outputState.setEnabled(true)
+            output.preferredMode()?.let { outputState.setMode(it) }
+            output.commitState(outputState)
+            outputState.finish()
+        }
+
+        output.events.frame.add(::onOutputFrame)
+        output.events.requestState.add(::onOutputRequestState)
+        output.events.destroy.add(::onOutputDestroy)
+
+        val outputLayoutOutput = outputLayout.addAuto(output)
+        val sceneOutput = SceneOutput.create(scene, output)
+        sceneOutputLayout.addOutput(outputLayoutOutput, sceneOutput)
     }
 
     fun onNewInput(inputDevice: InputDevice) {
-        return
-
-
-
         when (inputDevice.type()) {
+
             // Typing device
             InputDevice.Type.KEYBOARD -> {
-                println(">>> onNewInput: KEYBOARD")
+                require(!::keyboard.isInitialized) { "Only one keyboard input device supported" }
                 keyboard = inputDevice.keyboardFromInputDevice()
                 val context = XkbContext.of(XkbContext.Flags.NO_FLAGS) ?: error {
                     Log.logError("Failed to create XKB context")
@@ -150,15 +174,13 @@ object Tiny {
                     Log.logError("Failed to create XKB context")
                     exitProcess(1)
                 }
-
                 with(keyboard) {
                     setKeymap(keymap)
                     setRepeatInfo(25, 600)
                     events.modifiers.add(::onKeyboardModifiers)
                     events.key.add(::onKeyboardKey)
                 }
-                inputDevice.events.destroy.add(::onInputDeviceDestroy)
-
+                inputDevice.events.destroy.add(::onKeyboardDestroy)
                 seat.setKeyboard(keyboard)
 
                 keymap.unref()
@@ -171,25 +193,73 @@ object Tiny {
             else -> println("Unknown device type: ${inputDevice.type()}")
         }
 
-        seat.setCapabilities(EnumSet.noneOf(SeatCapability::class.java).apply {
-            add(SeatCapability.POINTER)
-            if (::keyboard.isLateinit) add(SeatCapability.KEYBOARD)
-        })
+        val capabilities = EnumSet.of(SeatCapability.POINTER)
+        if (::keyboard.isInitialized)
+            capabilities.add(SeatCapability.KEYBOARD)
+        seat.setCapabilities(capabilities)
     }
+
+    //
+    // Output events
+    //
+
+    fun onOutputFrame() {
+
+    }
+
+    fun onOutputRequestState(event: EventRequestState) {
+
+    }
+
+    fun onOutputDestroy() {
+
+    }
+
 
     //
     // Keyboard events
     //
 
-    fun onKeyboardModifiers() {
-        println("MODDDDDDDDDDSSSSSSSSS")
-    }
-
     fun onKeyboardKey(event: KeyboardKeyEvent) {
+        println("Handling key")
+        val keycode = event.keycode() + 8
+        val keysym = keyboard.xkbState().keyGetOneSym(keycode)
 
+        var handledInCompositor = false
+
+        if (keyboard.modifiers.isAltDown && event.state() == KeyboardKeyState.PRESSED) {
+            when (keysym) {
+                XkbKey.Escape -> {
+                    display.terminate()
+                    handledInCompositor = true
+                }
+
+                XkbKey.F1 -> {
+                    // TODO: 	case XKB_KEY_F1
+                    // cycle
+                    handledInCompositor = true
+                }
+
+                XkbKey.F12 -> {
+                    Log.logInfo("Heeelllooouuu from TinyWL")
+                    handledInCompositor = true
+                }
+            }
+        }
+
+        if (!handledInCompositor) {
+            seat.setKeyboard(keyboard) // TODO: What if multiple keyboards
+            seat.keyboardNotifyKey(event.timeMsec(), event.keycode(), event.state())
+        }
     }
 
-    fun onInputDeviceDestroy() {
+    fun onKeyboardModifiers() {
+        println("Sending modifiers")
+        seat.setKeyboard(keyboard) // TODO: What if multiple keyboards
+        seat.keyboardNotifyModifiers(keyboard.modifiers())
+    }
+
+    fun onKeyboardDestroy() {
 
     }
 

@@ -2,11 +2,13 @@ package wlroots.types.seat;
 
 import jextract.wlroots.types.wlr_seat;
 import org.jspecify.annotations.NullMarked;
+import wayland.KeyboardKeyState;
 import wayland.SeatCapability;
 import wayland.server.Display;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
 import wlroots.types.Keyboard;
+import wlroots.types.KeyboardModifiers;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -41,6 +43,21 @@ public class Seat {
     public void setKeyboard(Keyboard keyboard) {
         wlr_seat_set_keyboard(seatPtr, keyboard.keyboardPtr);
     }
+
+
+    /// Notify the seat that a key has been pressed on the keyboard. Defers to any keyboard grabs.
+    ///
+    /// @param time in milliseconds
+    public void keyboardNotifyKey(int time, int key, KeyboardKeyState state) {
+        wlr_seat_keyboard_notify_key(seatPtr, time, key, state.value);
+    }
+
+
+    /// Notify the seat that the modifiers for the keyboard have changed. Defers to any keyboard grabs.
+    public void keyboardNotifyModifiers(KeyboardModifiers modifiers) {
+        wlr_seat_keyboard_notify_modifiers(seatPtr, modifiers.keyboardModifiersPtr);
+    }
+
 
     public void setCapabilities(EnumSet<SeatCapability> capabilities) {
         wlr_seat_set_capabilities(seatPtr, SeatCapability.setToBitfield(capabilities));

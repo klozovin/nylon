@@ -20,6 +20,11 @@ public class KeyboardKeyEvent {
     }
 
 
+    public int timeMsec() {
+        return wlr_keyboard_key_event.time_msec(keyboardKeyEventPtr);
+    }
+
+
     public int keycode() {
         return wlr_keyboard_key_event.keycode(keyboardKeyEventPtr);
     }

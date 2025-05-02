@@ -2,6 +2,7 @@ package wlroots.types.scene;
 
 import jextract.wlroots.timespec;
 import org.jspecify.annotations.NullMarked;
+import wlroots.types.output.Output;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -22,8 +23,16 @@ public class SceneOutput {
     }
 
 
-    /// Call wlr_surface_send_frame_done() on all surfaces in the scene rendered by
-    /// {@link #commit()} for which wlr_scene_surface.primary_output matches the given scene_output.
+    /// Add a viewport for the specified output to the scene-graph.
+    ///
+    /// An output can only be added once to the scene-graph.
+    public static SceneOutput create(Scene scene, Output output) {
+        return new SceneOutput(wlr_scene_output_create(scene.scenePtr, output.outputPtr));
+    }
+
+
+    /// Call wlr_surface_send_frame_done() on all surfaces in the scene rendered by {@link #commit()} for
+    /// which wlr_scene_surface.primary_output matches the given scene_output.
     public void sendFrameDone() {
         // TODO: Implement the overload with time parameter (Instant, getEpochSeconds(), getNano)
         try (var arena = Arena.ofConfined()) {

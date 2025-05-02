@@ -1,9 +1,21 @@
 package xkbcommon;
 
-import static jextract.xkbcommon.xkbcommon_h.XKB_KEY_Escape;
-import static jextract.xkbcommon.xkbcommon_h.XKB_KEY_NoSymbol;
+import static jextract.xkbcommon.xkbcommon_h.*;
+
 
 public final class XkbKey {
-    public static int Escape = XKB_KEY_Escape();
-    public static int NoSymbol = XKB_KEY_NoSymbol();
+    public static final int Escape = XKB_KEY_Escape();
+    public static final int NoSymbol = XKB_KEY_NoSymbol();
+
+    public static final int F1 = XKB_KEY_F1();
+    public static final int F3 = XKB_KEY_F3();
+    public static final int F4 = XKB_KEY_F4();
+    public static final int F5 = XKB_KEY_F5();
+    public static final int F6 = XKB_KEY_F6();
+    public static final int F7 = XKB_KEY_F7();
+    public static final int F8 = XKB_KEY_F8();
+    public static final int F9 = XKB_KEY_F9();
+    public static final int F10 = XKB_KEY_F10();
+    public static final int F11 = XKB_KEY_F11();
+    public static final int F12 = XKB_KEY_F12();
 }
