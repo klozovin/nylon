@@ -2,6 +2,7 @@ package wlroots.types.scene;
 
 import jextract.wlroots.timespec;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import wlroots.types.output.Output;
 
 import java.lang.foreign.Arena;
@@ -20,6 +21,11 @@ public class SceneOutput {
     public SceneOutput(MemorySegment sceneOutputPtr) {
         assert !sceneOutputPtr.equals(NULL);
         this.sceneOutputPtr = sceneOutputPtr;
+    }
+
+
+    public static @Nullable SceneOutput ofPtrOrNull(MemorySegment ptr) {
+        return !ptr.equals(NULL) ? new SceneOutput(ptr) : null;
     }
 
 

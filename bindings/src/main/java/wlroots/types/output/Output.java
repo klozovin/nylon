@@ -130,6 +130,7 @@ public final class Output {
         /// Raised every time an output is ready to display a frame, generally at the output's refresh rate
         public final Signal0                    frame;
         public final Signal0                    destroy;
+        /// Raised when the backend requests a new state for the output (i.e. output window resized)
         public final Signal1<EventRequestState> requestState;
 
 

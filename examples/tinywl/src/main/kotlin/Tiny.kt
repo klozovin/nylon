@@ -1,14 +1,14 @@
-import jextract.wlroots.types.wlr_keyboard_grab_interface
-import jextract.xkbcommon.xkbcommon_h_1
 import wayland.KeyboardKeyState
 import wayland.SeatCapability
 import wayland.server.Display
+import wayland.server.Listener
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
 import wlroots.types.*
 import wlroots.types.compositor.Compositor
 import wlroots.types.compositor.Subcompositor
+import wlroots.types.compositor.Surface
 import wlroots.types.output.EventRequestState
 import wlroots.types.output.Output
 import wlroots.types.output.OutputLayout
@@ -54,6 +54,9 @@ object Tiny {
 
     lateinit var xdgShell: XdgShell
     lateinit var seat: Seat
+
+    // TODO: Better way to handle this? (what if multiple outputs, output gets reconnected...?)
+    val listeners = mutableMapOf<String, Listener>()
 
 
     fun main(args: Array<String>) {
@@ -109,12 +112,12 @@ object Tiny {
         }
 
         // Run startup command or the default terminal
-//        ProcessBuilder().apply {
-//            if (args.isEmpty()) command("/usr/bin/foot")
-//            else command(*args)
-//            environment().put("WAYLAND_DISPLAY", socket)
-//            start()
-//        }
+        ProcessBuilder().apply {
+            if (args.isEmpty()) command("/usr/bin/foot")
+            else command(*args)
+            environment().put("WAYLAND_DISPLAY", socket)
+            start()
+        }
 
         // Run the Wayland event loop, it does not return until you exit the compositor.
         Log.logInfo("Running Wayland compositor on WAYLAND_DISPLAY=$socket")
@@ -131,6 +134,38 @@ object Tiny {
         display.destroy()
     }
 
+
+    fun processCursorMotion(timeMsec: Int) {
+        // Process the event in the compositor
+        when (cursorMode) {
+            CursorMode.Move -> {
+                processCursorMove(timeMsec)
+                return
+            }
+
+            CursorMode.Resize -> {
+                processCursorResize(timeMsec)
+                return
+            }
+
+            else -> {}
+        }
+
+        // Forward events to the client under the pointer
+        TODO()
+    }
+
+    private fun processCursorMove(timeMsec: Int) {
+        TODO("Not yet implemented")
+    }
+
+    private fun processCursorResize(timeMsec: Int) {
+        TODO("Not yet implemented")
+    }
+
+    //
+    // *** Event handlers ***
+    //
 
     //
     // Backend events: newOutput, newInput
@@ -150,9 +185,9 @@ object Tiny {
             outputState.finish()
         }
 
-        output.events.frame.add(::onOutputFrame)
-        output.events.requestState.add(::onOutputRequestState)
-        output.events.destroy.add(::onOutputDestroy)
+        listeners["output.frame"] = output.events.frame.add(::onOutputFrame)
+        listeners["output.request_state"] = output.events.requestState.add(::onOutputRequestState)
+        listeners["output.destroy"] = output.events.destroy.add(::onOutputDestroy)
 
         val outputLayoutOutput = outputLayout.addAuto(output)
         val sceneOutput = SceneOutput.create(scene, output)
@@ -204,15 +239,19 @@ object Tiny {
     //
 
     fun onOutputFrame() {
-
+        val sceneOutput = scene.getSceneOutput(output)!!
+        sceneOutput.commit()
+        sceneOutput.sendFrameDone()
     }
 
     fun onOutputRequestState(event: EventRequestState) {
-
+        output.commitState(event.state)
     }
 
     fun onOutputDestroy() {
-
+        listeners["output.frame"]!!.remove()
+        listeners["output.request_state"]!!.remove()
+        listeners["output.destroy"]!!.remove()
     }
 
 
@@ -269,7 +308,8 @@ object Tiny {
     //
 
     fun onCursorMotion(event: PointerMotionEvent) {
-
+        cursor.move(event.pointer.base(), event.deltaY, event.deltaY)
+        processCursorMotion(event.timeMsec)
     }
 
     fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
@@ -293,11 +333,59 @@ object Tiny {
     //
 
     fun onNewToplevel(toplevel: XdgToplevel) {
+        scene.tree().xdgSurfaceCreate(toplevel.base())
 
+        // Event handlers for the base Surface
+        with(toplevel.base().surface().events) {
+            map.add(::onXdgToplevelMap)
+            unmap.add(::onXdgToplevelUnmap)
+            commit.add(::onXdgToplevelCommit)
+            destroy.add(::onXdgToplevelDestroy)
+        }
+
+        // Event handlers for the XDG Toplevel surface
+        with(toplevel.events) {
+            requestMove.add(::onXdgToplevelRequestMove)
+            requestResize.add(::onXdgToplevelRequestResize)
+            requestMaximize.add(::onXdgToplevelRequestMaximize)
+            requestFullscreen.add(::onXdgToplevelRequestFullscreen)
+        }
     }
 
     fun onNewPopup(popup: XdgPopup) {
 
+    }
+
+    fun onXdgToplevelMap(surface: Surface) {
+        TODO() // check if surface is surface
+    }
+
+    fun onXdgToplevelUnmap(surface: Surface) {
+        TODO()
+    }
+
+    fun onXdgToplevelCommit(surface: Surface) {
+        TODO()
+    }
+
+    fun onXdgToplevelDestroy(surface: Surface) {
+
+    }
+
+    fun onXdgToplevelRequestMove() {
+        TODO()
+    }
+
+    fun onXdgToplevelRequestResize() {
+        TODO()
+    }
+
+    fun onXdgToplevelRequestMaximize() {
+        TODO()
+    }
+
+    fun onXdgToplevelRequestFullscreen() {
+        TODO()
     }
 
     //

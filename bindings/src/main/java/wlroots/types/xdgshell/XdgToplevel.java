@@ -1,8 +1,11 @@
 package wlroots.types.xdgshell;
 
+import jdk.jfr.Event;
 import jextract.wlroots.types.wlr_xdg_toplevel;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import wayland.server.Signal;
+import wayland.server.Signal.Signal0;
 import wlroots.types.compositor.Surface;
 
 import java.lang.foreign.MemorySegment;
@@ -15,11 +18,26 @@ import static jextract.wlroots.types.wlr_xdg_shell_h.wlr_xdg_toplevel_try_from_w
 @NullMarked
 public class XdgToplevel {
     public final MemorySegment xdgToplevelPtr;
+    public final Events events;
 
 
     public XdgToplevel(MemorySegment xdgToplevelPtr) {
         assert !xdgToplevelPtr.equals(NULL);
         this.xdgToplevelPtr = xdgToplevelPtr;
+        this.events = new Events(wlr_xdg_toplevel.events(xdgToplevelPtr));
+    }
+
+
+    public XdgSurface base() {
+        return new XdgSurface(wlr_xdg_toplevel.base(xdgToplevelPtr));
+    }
+
+    public String title() {
+        return wlr_xdg_toplevel.title(xdgToplevelPtr).getString(0);
+    }
+
+    public String appId() {
+        return wlr_xdg_toplevel.app_id(xdgToplevelPtr).getString(0);
     }
 
 
@@ -38,7 +56,18 @@ public class XdgToplevel {
     }
 
 
-    public XdgSurface base() {
-        return new XdgSurface(wlr_xdg_toplevel.base(xdgToplevelPtr));
+    public static class Events {
+        public final Signal0 requestMove;
+        public final Signal0 requestResize;
+        public final Signal0 requestMaximize;
+        public final Signal0 requestFullscreen;
+
+
+        public Events(MemorySegment eventsPtr) {
+            this.requestMove = Signal.of(wlr_xdg_toplevel.events.request_move(eventsPtr));
+            this.requestResize = Signal.of(wlr_xdg_toplevel.events.request_resize(eventsPtr));
+            this.requestMaximize = Signal.of(wlr_xdg_toplevel.events.request_maximize(eventsPtr));
+            this.requestFullscreen = Signal.of(wlr_xdg_toplevel.events.request_fullscreen(eventsPtr));
+        }
     }
 }

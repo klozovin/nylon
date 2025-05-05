@@ -31,13 +31,13 @@ public final class List<T extends List.Element<@NonNull T>> {
     }
 
 
-    ///  Get `wl_list.prev` field.
+    ///  Get `wl_list.prev` field (last element in the list).
     public @NonNull MemorySegment prev() {
         return wl_list.prev(listPtr);
     }
 
 
-    /// Get `wl_list.next` field
+    /// Get `wl_list.next` field (first element in the list).
     public @NonNull MemorySegment next() {
         return wl_list.next(listPtr);
     }

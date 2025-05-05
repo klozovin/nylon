@@ -14,8 +14,8 @@ import static java.lang.foreign.MemorySegment.NULL;
 
 /// ```
 /// struct wl_listener {
-///     struct wl_list link;
-///     wl_notify_func_t notify;
+///     struct wl_list      link;
+///     wl_notify_func_t    notify;
 ///};
 ///```
 @NullMarked
@@ -24,7 +24,7 @@ public class Listener implements List.Element<Listener> {
     public static ElementMetadata<Listener> listElementMeta = new ElementMetadata<>(Listener.class, wl_listener.layout(), "link");
 
 
-    private Listener(MemorySegment listenerPtr) {
+    public Listener(MemorySegment listenerPtr) {
         assert !listenerPtr.equals(NULL);
         this.listenerPtr = listenerPtr;
     }

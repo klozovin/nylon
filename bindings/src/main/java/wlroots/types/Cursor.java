@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
 import wlroots.types.output.OutputLayout;
+import wlroots.types.pointer.Pointer;
 import wlroots.types.pointer.PointerAxisEvent;
 import wlroots.types.pointer.PointerButtonEvent;
 import wlroots.types.pointer.PointerMotionAbsoluteEvent;
@@ -38,7 +39,6 @@ public class Cursor {
         this.cursorPtr = cursorPtr;
         this.events = new Events(wlr_cursor.events(cursorPtr));
     }
-
 
     public static Cursor create() {
         return new Cursor(wlr_cursor_create());
@@ -107,6 +107,7 @@ public class Cursor {
     public static class Events {
         final MemorySegment eventsPtr;
 
+        /// Raised by the {@link Pointer} forwarding its relative (delta) pointer motion event
         public final Signal1<PointerMotionEvent> motion;
         public final Signal1<PointerMotionAbsoluteEvent> motionAbsolute;
         public final Signal1<PointerButtonEvent> button;
