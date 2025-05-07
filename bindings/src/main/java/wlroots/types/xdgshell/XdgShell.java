@@ -36,13 +36,15 @@ public class XdgShell {
     public static class Events {
         private final MemorySegment eventsPtr;
         public final Signal1<XdgToplevel> newToplevel;
+
+        /// Raised when a client creates a new popup.
         public final Signal1<XdgPopup> newPopup;
 
 
         public Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
             this.newToplevel = Signal.of(wlr_xdg_shell.events.new_toplevel(eventsPtr), XdgToplevel::new);
-            this.newPopup = Signal.of(wlr_xdg_shell.events.new_popup(eventsPtr), XdgPopup::new);
+            this.newPopup    = Signal.of(wlr_xdg_shell.events.new_popup(eventsPtr),    XdgPopup::new);
         }
     }
 }

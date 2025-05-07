@@ -2,11 +2,13 @@ package wlroots.types.xdgshell;
 
 import jextract.wlroots.types.wlr_xdg_surface;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import wlroots.types.compositor.Surface;
 
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
+import static jextract.wlroots.types.wlr_xdg_shell_h.wlr_xdg_surface_try_from_wlr_surface;
 
 
 /// An xdg-surface is a user interface element requiring management by the compositor. An xdg-surface alone
@@ -22,6 +24,14 @@ public class XdgSurface {
     }
 
 
+    /// @return NULL if the surface doesn't have the xdg_surface role or if the xdg_surface has been
+    ///          destroyed.
+    public static @Nullable XdgSurface tryFromSurface(Surface surface) {
+        var ptr = wlr_xdg_surface_try_from_wlr_surface(surface.surfacePtr);
+        return !ptr.equals(NULL) ? new XdgSurface(ptr) : null;
+    }
+
+
     public Surface surface() {
         return new Surface(wlr_xdg_surface.surface(xdgSurfacePtr));
     }
@@ -30,6 +40,7 @@ public class XdgSurface {
     public boolean configured() {
         return wlr_xdg_surface.configured(xdgSurfacePtr);
     }
+
 
     public int scheduledSerial() {
         return wlr_xdg_surface.scheduled_serial(xdgSurfacePtr);

@@ -14,10 +14,10 @@ import static java.lang.foreign.MemorySegment.NULL;
 
 /// A source of a type of observable event.
 ///
-/// Signals are recognized points where significant events can be observed. Compositors as well as
-/// the server can provide signals. Observers are wl_listener's that are added through
-/// wl_signal_add. Signals are emitted using wl_signal_emit, which will invoke all listeners until
-/// that listener is removed by wl_list_remove() (or whenever the signal is destroyed).
+/// Signals are recognized points where significant events can be observed. Compositors as well as the server
+/// can provide signals. Observers are wl_listener's that are added through wl_signal_add. Signals are emitted
+/// using wl_signal_emit, which will invoke all listeners until that listener is removed by wl_list_remove()
+/// (or whenever the signal is destroyed).
 ///
 /// ```c
 /// struct wl_signal {
@@ -25,7 +25,7 @@ import static java.lang.foreign.MemorySegment.NULL;
 ///};
 ///```
 @NullMarked
-public abstract class Signal {
+public abstract sealed class Signal {
     public final MemorySegment signalPtr;
     public final List<Listener> listenerList;
 
@@ -52,12 +52,15 @@ public abstract class Signal {
     ///
     /// Convenience function, does not exist in C code.
     public void remove(Listener listener) {
+        // TODO: Assert that listener is present in listenerList
         listenerList.remove(listener);
     }
 
 
-    /// Signal that doesn't emit any value (i.e. observer function takes no parameters)
-    public static class Signal0 extends Signal {
+    /// Signal that doesn't emit any value.
+    ///
+    /// Listener function takes no parameters.
+    public static final class Signal0 extends Signal {
 
         Signal0(MemorySegment signalPtr) {
             super(signalPtr);
@@ -69,7 +72,8 @@ public abstract class Signal {
             var listener = Listener.allocate(
                 Arena.global(),
                 (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
-                    assert !listenerPtr.equals(NULL) && !dataPtr.equals(NULL);
+                    assert !listenerPtr.equals(NULL);
+                    assert dataPtr.equals(NULL) : "Parameter to listener must be NULL";
                     callback.run();
                 });
             listenerList.append(listener);
@@ -78,8 +82,10 @@ public abstract class Signal {
     }
 
 
-    /// Signal that emits one value (i.e. observer function takes one parameter)
-    public static class Signal1<T> extends Signal {
+    /// Signal that emits one value.
+    ///
+    /// Listener function takes one parameter.
+    public static final class Signal1<T> extends Signal {
         public final Function<MemorySegment, T> observerParameterCtor;
 
 
@@ -94,7 +100,8 @@ public abstract class Signal {
             var listener = Listener.allocate(
                 Arena.global(),
                 (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
-                    assert !listenerPtr.equals(NULL) && !dataPtr.equals(NULL);
+                    assert !listenerPtr.equals(NULL);
+                    assert !dataPtr.equals(NULL) : "Parameter to listener must not be NULL";
                     observer.accept(observerParameterCtor.apply(dataPtr));
                 });
             listenerList.append(listener);

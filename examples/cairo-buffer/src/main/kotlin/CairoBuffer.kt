@@ -99,7 +99,7 @@ object CairoBuffer {
     }
 
 
-    fun handleFrame() {
+    fun handleFrame(output: Output) {
         sceneOutput.commit()
     }
 

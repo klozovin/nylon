@@ -112,7 +112,7 @@ object Pointer {
     }
 
 
-    fun onOutputFrame() {
+    fun onOutputFrame(output: Output) {
         Arena.ofConfined().use { arena ->
             val state = OutputState.allocate(arena)
             state.init()
@@ -130,7 +130,7 @@ object Pointer {
     }
 
 
-    fun onOutputDestroy() {
+    fun onOutputDestroy(output: Output) {
         outputLayout.remove(output)
         outputFrameListener.remove()
         outputDestroyListener.remove()
@@ -182,7 +182,7 @@ object Pointer {
     }
 
 
-    fun onKeyboardDestroy() {
+    fun onKeyboardDestroy(device: InputDevice) {
         keyboardKeyListener.remove()
         inputDeviceDestroyListener.remove()
     }

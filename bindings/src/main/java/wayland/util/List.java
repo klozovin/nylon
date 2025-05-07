@@ -108,9 +108,11 @@ public final class List<T extends List.Element<@NonNull T>> {
 
     ///  Add `element` to the end of the list.
     public void append(@NonNull T element) {
-        var previous = getLast();
-        if (previous != null) {
-            wl_list_insert(previous.getLinkMemberPtr(), element.getLinkMemberPtr());
+        // TODO: Is it necessary to getLast() and create an instance just to get its pointer?
+        //       Why not just use prev() and get the pointer directly? This way
+        var lastElement = getLast();
+        if (lastElement != null) {
+            wl_list_insert(lastElement.getLinkMemberPtr(), element.getLinkMemberPtr());
         } else {
             // List is empty, add to list head itself
             wl_list_insert(listPtr, element.getLinkMemberPtr());
@@ -124,7 +126,7 @@ public final class List<T extends List.Element<@NonNull T>> {
             return element;
         } catch (NoSuchMethodException | InvocationTargetException | InstantiationException |
                  IllegalAccessException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Probable private constructor", e);
         }
     }
 

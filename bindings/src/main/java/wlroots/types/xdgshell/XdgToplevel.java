@@ -33,11 +33,15 @@ public class XdgToplevel {
     }
 
     public String title() {
-        return wlr_xdg_toplevel.title(xdgToplevelPtr).getString(0);
+        // TODO: Is this the best way to handle it? Maybe return null?
+        var titlePtr = wlr_xdg_toplevel.title(xdgToplevelPtr);
+        return !titlePtr.equals(NULL) ? titlePtr.getString(0) : "";
     }
 
     public String appId() {
-        return wlr_xdg_toplevel.app_id(xdgToplevelPtr).getString(0);
+        // TODO: Is this the best way to handle it?
+        var appIdPtr = wlr_xdg_toplevel.app_id(xdgToplevelPtr);
+        return !appIdPtr.equals(NULL) ? appIdPtr.getString(0) : "";
     }
 
 

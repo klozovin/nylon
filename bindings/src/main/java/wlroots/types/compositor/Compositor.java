@@ -59,7 +59,7 @@ public class Compositor {
             assert !eventsPtr.equals(NULL);
             this.eventsPtr = eventsPtr;
             this.newSurface = Signal.of(wlr_compositor.events.new_surface(eventsPtr), Surface::new);
-            this.destroy = Signal.of(wlr_compositor.events.destroy(eventsPtr));
+            this.destroy    = Signal.of(wlr_compositor.events.destroy(eventsPtr));
         }
     }
 }

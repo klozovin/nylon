@@ -3,7 +3,7 @@ package wlroots.types;
 import jextract.wlroots.types.wlr_input_device;
 import org.jspecify.annotations.NonNull;
 import wayland.server.Signal;
-import wayland.server.Signal.Signal0;
+import wayland.server.Signal.Signal1;
 
 import java.lang.foreign.MemorySegment;
 
@@ -55,14 +55,12 @@ public final class InputDevice {
     }
 
     public final static class Events {
-        public final @NonNull MemorySegment eventsPtr;
-        public final @NonNull Signal0 destroy;
+        public final @NonNull Signal1<InputDevice> destroy;
 
 
         public Events(@NonNull MemorySegment eventsPtr) {
             assert !eventsPtr.equals(NULL);
-            this.eventsPtr = eventsPtr;
-            this.destroy = Signal.of(wlr_input_device.events.destroy(eventsPtr));
+            this.destroy = Signal.of(wlr_input_device.events.destroy(eventsPtr), InputDevice::new);
         }
     }
 }

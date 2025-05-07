@@ -20,19 +20,29 @@ import wlroots.types.pointer.PointerMotionEvent
 import wlroots.types.scene.Scene
 import wlroots.types.scene.SceneOutput
 import wlroots.types.scene.SceneOutputLayout
+import wlroots.types.scene.SceneTree
 import wlroots.types.seat.PointerRequestSetCursorEvent
 import wlroots.types.seat.RequestSetSelectionEvent
 import wlroots.types.seat.Seat
 import wlroots.types.xdgshell.XdgPopup
 import wlroots.types.xdgshell.XdgShell
+import wlroots.types.xdgshell.XdgSurface
 import wlroots.types.xdgshell.XdgToplevel
 import wlroots.util.Log
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
 import xkbcommon.XkbKey
+import java.lang.foreign.MemorySegment
 import java.util.*
 import kotlin.system.exitProcess
 
+
+data class TinyXdgToplevel(
+    val xdgToplevel: XdgToplevel,
+    val sceneTree: SceneTree,
+
+    // TODO: Maybe add listeners here
+)
 
 object Tiny {
 
@@ -54,6 +64,8 @@ object Tiny {
 
     lateinit var xdgShell: XdgShell
     lateinit var seat: Seat
+
+    val xdgToplevels = mutableMapOf<MemorySegment, TinyXdgToplevel>()
 
     // TODO: Better way to handle this? (what if multiple outputs, output gets reconnected...?)
     val listeners = mutableMapOf<String, Listener>()
@@ -81,7 +93,7 @@ object Tiny {
         sceneOutputLayout = scene.attachOutputLayout(outputLayout)
 
         xdgShell = XdgShell.create(display, 3)
-        xdgShell.events.newToplevel.add(::onNewToplevel)
+        xdgShell.events.newToplevel.add(TopLevel::onNew)
         xdgShell.events.newPopup.add(::onNewPopup)
 
         cursor = Cursor.create().apply {
@@ -136,6 +148,7 @@ object Tiny {
 
 
     fun processCursorMotion(timeMsec: Int) {
+        TODO()
         // Process the event in the compositor
         when (cursorMode) {
             CursorMode.Move -> {
@@ -148,7 +161,7 @@ object Tiny {
                 return
             }
 
-            else -> {}
+            else -> Unit
         }
 
         // Forward events to the client under the pointer
@@ -156,11 +169,11 @@ object Tiny {
     }
 
     private fun processCursorMove(timeMsec: Int) {
-        TODO("Not yet implemented")
+        TODO()
     }
 
     private fun processCursorResize(timeMsec: Int) {
-        TODO("Not yet implemented")
+        TODO()
     }
 
     //
@@ -238,7 +251,7 @@ object Tiny {
     // Output events
     //
 
-    fun onOutputFrame() {
+    fun onOutputFrame(output: Output) {
         val sceneOutput = scene.getSceneOutput(output)!!
         sceneOutput.commit()
         sceneOutput.sendFrameDone()
@@ -248,7 +261,8 @@ object Tiny {
         output.commitState(event.state)
     }
 
-    fun onOutputDestroy() {
+    fun onOutputDestroy(output: Output) {
+        TODO()
         listeners["output.frame"]!!.remove()
         listeners["output.request_state"]!!.remove()
         listeners["output.destroy"]!!.remove()
@@ -260,6 +274,9 @@ object Tiny {
     //
 
     fun onKeyboardKey(event: KeyboardKeyEvent) {
+
+        return
+
         println("Handling key")
         val keycode = event.keycode() + 8
         val keysym = keyboard.xkbState().keyGetOneSym(keycode)
@@ -293,13 +310,14 @@ object Tiny {
     }
 
     fun onKeyboardModifiers() {
+        TODO()
         println("Sending modifiers")
         seat.setKeyboard(keyboard) // TODO: What if multiple keyboards
         seat.keyboardNotifyModifiers(keyboard.modifiers())
     }
 
-    fun onKeyboardDestroy() {
-
+    fun onKeyboardDestroy(device: InputDevice) {
+        TODO()
     }
 
 
@@ -308,68 +326,111 @@ object Tiny {
     //
 
     fun onCursorMotion(event: PointerMotionEvent) {
+        TODO()
         cursor.move(event.pointer.base(), event.deltaY, event.deltaY)
         processCursorMotion(event.timeMsec)
     }
 
     fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
-
+        TODO()
     }
 
     fun onCursorButton(event: PointerButtonEvent) {
-
+        TODO()
     }
 
     fun onCursorAxis(event: PointerAxisEvent) {
-
+        TODO()
     }
 
     fun onCursorFrame() {
-
+        TODO()
     }
 
     //
-    // XDG Shell events
+    // XDG Shell: Top level
     //
+    object TopLevel {
 
-    fun onNewToplevel(toplevel: XdgToplevel) {
-        scene.tree().xdgSurfaceCreate(toplevel.base())
+        fun onNew(toplevel: XdgToplevel) {
+            val sceneTree = scene.tree().xdgSurfaceCreate(toplevel.base())
 
-        // Event handlers for the base Surface
-        with(toplevel.base().surface().events) {
-            map.add(::onXdgToplevelMap)
-            unmap.add(::onXdgToplevelUnmap)
-            commit.add(::onXdgToplevelCommit)
-            destroy.add(::onXdgToplevelDestroy)
+
+
+
+            // Event handlers for the base Surface
+            with(toplevel.base().surface().events) {
+
+//                map.add(::onMap)
+
+                map.add {
+                    println("here i am")
+                }
+
+                unmap.add(::onXdgToplevelUnmap)
+                commit.add(::onCommit)
+                destroy.add(::onXdgToplevelDestroy)
+            }
+
+            // Event handlers for the XDG Toplevel surface
+            with(toplevel.events) {
+                requestMove.add(::onXdgToplevelRequestMove)
+                requestResize.add(::onXdgToplevelRequestResize)
+                requestMaximize.add(::onXdgToplevelRequestMaximize)
+                requestFullscreen.add(::onXdgToplevelRequestFullscreen)
+            }
+
+            xdgToplevels[toplevel.xdgToplevelPtr] = TinyXdgToplevel(
+                xdgToplevel = toplevel,
+                sceneTree = sceneTree,
+            )
         }
 
-        // Event handlers for the XDG Toplevel surface
-        with(toplevel.events) {
-            requestMove.add(::onXdgToplevelRequestMove)
-            requestResize.add(::onXdgToplevelRequestResize)
-            requestMaximize.add(::onXdgToplevelRequestMaximize)
-            requestFullscreen.add(::onXdgToplevelRequestFullscreen)
+
+        fun onCommit(surface: Surface) {
+            println("##############")
+//            TODO()
+            val topLevel = xdgToplevels
+                .values
+                .find { it.xdgToplevel.base().surface().surfacePtr == surface.surfacePtr }!!
+                .xdgToplevel
+
+            // When an xdg_surface performs an initial commit, the compositor must reply with a configure so the
+            // client can map the surface. tinywl configures the xdg_toplevel with 0,0 size to let the client pick
+            // the dimensions itself.
+            if (topLevel.base().initialCommit())
+                topLevel.setSize(0, 0)
+        }
+
+        fun onMap(surface: Surface) {
+            TODO() // check if surface is surface
+        }
+
+        fun onXdgToplevelUnmap(surface: Surface) {
+            TODO()
+        }
+
+        fun onXdgToplevelDestroy(surface: Surface) {
+            TODO()
         }
     }
+
+    //
 
     fun onNewPopup(popup: XdgPopup) {
-
-    }
-
-    fun onXdgToplevelMap(surface: Surface) {
-        TODO() // check if surface is surface
-    }
-
-    fun onXdgToplevelUnmap(surface: Surface) {
         TODO()
-    }
 
-    fun onXdgToplevelCommit(surface: Surface) {
-        TODO()
-    }
+        val parent = XdgSurface.tryFromSurface(popup.parent()) ?: error("Popup parent can't be null")
 
-    fun onXdgToplevelDestroy(surface: Surface) {
+        // TODO: Is this way ok???
+        val parentSceneTree = xdgToplevels
+            .values
+            .find { it.xdgToplevel.base().xdgSurfacePtr == parent.xdgSurfacePtr }!!
+            .sceneTree
+        parentSceneTree.xdgSurfaceCreate(popup.base())
 
+        popup.base().surface().events.commit.add(::onXdgPopupCommit)
+        popup.events.destroy.add(::onXdgPopupDestroy)
     }
 
     fun onXdgToplevelRequestMove() {
@@ -388,15 +449,24 @@ object Tiny {
         TODO()
     }
 
+    fun onXdgPopupCommit(surface: Surface) {
+        TODO()
+    }
+
+    fun onXdgPopupDestroy() {
+        TODO()
+    }
+
     //
     // Seat events
     //
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
-
+        TODO()
     }
 
     fun onSeatRequestSetSelection(selection: RequestSetSelectionEvent) {
+        TODO()
 
     }
 

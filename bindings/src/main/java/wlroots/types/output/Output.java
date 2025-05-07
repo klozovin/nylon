@@ -128,8 +128,10 @@ public final class Output {
         public final MemorySegment eventsPtr;
 
         /// Raised every time an output is ready to display a frame, generally at the output's refresh rate
-        public final Signal0                    frame;
-        public final Signal0                    destroy;
+        public final Signal1<Output> frame;
+
+        public final Signal1<Output> destroy;
+
         /// Raised when the backend requests a new state for the output (i.e. output window resized)
         public final Signal1<EventRequestState> requestState;
 
@@ -137,8 +139,8 @@ public final class Output {
         Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
 
-            this.frame         = Signal.of(wlr_output.events.frame(eventsPtr));
-            this.destroy       = Signal.of(wlr_output.events.destroy(eventsPtr));
+            this.frame         = Signal.of(wlr_output.events.frame(eventsPtr), Output::new);
+            this.destroy       = Signal.of(wlr_output.events.destroy(eventsPtr), Output::new);
             this.requestState  = Signal.of(wlr_output.events.request_state(eventsPtr), EventRequestState::new);
         }
     }

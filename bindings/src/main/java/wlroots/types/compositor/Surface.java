@@ -43,8 +43,6 @@ public class Surface {
 
 
     public static class Events {
-        public final MemorySegment eventsPtr;
-
         /// Signals that a commit has been applied. The new state can be accessed in {@link #current()}.
         public final Signal1<Surface> commit;
 
@@ -61,8 +59,6 @@ public class Surface {
 
 
         public Events(MemorySegment eventsPtr) {
-            this.eventsPtr = eventsPtr;
-
             this.commit  = Signal.of(wlr_surface.events.commit(eventsPtr),  Surface::new);
             this.map     = Signal.of(wlr_surface.events.map(eventsPtr),     Surface::new);
             this.unmap   = Signal.of(wlr_surface.events.unmap(eventsPtr),   Surface::new);

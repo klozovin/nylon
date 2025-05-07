@@ -106,7 +106,7 @@ object SceneGraph {
 
 
     // wlr_output.events.frame
-    fun outputFrameHandler() {
+    fun outputFrameHandler(output: Output) {
         if (!sceneOutput.commit())
             return
         sceneOutput.sendFrameDone()

@@ -101,7 +101,7 @@ fun newInputNotify(inputDevice: InputDevice) {
 }
 
 
-fun outputFrameNotify() {
+fun outputFrameNotify(output: Output) {
     val now = System.currentTimeMillis()
     val ms = now - State.lastFrame
     val inc = (State.dec + 1) % 3
@@ -149,14 +149,14 @@ fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
 }
 
 
-fun outputRemoveNotify() {
+fun outputRemoveNotify(output: Output) {
     Log.logDebug("Output removed")
     State.output.events.frame.remove(State.outputFrameListener)
     State.output.events.destroy.remove(State.outputDestroyListener)
 }
 
 
-fun keyboardDestroyNotify() {
+fun keyboardDestroyNotify(device: InputDevice) {
     Log.logDebug("Keyboard removed")
     State.keyboardKeyListener.remove()
     State.keyboardDestroyListener.remove()
