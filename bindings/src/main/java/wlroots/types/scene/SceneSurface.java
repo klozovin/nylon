@@ -31,4 +31,9 @@ public class SceneSurface {
     public SceneBuffer buffer() {
         return new SceneBuffer(wlr_scene_surface.buffer(sceneSurfacePtr));
     }
+
+
+    public Surface surface() {
+        return new Surface(wlr_scene_surface.surface(sceneSurfacePtr));
+    }
 }

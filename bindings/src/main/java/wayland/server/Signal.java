@@ -6,6 +6,7 @@ import wayland.util.List;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -67,18 +68,36 @@ public abstract sealed class Signal {
         }
 
 
+        /// Listener that takes no parameters
         public Listener add(Runnable callback) {
             // TODO: Memory ownership - can't be auto or confined/scope
             var listener = Listener.allocate(
                 Arena.global(),
                 (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
                     assert !listenerPtr.equals(NULL);
-                    assert dataPtr.equals(NULL) : "Parameter to listener must be NULL";
+                    assert dataPtr.equals(NULL) : "Parameter (void *data) to listener must be NULL";
                     callback.run();
                 });
             listenerList.append(listener);
             return listener;
         }
+
+
+        // Listener callback takes one parameter: wl_listener
+        public Listener add(Consumer<Listener> callback) {
+            // TODO: Memory ownership
+            var listener = Listener.allocate(
+                Arena.global(),
+                (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
+                    assert !listenerPtr.equals(NULL);
+                    assert dataPtr.equals(NULL) : "Parameter (void *data) to listener must be NULL";
+                    callback.accept(new Listener(listenerPtr));
+                });
+            listenerList.append(listener);
+            return listener;
+        }
+
+
     }
 
 
@@ -95,14 +114,30 @@ public abstract sealed class Signal {
         }
 
 
+        /// Listener callback takes one parameter: void *data
         public Listener add(Consumer<T> observer) {
             // TODO: Memory ownership - can't be auto or confined/scope
             var listener = Listener.allocate(
                 Arena.global(),
                 (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
                     assert !listenerPtr.equals(NULL);
-                    assert !dataPtr.equals(NULL) : "Parameter to listener must not be NULL";
+                    assert !dataPtr.equals(NULL) : "Parameter (void *data) to listener must not be NULL";
                     observer.accept(observerParameterCtor.apply(dataPtr));
+                });
+            listenerList.append(listener);
+            return listener;
+        }
+
+
+        /// Listener callback takes two parameters: *wl_listener, void *data
+        public Listener add(BiConsumer<Listener, T> callback) {
+            // TODO: Memory ownership - can't be auto or confined/scope
+            var listener = Listener.allocate(
+                Arena.global(),
+                (MemorySegment listenerPtr, MemorySegment dataPtr) -> {
+                    assert !listenerPtr.equals(NULL);
+                    assert !dataPtr.equals(NULL) : "Parameter (void *data) to listener must not be NULL";
+                    callback.accept(new Listener(listenerPtr), observerParameterCtor.apply(dataPtr));
                 });
             listenerList.append(listener);
             return listener;

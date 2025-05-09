@@ -2,13 +2,16 @@ package wlroots.types.seat;
 
 import jextract.wlroots.types.wlr_seat;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import wayland.KeyboardKeyState;
+import wayland.PointerButtonState;
 import wayland.SeatCapability;
 import wayland.server.Display;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
 import wlroots.types.Keyboard;
 import wlroots.types.KeyboardModifiers;
+import wlroots.types.compositor.Surface;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -38,10 +41,32 @@ public class Seat {
         }
     }
 
+    // *** Struct fields getters and setters ************************************************************** //
+
+
+    public PointerState pointerState() {
+        return new PointerState(wlr_seat.pointer_state(seatPtr));
+    }
+
+
+    // *** Keyboard *************************************************************************************** //
+
+
+    public KeyboardState keyboardState() {
+        return new KeyboardState(wlr_seat.keyboard_state(seatPtr));
+    }
+
 
     /// Set this keyboard as the active keyboard for the seat.
     public void setKeyboard(Keyboard keyboard) {
         wlr_seat_set_keyboard(seatPtr, keyboard.keyboardPtr);
+    }
+
+
+    /// @return Active keyboard for the seat
+    public @Nullable Keyboard getKeyboard() {
+        var keyboardPtr = wlr_seat_get_keyboard(seatPtr);
+        return !keyboardPtr.equals(NULL) ? new Keyboard(keyboardPtr) : null;
     }
 
 
@@ -59,23 +84,69 @@ public class Seat {
     }
 
 
+    public void keyboardNotifyEnter(Surface surface, MemorySegment keycodes, long numKeycodes, KeyboardModifiers modifiers) {
+        wlr_seat_keyboard_notify_enter(
+            seatPtr,
+            surface.surfacePtr,
+            keycodes,
+            numKeycodes,
+            modifiers.keyboardModifiersPtr
+        );
+    }
+
+    // *** Pointer **************************************************************************************** //
+
+
+    /// Notify the seat that a button has been pressed. Returns the serial of the button press or zero if no
+    /// button press was sent. Defers to any grab of the pointer.
+    public int pointerNotifyButton(int timeMsec, int button, PointerButtonState state) {
+        return wlr_seat_pointer_notify_button(seatPtr, timeMsec, button, state.value);
+    }
+
+
+    /// Clear the focused surface for the pointer and leave all entered surfaces. This function does not
+    /// respect pointer grabs: you probably want wlr_seat_pointer_notify_clear_focus() instead.
+    public void pointerClearFocus() {
+        wlr_seat_pointer_clear_focus(seatPtr);
+    }
+
+
+    /// Notify the seat of a pointer enter event to the given surface and request it to be the focused surface
+    /// for the pointer. Pass surface-local coordinates where the enter event occurred. This will send a leave
+    /// event to the currently focused surface. Defers to any grab of the pointer.
+    public void pointerNotifyEnter(Surface surface, double sx, double sy) {
+        wlr_seat_pointer_notify_enter(seatPtr, surface.surfacePtr, sx, sy);
+    }
+
+
+    /// Notify the seat of a frame event. Frame events are sent to end a group of events that logically belong
+    /// together. Motion, button and axis events should all be followed by a frame event. Defers to any grab
+    /// of the pointer.
+    public void pointerNotifyFrame() {
+        wlr_seat_pointer_notify_frame(seatPtr);
+    }
+
+
+    /// Notify the seat of motion over the given surface. Pass surface-local coordinates where the pointer
+    /// motion occurred. Defers to any grab of the pointer.
+    public void pointerNotifyMotion(int timeMsec, double sx, double sy) {
+        wlr_seat_pointer_notify_motion(seatPtr, timeMsec, sx, sy);
+    }
+
+
     public void setCapabilities(EnumSet<SeatCapability> capabilities) {
         wlr_seat_set_capabilities(seatPtr, SeatCapability.setToBitfield(capabilities));
     }
 
 
     public static class Events {
-        private final MemorySegment eventsPtr;
-
         /// Raised when a client provides a cursor image.
         public final Signal1<PointerRequestSetCursorEvent> requestSetCursor;
-
         public final Signal1<RequestSetSelectionEvent> requestSetSelection;
 
 
         public Events(MemorySegment eventsPtr) {
-            this.eventsPtr = eventsPtr;
-            this.requestSetCursor    = Signal.of(wlr_seat.events.request_set_cursor(eventsPtr),    PointerRequestSetCursorEvent::new);
+            this.requestSetCursor = Signal.of(wlr_seat.events.request_set_cursor(eventsPtr), PointerRequestSetCursorEvent::new);
             this.requestSetSelection = Signal.of(wlr_seat.events.request_set_selection(eventsPtr), RequestSetSelectionEvent::new);
         }
     }

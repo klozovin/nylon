@@ -5,12 +5,9 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
+import wlroots.types.compositor.Surface;
 import wlroots.types.output.OutputLayout;
-import wlroots.types.pointer.Pointer;
-import wlroots.types.pointer.PointerAxisEvent;
-import wlroots.types.pointer.PointerButtonEvent;
-import wlroots.types.pointer.PointerMotionAbsoluteEvent;
-import wlroots.types.pointer.PointerMotionEvent;
+import wlroots.types.pointer.*;
 import wlroots.types.tablet.TabletToolAxisEvent;
 import wlroots.types.touch.TouchCancelEvent;
 import wlroots.types.touch.TouchDownEvent;
@@ -40,9 +37,22 @@ public class Cursor {
         this.events = new Events(wlr_cursor.events(cursorPtr));
     }
 
+
     public static Cursor create() {
         return new Cursor(wlr_cursor_create());
     }
+
+
+    public double x() {
+        return wlr_cursor.x(cursorPtr);
+    }
+
+
+    public double y() {
+        return wlr_cursor.y(cursorPtr);
+    }
+
+    // *** Methods **************************************************************************************** //
 
 
     /// Uses the given layout to establish the boundaries and movement semantics of this cursor. Cursors
@@ -89,6 +99,13 @@ public class Cursor {
     }
 
 
+    /// Set the cursor surface. The surface can be committed to update the cursor image. The surface position
+    /// is subtracted from the hotspot. A NULL surface commit hides the cursor.
+    public void setSurface(Surface surface, int hotspotX, int hotspotY) {
+        wlr_cursor_set_surface(cursorPtr, surface.surfacePtr, hotspotX, hotspotY);
+    }
+
+
     /// Set the cursor image from an XCursor theme.
     ///
     /// The image will be loaded from the {@link XcursorManager}.
@@ -103,6 +120,8 @@ public class Cursor {
         wlr_cursor_destroy(cursorPtr);
     }
 
+    // *** Events ***************************************************************************************** //
+
 
     public static class Events {
         final MemorySegment eventsPtr;
@@ -116,7 +135,7 @@ public class Cursor {
         /// Forwarded by the cursor when a pointer emits a frame event, which are sent after regular pointer
         /// events to group multiple events together, i.e. two axis events may happen at the same time, in
         /// which case a frame event won't be sent in between.
-        public final Signal.Signal0 frame;
+        public final Signal1<Cursor> frame;
 
         public final Signal1<TouchUpEvent> touchUp;
         public final Signal1<TouchDownEvent> touchDown;
@@ -133,7 +152,7 @@ public class Cursor {
             this.motionAbsolute = Signal.of(wlr_cursor.events.motion_absolute(eventsPtr), PointerMotionAbsoluteEvent::new);
             this.button = Signal.of(wlr_cursor.events.button(eventsPtr), PointerButtonEvent::new);
             this.axis = Signal.of(wlr_cursor.events.axis(eventsPtr), PointerAxisEvent::new);
-            this.frame = Signal.of(wlr_cursor.events.frame(eventsPtr));
+            this.frame = Signal.of(wlr_cursor.events.frame(eventsPtr), Cursor::new);
 
             this.touchUp = Signal.of(wlr_cursor.events.touch_up(eventsPtr), TouchUpEvent::new);
             this.touchDown = Signal.of(wlr_cursor.events.touch_down(eventsPtr), TouchDownEvent::new);

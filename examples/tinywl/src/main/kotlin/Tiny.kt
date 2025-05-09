@@ -1,4 +1,5 @@
 import wayland.KeyboardKeyState
+import wayland.PointerButtonState
 import wayland.SeatCapability
 import wayland.server.Display
 import wayland.server.Listener
@@ -17,10 +18,7 @@ import wlroots.types.pointer.PointerAxisEvent
 import wlroots.types.pointer.PointerButtonEvent
 import wlroots.types.pointer.PointerMotionAbsoluteEvent
 import wlroots.types.pointer.PointerMotionEvent
-import wlroots.types.scene.Scene
-import wlroots.types.scene.SceneOutput
-import wlroots.types.scene.SceneOutputLayout
-import wlroots.types.scene.SceneTree
+import wlroots.types.scene.*
 import wlroots.types.seat.PointerRequestSetCursorEvent
 import wlroots.types.seat.RequestSetSelectionEvent
 import wlroots.types.seat.Seat
@@ -32,17 +30,22 @@ import wlroots.util.Log
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
 import xkbcommon.XkbKey
-import java.lang.foreign.MemorySegment
 import java.util.*
 import kotlin.system.exitProcess
 
 
-data class TinyXdgToplevel(
-    val xdgToplevel: XdgToplevel,
-    val sceneTree: SceneTree,
+class TyToplevel(val xdgToplevel: XdgToplevel, val sceneTree: SceneTree) {
+    lateinit var onMapListener: Listener
+    lateinit var onCommitListener: Listener
+    lateinit var onUnmapListener: Listener
+    lateinit var onDestroyListener: Listener
 
-    // TODO: Maybe add listeners here
-)
+    lateinit var onRrequestMoveListener: Listener
+    lateinit var onRrequestResizeListener: Listener
+    lateinit var onRrequestMaximizeListener: Listener
+    lateinit var onRrequestFullscreenListener: Listener
+}
+
 
 object Tiny {
 
@@ -65,10 +68,16 @@ object Tiny {
     lateinit var xdgShell: XdgShell
     lateinit var seat: Seat
 
-    val xdgToplevels = mutableMapOf<MemorySegment, TinyXdgToplevel>()
+    var grabX: Double = 0.0
+    var grabY: Double = 0.0
+
+    val tyToplevels = mutableListOf<TyToplevel>()
+
 
     // TODO: Better way to handle this? (what if multiple outputs, output gets reconnected...?)
     val listeners = mutableMapOf<String, Listener>()
+
+    var grabbedToplevel: TyToplevel? = null
 
 
     fun main(args: Array<String>) {
@@ -147,33 +156,85 @@ object Tiny {
     }
 
 
-    fun processCursorMotion(timeMsec: Int) {
-        TODO()
-        // Process the event in the compositor
-        when (cursorMode) {
-            CursorMode.Move -> {
-                processCursorMove(timeMsec)
-                return
-            }
+    // TODO: Remove surface parameter, can get it from toplevel
+    fun focusToplevel(toplevel: TyToplevel?, surface: Surface?) {
+        if (toplevel == null)
+            return
 
-            CursorMode.Resize -> {
-                processCursorResize(timeMsec)
-                return
-            }
+        require(surface != null)
 
-            else -> Unit
+        val previouslyFocusedSurface = seat.keyboardState().focusedSurface()
+
+        // Don't refocus already focused surface
+        if (previouslyFocusedSurface?.surfacePtr == surface.surfacePtr) {
+            return
         }
 
-        // Forward events to the client under the pointer
-        TODO()
+        // Deactivate the previously focused surface. This lets the client know it lost focus and it can
+        // repaint accordingly (eg. stop displaying a caret).
+        if (previouslyFocusedSurface != null) {
+            XdgToplevel.tryFromSurface(previouslyFocusedSurface)?.let { previousTopLevel ->
+                previousTopLevel.setActivated(false)
+            }
+        }
+
+        toplevel.sceneTree.node().raiseToTop()
+        toplevel.xdgToplevel.setActivated(true)
+
+        seat.getKeyboard()?.let { keyboard ->
+            seat.keyboardNotifyEnter(
+                toplevel.xdgToplevel.base().surface(),
+                keyboard.keycodesPtr(),
+                keyboard.keycodesNum(),
+                keyboard.modifiers()
+            )
+        }
     }
 
-    private fun processCursorMove(timeMsec: Int) {
-        TODO()
-    }
+    data class DesktopToplevelAtResult(
+        val ttl: TyToplevel,
+        val surface: Surface,
+        val sx: Double,
+        val sy: Double,
+    )
 
-    private fun processCursorResize(timeMsec: Int) {
-        TODO()
+    // TOOD: can ttl be !null and surface null?
+    fun desktopToplevelAt(x: Double, y: Double): DesktopToplevelAtResult? {
+//        println("Looking at: x=${cursor.x()} y=${cursor.y()}")
+
+        val nodeAtResult = scene.tree().node().nodeAt(x, y) ?: return null
+
+        val sceneNode = nodeAtResult.node
+
+//        println(sceneNode)
+
+        if (sceneNode.type() != SceneNode.Type.BUFFER)
+            return null
+
+        val sceneBuffer = SceneBuffer.fromNode(sceneNode)
+        val sceneSurface = sceneBuffer.getSceneSurface() ?: return null
+
+//        println(sceneBuffer)
+//        println(sceneSurface)
+
+
+        //TODO: rewrite to break
+        var tree = sceneNode.parent()
+        while (tree != null && tyToplevels.find { it.sceneTree.sceneTreePtr == tree.sceneTreePtr } == null) {
+            tree = tree.node().parent()
+        }
+        val tytoplevel = tyToplevels.find { it.sceneTree.sceneTreePtr == tree!!.sceneTreePtr }
+//        println("Found this fucker: ${tytoplevel}")
+
+        if (tytoplevel != null)
+            return DesktopToplevelAtResult(
+                tytoplevel,
+                sceneSurface.surface(),
+                nodeAtResult.nx,
+                nodeAtResult.ny
+            )
+        else
+            return null
     }
 
     //
@@ -206,6 +267,7 @@ object Tiny {
         val sceneOutput = SceneOutput.create(scene, output)
         sceneOutputLayout.addOutput(outputLayoutOutput, sceneOutput)
     }
+
 
     fun onNewInput(inputDevice: InputDevice) {
         when (inputDevice.type()) {
@@ -273,10 +335,9 @@ object Tiny {
     // Keyboard events
     //
 
+    object TyKeyboard
+
     fun onKeyboardKey(event: KeyboardKeyEvent) {
-
-        return
-
         println("Handling key")
         val keycode = event.keycode() + 8
         val keysym = keyboard.xkbState().keyGetOneSym(keycode)
@@ -309,9 +370,7 @@ object Tiny {
         }
     }
 
-    fun onKeyboardModifiers() {
-        TODO()
-        println("Sending modifiers")
+    fun onKeyboardModifiers(keyboard: Keyboard) {
         seat.setKeyboard(keyboard) // TODO: What if multiple keyboards
         seat.keyboardNotifyModifiers(keyboard.modifiers())
     }
@@ -321,77 +380,154 @@ object Tiny {
     }
 
 
-    //
-    // Cursor events
-    //
+    // *** Cursor events ********************************************************************************** //
+
 
     fun onCursorMotion(event: PointerMotionEvent) {
-        TODO()
+//        println("onCursorMotion: deltaX=${event.deltaX}, deltaY=${event.deltaY}")
         cursor.move(event.pointer.base(), event.deltaY, event.deltaY)
         processCursorMotion(event.timeMsec)
     }
 
+
     fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
-        TODO()
+//        println("onCursorMotionAbsolute: x=${event.x}, y=${event.y}")
+        cursor.warpAbsolute(event.pointer.base(), event.x, event.y)
+        processCursorMotion(event.timeMsec)
     }
 
+
     fun onCursorButton(event: PointerButtonEvent) {
-        TODO()
+        seat.pointerNotifyButton(event.timeMsec, event.button, event.state)
+
+        val toplevel = desktopToplevelAt(cursor.x(), cursor.y())
+
+        // TODO: Why not check if we're in move/resize state?
+        if (event.state == PointerButtonState.RELEASED)
+            resetCursorMode()
+        else
+            focusToplevel(toplevel?.ttl, toplevel?.surface)
     }
+
 
     fun onCursorAxis(event: PointerAxisEvent) {
         TODO()
     }
 
-    fun onCursorFrame() {
+    fun onCursorFrame(cursor: Cursor) {
+        seat.pointerNotifyFrame()
+    }
+
+    fun processCursorMotion(timeMsec: Int) {
+        // Process the event in the compositor: either moving or resizing the window
+        when (cursorMode) {
+            CursorMode.Move -> {
+                processCursorMove(timeMsec)
+                return
+            }
+
+            CursorMode.Resize -> {
+                processCursorResize(timeMsec)
+                return
+            }
+
+            else -> Unit
+        }
+
+        // Forward events to the client under the pointer
+
+        val toplevelResult = desktopToplevelAt(cursor.x(), cursor.y())
+
+        if (toplevelResult == null) {
+            cursor.setXcursor(xcursorManager, "default")
+        }
+
+        if (toplevelResult?.surface != null) {
+            seat.pointerNotifyEnter(toplevelResult.surface, toplevelResult.sx, toplevelResult.sy)
+            seat.pointerNotifyMotion(timeMsec, toplevelResult.sx, toplevelResult.sy)
+        } else {
+            seat.pointerClearFocus()
+        }
+    }
+
+
+    // Move the grabbed toplevel to new position
+    private fun processCursorMove(timeMsec: Int) {
+        grabbedToplevel!!.sceneTree.node().setPosition(
+            (cursor.x() - grabX).toInt(),
+            (cursor.y() - grabY).toInt()
+        )
+    }
+
+
+    private fun processCursorResize(timeMsec: Int) {
         TODO()
     }
 
-    //
-    // XDG Shell: Top level
-    //
+
+    fun beginInteractive(tytoplevel: TyToplevel, mode: CursorMode, foobar: Int) {
+        println(tytoplevel)
+        println(mode)
+
+        val focusedSurface = seat.pointerState().focusedSurface()
+        if (tytoplevel.xdgToplevel.base().surface().surfacePtr != focusedSurface.rootSurface.surfacePtr) {
+            println("Returning!!! Ohnoes")
+            return
+        }
+
+        grabbedToplevel = tytoplevel
+        cursorMode = mode
+
+        if (mode == CursorMode.Move) {
+            println("KURAC PICKA TU SAM")
+            grabX = cursor.x() - tytoplevel.sceneTree.node().x()
+            grabY = cursor.y() - tytoplevel.sceneTree.node().y()
+            println("$grabX, $ grabY")
+        } else {
+            TODO()
+        }
+
+    }
+
+
+    fun resetCursorMode() {
+        cursorMode = CursorMode.Passthrough
+        grabbedToplevel = null
+    }
+
+
+    // *** XDG Shell: Top level *************************************************************************** //
+
+
     object TopLevel {
 
         fun onNew(toplevel: XdgToplevel) {
             val sceneTree = scene.tree().xdgSurfaceCreate(toplevel.base())
 
-
-
+            val tytl = TyToplevel(toplevel, sceneTree)
 
             // Event handlers for the base Surface
             with(toplevel.base().surface().events) {
-
-//                map.add(::onMap)
-
-                map.add {
-                    println("here i am")
-                }
-
-                unmap.add(::onXdgToplevelUnmap)
-                commit.add(::onCommit)
-                destroy.add(::onXdgToplevelDestroy)
+                tytl.onMapListener = map.add(::onMap)
+                tytl.onUnmapListener = unmap.add(::onUnmap)
+                tytl.onCommitListener = commit.add(::onCommit)
+                tytl.onDestroyListener = destroy.add(::onXdgToplevelDestroy)
             }
 
             // Event handlers for the XDG Toplevel surface
             with(toplevel.events) {
-                requestMove.add(::onXdgToplevelRequestMove)
-                requestResize.add(::onXdgToplevelRequestResize)
-                requestMaximize.add(::onXdgToplevelRequestMaximize)
-                requestFullscreen.add(::onXdgToplevelRequestFullscreen)
+                tytl.onRrequestMoveListener = requestMove.add(::onXdgToplevelRequestMove)
+                tytl.onRrequestResizeListener = requestResize.add(::onXdgToplevelRequestResize)
+                tytl.onRrequestMaximizeListener = requestMaximize.add(::onXdgToplevelRequestMaximize)
+                tytl.onRrequestFullscreenListener = requestFullscreen.add(::onXdgToplevelRequestFullscreen)
             }
 
-            xdgToplevels[toplevel.xdgToplevelPtr] = TinyXdgToplevel(
-                xdgToplevel = toplevel,
-                sceneTree = sceneTree,
-            )
+            tyToplevels.add(tytl)
         }
 
 
         fun onCommit(surface: Surface) {
-            println("##############")
-//            TODO()
-            val topLevel = xdgToplevels
-                .values
+            val topLevel = tyToplevels
                 .find { it.xdgToplevel.base().surface().surfacePtr == surface.surfacePtr }!!
                 .xdgToplevel
 
@@ -402,16 +538,37 @@ object Tiny {
                 topLevel.setSize(0, 0)
         }
 
-        fun onMap(surface: Surface) {
-            TODO() // check if surface is surface
+        fun onMap(listener: Listener) {
+            val tinyXdgToplevel = tyToplevels.find { it.onMapListener.listenerPtr == listener.listenerPtr }!!
+            focusToplevel(tinyXdgToplevel, tinyXdgToplevel.xdgToplevel.base().surface())
         }
 
-        fun onXdgToplevelUnmap(surface: Surface) {
-            TODO()
+
+        fun onUnmap(listener: Listener) {
+            val tyToplevel = tyToplevels.find { it.onUnmapListener.listenerPtr == listener.listenerPtr }!!
+
+            // Reset the cursor mode if the grabbed toplevel was unmapped
+            // TODO: Test this
+            if (grabbedToplevel?.xdgToplevel?.xdgToplevelPtr == tyToplevel.xdgToplevel.xdgToplevelPtr)
+                resetCursorMode()
         }
 
-        fun onXdgToplevelDestroy(surface: Surface) {
-            TODO()
+
+        fun onXdgToplevelDestroy(listener: Listener, surface: Surface) {
+            val idx = tyToplevels.indexOfFirst { it.onDestroyListener.listenerPtr == listener.listenerPtr }
+            val element = tyToplevels[idx]
+
+            element.onMapListener.remove()
+            element.onUnmapListener.remove()
+            element.onCommitListener.remove()
+            element.onDestroyListener.remove()
+
+            element.onRrequestMoveListener.remove()
+            element.onRrequestResizeListener.remove()
+            element.onRrequestMaximizeListener.remove()
+            element.onRrequestFullscreenListener.remove()
+
+            tyToplevels.removeAt(idx)
         }
     }
 
@@ -423,23 +580,28 @@ object Tiny {
         val parent = XdgSurface.tryFromSurface(popup.parent()) ?: error("Popup parent can't be null")
 
         // TODO: Is this way ok???
-        val parentSceneTree = xdgToplevels
-            .values
-            .find { it.xdgToplevel.base().xdgSurfacePtr == parent.xdgSurfacePtr }!!
-            .sceneTree
+        val parentSceneTree =
+            tyToplevels.find { it.xdgToplevel.base().xdgSurfacePtr == parent.xdgSurfacePtr }!!.sceneTree
         parentSceneTree.xdgSurfaceCreate(popup.base())
 
         popup.base().surface().events.commit.add(::onXdgPopupCommit)
         popup.events.destroy.add(::onXdgPopupDestroy)
     }
 
-    fun onXdgToplevelRequestMove() {
+    fun onXdgToplevelRequestMove(event: XdgToplevel.MoveEvent) {
+        println(event)
+        beginInteractive(
+            tyToplevels.find { it.xdgToplevel.xdgToplevelPtr == event.toplevel.xdgToplevelPtr }!!,
+            CursorMode.Move,
+            0
+        )
+    }
+
+
+    fun onXdgToplevelRequestResize(event: XdgToplevel.ResizeEvent) {
         TODO()
     }
 
-    fun onXdgToplevelRequestResize() {
-        TODO()
-    }
 
     fun onXdgToplevelRequestMaximize() {
         TODO()
@@ -462,7 +624,9 @@ object Tiny {
     //
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
-        TODO()
+        val focusedClient = seat.pointerState().focusedClient()
+        if (focusedClient.seatClientPtr == event.seatClient().seatClientPtr)
+            cursor.setSurface(event.surface(), event.hotspotX(), event.hotspotY())
     }
 
     fun onSeatRequestSetSelection(selection: RequestSetSelectionEvent) {

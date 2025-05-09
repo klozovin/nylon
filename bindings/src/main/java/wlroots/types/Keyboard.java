@@ -8,6 +8,7 @@ import xkbcommon.Keymap;
 import xkbcommon.XkbState;
 
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 
 import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wlroots.types.wlr_keyboard_h.*;
@@ -35,6 +36,27 @@ public class Keyboard {
 
     public KeyboardModifiers modifiers() {
         return new KeyboardModifiers(wlr_keyboard.modifiers(keyboardPtr));
+    }
+
+
+    public void keycodes() {
+        // TODO: Test this pointer shenanigans
+        var ptr = keycodesPtr();
+        var keycodesElementLayout = wlr_keyboard.keycodes$layout().elementLayout();
+        var slice = ptr.asSlice(0, keycodesElementLayout.byteSize() * keycodesNum());
+
+        slice.getAtIndex(ValueLayout.JAVA_INT, 0);
+//        slice.getAtIndex(wlr_keyboard.keycodes$layout().elementLayout(), );
+
+    }
+
+    public MemorySegment keycodesPtr() {
+        return wlr_keyboard.keycodes(keyboardPtr);
+    }
+
+
+    public long keycodesNum() {
+        return wlr_keyboard.num_keycodes(keyboardPtr);
     }
 
 
@@ -68,16 +90,17 @@ public class Keyboard {
         /// Raised when the modifier state of the {@link Keyboard} has been updated. At this time, you can
         /// read the modifier state of the struct wlr_keyboard and handle the updated state by sending it to
         /// clients.
-        public final Signal.Signal0 modifiers;
+        public final Signal1<Keyboard> modifiers;
 
 
         public Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
 
             this.key       = Signal.of(wlr_keyboard.events.key(eventsPtr), KeyboardKeyEvent::new);
-            this.modifiers = Signal.of(wlr_keyboard.events.modifiers(eventsPtr));
+            this.modifiers = Signal.of(wlr_keyboard.events.modifiers(eventsPtr), Keyboard::new);
         }
     }
+
 
     public final static class Modifiers {
         private final int modifiers;

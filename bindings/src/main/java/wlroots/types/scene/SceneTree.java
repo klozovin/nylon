@@ -2,6 +2,7 @@ package wlroots.types.scene;
 
 import jextract.wlroots.types.wlr_scene_tree;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import wlroots.types.xdgshell.XdgSurface;
 
 import java.lang.foreign.MemorySegment;
@@ -19,6 +20,11 @@ public class SceneTree {
     public SceneTree(MemorySegment sceneTreePtr) {
         assert !sceneTreePtr.equals(NULL);
         this.sceneTreePtr = sceneTreePtr;
+    }
+
+
+    public static @Nullable SceneTree ofPtrOrNull(MemorySegment ptr) {
+        return !ptr.equals(NULL) ? new SceneTree(ptr) : null;
     }
 
 

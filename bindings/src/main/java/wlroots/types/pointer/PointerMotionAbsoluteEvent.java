@@ -13,6 +13,7 @@ public class PointerMotionAbsoluteEvent {
     public final MemorySegment pointerMotionAbsoluteEventPtr;
 
     public Pointer pointer;
+    public int timeMsec;
     public double x;
     public double y;
 
@@ -22,6 +23,7 @@ public class PointerMotionAbsoluteEvent {
         this.pointerMotionAbsoluteEventPtr = pointerMotionAbsoluteEventPtr;
 
         this.pointer = new Pointer(wlr_pointer_motion_absolute_event.pointer(pointerMotionAbsoluteEventPtr));
+        this.timeMsec = wlr_pointer_motion_absolute_event.time_msec(pointerMotionAbsoluteEventPtr);
         this.x = wlr_pointer_motion_absolute_event.x(pointerMotionAbsoluteEventPtr);
         this.y = wlr_pointer_motion_absolute_event.y(pointerMotionAbsoluteEventPtr);
     }

@@ -13,6 +13,7 @@ import static java.lang.foreign.MemorySegment.NULL;
 public class PointerButtonEvent {
     public final MemorySegment pointerButtonEventPtr;
 
+    public int timeMsec;
     public int button;
     public PointerButtonState state;
 
@@ -21,6 +22,7 @@ public class PointerButtonEvent {
         assert !pointerButtonEventPtr.equals(NULL);
         this.pointerButtonEventPtr = pointerButtonEventPtr;
 
+        this.timeMsec = wlr_pointer_button_event.time_msec(pointerButtonEventPtr);
         this.button = wlr_pointer_button_event.button(pointerButtonEventPtr);
         this.state = PointerButtonState.of(wlr_pointer_button_event.state(pointerButtonEventPtr));
     }
