@@ -3,9 +3,7 @@ package wlroots.types.seat;
 import jextract.wlroots.types.wlr_seat;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import wayland.KeyboardKeyState;
-import wayland.PointerButtonState;
-import wayland.SeatCapability;
+import wayland.*;
 import wayland.server.Display;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
@@ -95,6 +93,23 @@ public class Seat {
     }
 
     // *** Pointer **************************************************************************************** //
+
+
+    /// Notify the seat of an axis event. Defers to any grab of the pointer.
+    public void pointerNotifyAxis(int timeMsec,
+                                  PointerAxis orientation,
+                                  double value,
+                                  int valueDiscrete,
+                                  PointerAxisSource source,
+                                  PointerAxisRelativeDirection relativeDirection) {
+        wlr_seat_pointer_notify_axis(
+            seatPtr,
+            timeMsec,
+            orientation.value, value,
+            valueDiscrete,
+            source.value,
+            relativeDirection.value);
+    }
 
 
     /// Notify the seat that a button has been pressed. Returns the serial of the button press or zero if no

@@ -218,7 +218,6 @@ object Tiny {
 //        println(sceneSurface)
 
 
-
         //TODO: rewrite to break
         var tree = sceneNode.parent()
         while (tree != null && tyToplevels.find { it.sceneTree.sceneTreePtr == tree.sceneTreePtr } == null) {
@@ -305,9 +304,8 @@ object Tiny {
         seat.setCapabilities(capabilities)
     }
 
-    //
-    // Output events
-    //
+    // *** Output events ********************************************************************************** //
+
 
     fun onOutputFrame(output: Output) {
         val sceneOutput = scene.getSceneOutput(output)!!
@@ -327,11 +325,8 @@ object Tiny {
     }
 
 
-    //
-    // Keyboard events
-    //
+    // *** Keyboard events ******************************************************************************** //
 
-    object TyKeyboard
 
     fun onKeyboardKey(event: KeyboardKeyEvent) {
         println("Handling key")
@@ -393,7 +388,10 @@ object Tiny {
     }
 
 
+    // Mouse click event
     fun onCursorButton(event: PointerButtonEvent) {
+        println("Here we are")
+        // TODO: Raise on click, swallow mouse event
         seat.pointerNotifyButton(event.timeMsec, event.button, event.state)
 
         val toplevel = desktopToplevelAt(cursor.x(), cursor.y())
@@ -406,13 +404,23 @@ object Tiny {
     }
 
 
+    // Mouse scroll event
     fun onCursorAxis(event: PointerAxisEvent) {
-        TODO()
+        seat.pointerNotifyAxis(
+            event.timeMsec,
+            event.orientation,
+            event.delta,
+            event.deltaDiscrete,
+            event.source,
+            event.relativeDirection
+        )
     }
+
 
     fun onCursorFrame(cursor: Cursor) {
         seat.pointerNotifyFrame()
     }
+
 
     fun processCursorMotion(timeMsec: Int) {
         // Process the event in the compositor: either moving or resizing the window
@@ -447,20 +455,6 @@ object Tiny {
     }
 
 
-    // Move the grabbed toplevel to new position
-    private fun processCursorMove(timeMsec: Int) {
-        grabbedToplevel!!.sceneTree.node().setPosition(
-            (cursor.x() - grabX).toInt(),
-            (cursor.y() - grabY).toInt()
-        )
-    }
-
-
-    private fun processCursorResize(timeMsec: Int) {
-        TODO()
-    }
-
-
     fun beginInteractive(tytoplevel: TyToplevel, mode: CursorMode, foobar: Int) {
         println(tytoplevel)
         println(mode)
@@ -482,6 +476,20 @@ object Tiny {
             TODO()
         }
 
+    }
+
+
+    // Move the grabbed toplevel to new position
+    private fun processCursorMove(timeMsec: Int) {
+        grabbedToplevel!!.sceneTree.node().setPosition(
+            (cursor.x() - grabX).toInt(),
+            (cursor.y() - grabY).toInt()
+        )
+    }
+
+
+    private fun processCursorResize(timeMsec: Int) {
+        TODO()
     }
 
 
@@ -614,13 +622,12 @@ object Tiny {
         TODO()
     }
 
-    //
-    // Seat events
-    //
+
+    // *** Seat events ************************************************************************************ //
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
         val focusedClient = seat.pointerState().focusedClient()
-        if (focusedClient.seatClientPtr == event.seatClient().seatClientPtr)
+        if (focusedClient?.seatClientPtr == event.seatClient().seatClientPtr)
             cursor.setSurface(event.surface(), event.hotspotX(), event.hotspotY())
     }
 
