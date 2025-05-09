@@ -1,6 +1,8 @@
 package wlroots.types.scene;
 
 import jextract.wlroots.types.wlr_scene_node;
+import nylon.Tuple;
+import nylon.Tuple.Tuple3;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -66,13 +68,14 @@ public class SceneNode {
     /// Find the topmost node in this scene-graph that contains the point at the given layout-local
     /// coordinates. (For surface nodes, this means accepting input events at that point.) Returns the node
     /// and coordinates relative to the returned node, or NULL if no node is found at that location.
-    public @Nullable NodeAtResult nodeAt(double lx, double ly) {
+    public @Nullable Tuple3<SceneNode, Double, Double> nodeAt(double lx, double ly) {
         try (var arena = Arena.ofConfined()) {
             var nxPtr = arena.allocate(ValueLayout.JAVA_DOUBLE);
             var nyPtr = arena.allocate(ValueLayout.JAVA_DOUBLE);
             var nodePtr = wlr_scene_node_at(sceneNodePtr, lx, ly, nxPtr, nyPtr);
+
             return !nodePtr.equals(NULL) ?
-                new NodeAtResult(
+                Tuple.of(
                     new SceneNode(nodePtr),
                     nxPtr.get(ValueLayout.JAVA_DOUBLE, 0),
                     nyPtr.get(ValueLayout.JAVA_DOUBLE, 0))

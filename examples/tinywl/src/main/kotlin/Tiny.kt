@@ -1,3 +1,5 @@
+import nylon.Tuple
+import nylon.Tuple.Tuple4
 import wayland.KeyboardKeyState
 import wayland.PointerButtonState
 import wayland.SeatCapability
@@ -199,12 +201,10 @@ object Tiny {
     )
 
     // TOOD: can ttl be !null and surface null?
-    fun desktopToplevelAt(x: Double, y: Double): DesktopToplevelAtResult? {
+    fun desktopToplevelAt(x: Double, y: Double): Tuple4<TyToplevel, Surface, Double, Double>? {
 //        println("Looking at: x=${cursor.x()} y=${cursor.y()}")
 
-        val nodeAtResult = scene.tree().node().nodeAt(x, y) ?: return null
-
-        val sceneNode = nodeAtResult.node
+        val (sceneNode, nx, ny) = scene.tree().node().nodeAt(x, y) ?: return null
 
 //        println(sceneNode)
 
@@ -218,23 +218,19 @@ object Tiny {
 //        println(sceneSurface)
 
 
+
         //TODO: rewrite to break
         var tree = sceneNode.parent()
         while (tree != null && tyToplevels.find { it.sceneTree.sceneTreePtr == tree.sceneTreePtr } == null) {
             tree = tree.node().parent()
         }
         val tytoplevel = tyToplevels.find { it.sceneTree.sceneTreePtr == tree!!.sceneTreePtr }
-//        println("Found this fucker: ${tytoplevel}")
 
-        if (tytoplevel != null)
-            return DesktopToplevelAtResult(
-                tytoplevel,
-                sceneSurface.surface(),
-                nodeAtResult.nx,
-                nodeAtResult.ny
-            )
+
+        return if (tytoplevel != null)
+            Tuple.of(tytoplevel, sceneSurface.surface(), nx, ny)
         else
-            return null
+            null
     }
 
     //
@@ -406,7 +402,7 @@ object Tiny {
         if (event.state == PointerButtonState.RELEASED)
             resetCursorMode()
         else
-            focusToplevel(toplevel?.ttl, toplevel?.surface)
+            focusToplevel(toplevel?._1, toplevel?._2)
     }
 
 
@@ -442,9 +438,9 @@ object Tiny {
             cursor.setXcursor(xcursorManager, "default")
         }
 
-        if (toplevelResult?.surface != null) {
-            seat.pointerNotifyEnter(toplevelResult.surface, toplevelResult.sx, toplevelResult.sy)
-            seat.pointerNotifyMotion(timeMsec, toplevelResult.sx, toplevelResult.sy)
+        if (toplevelResult?._2 != null) {
+            seat.pointerNotifyEnter(toplevelResult._2, toplevelResult._3, toplevelResult._4)
+            seat.pointerNotifyMotion(timeMsec, toplevelResult._3, toplevelResult._4)
         } else {
             seat.pointerClearFocus()
         }
@@ -479,7 +475,6 @@ object Tiny {
         cursorMode = mode
 
         if (mode == CursorMode.Move) {
-            println("KURAC PICKA TU SAM")
             grabX = cursor.x() - tytoplevel.sceneTree.node().x()
             grabY = cursor.y() - tytoplevel.sceneTree.node().y()
             println("$grabX, $ grabY")
@@ -646,7 +641,6 @@ object Tiny {
 fun main(args: Array<String>) {
     Log.init(Log.Importance.DEBUG)
     Tiny.main(args)
-
     // TODO: take startup command from input
 }
 
