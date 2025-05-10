@@ -8,6 +8,7 @@ public final class XkbKey {
     public static final int NoSymbol = XKB_KEY_NoSymbol();
 
     public static final int F1 = XKB_KEY_F1();
+    public static final int F2 = XKB_KEY_F2();
     public static final int F3 = XKB_KEY_F3();
     public static final int F4 = XKB_KEY_F4();
     public static final int F5 = XKB_KEY_F5();

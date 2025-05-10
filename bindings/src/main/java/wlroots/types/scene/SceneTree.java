@@ -8,12 +8,13 @@ import wlroots.types.xdgshell.XdgSurface;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
+import static jextract.wlroots.types.wlr_scene_h.wlr_scene_tree_from_node;
 import static jextract.wlroots.types.wlr_scene_h.wlr_scene_xdg_surface_create;
 
 
 /// Node representing a subtree in the scene-graph.
 @NullMarked
-public class SceneTree {
+public final class SceneTree {
     public final MemorySegment sceneTreePtr;
 
 
@@ -26,6 +27,16 @@ public class SceneTree {
     public static @Nullable SceneTree ofPtrOrNull(MemorySegment ptr) {
         return !ptr.equals(NULL) ? new SceneTree(ptr) : null;
     }
+
+
+    /// If this node represents a wlr_scene_tree, that tree will be returned. It is not legal to feed a node
+    /// that does not represent a wlr_scene_tree.
+    public static SceneTree fromNode(SceneNode node) {
+        return new SceneTree(wlr_scene_tree_from_node(node.sceneNodePtr));
+    }
+
+
+    // *** Getters and setters **************************************************************************** //
 
 
     public SceneNode node() {

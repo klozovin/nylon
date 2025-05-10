@@ -9,6 +9,7 @@ import org.jspecify.annotations.Nullable;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.util.Iterator;
 
 import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wlroots.types.wlr_scene_h.*;
@@ -17,6 +18,9 @@ import static jextract.wlroots.types.wlr_scene_h.*;
 @NullMarked
 public class SceneNode {
     public final MemorySegment sceneNodePtr;
+
+    /// Iterate over the .parent field all the way up to the root of the tree.
+    public final Iterable<SceneTree> parentIterator = () -> new ParentIterator();
 
 
     public SceneNode(MemorySegment sceneNodePtr) {
@@ -33,8 +37,8 @@ public class SceneNode {
     }
 
 
+    /// Can be NULL when accessing wlr_scene.tree.node.parent.
     public @Nullable SceneTree parent() {
-        // TODO: When is this null exactly?
         return SceneTree.ofPtrOrNull(wlr_scene_node.parent(sceneNodePtr));
     }
 
@@ -65,9 +69,13 @@ public class SceneNode {
     }
 
 
-    /// Find the topmost node in this scene-graph that contains the point at the given layout-local
+    /// Find the topmost node in this scene-graph that contains the target point at the given layout-local
     /// coordinates. (For surface nodes, this means accepting input events at that point.) Returns the node
     /// and coordinates relative to the returned node, or NULL if no node is found at that location.
+    ///
+    /// @param lx Target point, layout-local x coordinate
+    /// @param ly Target point, layout-local y coordinate
+    /// @return Found {@link SceneNode} coordinates relative to the returned node, or NULL if no node found
     public @Nullable Tuple3<SceneNode, Double, Double> nodeAt(double lx, double ly) {
         try (var arena = Arena.ofConfined()) {
             var nxPtr = arena.allocate(ValueLayout.JAVA_DOUBLE);
@@ -90,11 +98,28 @@ public class SceneNode {
     }
 
 
-    public record NodeAtResult(
-        SceneNode node,
-        double nx,
-        double ny
-    ) {
+    public class ParentIterator implements Iterator<SceneTree> {
+        private SceneNode node;
+
+
+        public ParentIterator() {
+            this.node = SceneNode.this;
+        }
+
+
+        @Override
+        public boolean hasNext() {
+            return this.node.parent() != null;
+        }
+
+
+        @Override
+        public SceneTree next() {
+            var next = node.parent();
+            assert next != null;
+            node = next.node();
+            return next;
+        }
     }
 
 

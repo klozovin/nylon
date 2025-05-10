@@ -2,7 +2,6 @@ package wlroots.types.scene;
 
 import jextract.wlroots.types.wlr_scene_buffer;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 import wlroots.types.buffer.Buffer;
 
 import java.lang.foreign.MemorySegment;
@@ -15,7 +14,7 @@ import static jextract.wlroots.types.wlr_scene_h.*;
 ///
 /// `struct wlr_scene_buffer {};`
 @NullMarked
-public class SceneBuffer {
+public final class SceneBuffer {
     MemorySegment sceneBufferPtr;
 
 
@@ -32,18 +31,15 @@ public class SceneBuffer {
 
     /// If this node represents a wlr_scene_buffer, that buffer will be returned. It is not legal to feed a
     /// node that does not represent a wlr_scene_buffer.
-    public static SceneBuffer fromNode(SceneNode sceneNode) {
-        return new SceneBuffer(wlr_scene_buffer_from_node(sceneNode.sceneNodePtr));
+    public static SceneBuffer fromNode(SceneNode node) {
+        return new SceneBuffer(wlr_scene_buffer_from_node(node.sceneNodePtr));
     }
+
+
+    // *** Getters and setters **************************************************************************** //
 
 
     public SceneNode node() {
         return new SceneNode(wlr_scene_buffer.node(sceneBufferPtr));
-    }
-
-
-    public @Nullable SceneSurface getSceneSurface() {
-        var ptr = wlr_scene_surface_try_from_buffer(sceneBufferPtr);
-        return !ptr.equals(NULL) ? new SceneSurface(ptr) : null;
     }
 }

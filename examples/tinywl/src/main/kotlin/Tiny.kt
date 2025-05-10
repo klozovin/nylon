@@ -200,31 +200,29 @@ object Tiny {
         val sy: Double,
     )
 
-    // TOOD: can ttl be !null and surface null?
-    fun desktopToplevelAt(x: Double, y: Double): Tuple4<TyToplevel, Surface, Double, Double>? {
-//        println("Looking at: x=${cursor.x()} y=${cursor.y()}")
-
-        val (sceneNode, nx, ny) = scene.tree().node().nodeAt(x, y) ?: return null
-
-//        println(sceneNode)
+    // TODO: can ttl be !null and surface null?
+    fun desktopToplevelAt(targetX: Double, targetY: Double): Tuple4<TyToplevel, Surface, Double, Double>? {
+        val (sceneNode, nx, ny) = scene.tree().node().nodeAt(targetX, targetY) ?: return null
 
         if (sceneNode.type() != SceneNode.Type.BUFFER)
             return null
 
         val sceneBuffer = SceneBuffer.fromNode(sceneNode)
-        val sceneSurface = sceneBuffer.getSceneSurface() ?: return null
-
-//        println(sceneBuffer)
-//        println(sceneSurface)
+        val sceneSurface = SceneSurface.tryFromBuffer(sceneBuffer) ?: return null
 
 
-        //TODO: rewrite to break
-        var tree = sceneNode.parent()
-        while (tree != null && tyToplevels.find { it.sceneTree.sceneTreePtr == tree.sceneTreePtr } == null) {
-            tree = tree.node().parent()
+        val toplevel9 = sceneNode.parentIterator.firstNotNullOfOrNull { sc ->
+            tyToplevels.find { it.sceneTree.sceneTreePtr == sc.sceneTreePtr }
         }
+
+        // TODO: Remove after sanity check
+        var tree = sceneNode.parent()
+        while (tree != null && tyToplevels.find { it.sceneTree.sceneTreePtr == tree.sceneTreePtr } == null)
+            tree = tree.node().parent()
         val tytoplevel = tyToplevels.find { it.sceneTree.sceneTreePtr == tree!!.sceneTreePtr }
 
+
+        require(toplevel9?.xdgToplevel?.xdgToplevelPtr == tytoplevel?.xdgToplevel?.xdgToplevelPtr)
 
         return if (tytoplevel != null)
             Tuple.of(tytoplevel, sceneSurface.surface(), nx, ny)
@@ -232,13 +230,9 @@ object Tiny {
             null
     }
 
-    //
-    // *** Event handlers ***
-    //
 
-    //
-    // Backend events: newOutput, newInput
-    //
+    // *** Backend events: newOutput, newInput ************************************************************ //
+
 
     fun onNewOutput(newOutput: Output) {
         require(!::output.isInitialized) { "Only one output supported." }
@@ -333,6 +327,7 @@ object Tiny {
         val keycode = event.keycode() + 8
         val keysym = keyboard.xkbState().keyGetOneSym(keycode)
 
+        // TODO: Just return this flag from if-when
         var handledInCompositor = false
 
         if (keyboard.modifiers.isAltDown && event.state() == KeyboardKeyState.PRESSED) {
@@ -346,6 +341,12 @@ object Tiny {
                     // TODO: 	case XKB_KEY_F1
                     // cycle
                     handledInCompositor = true
+                }
+
+                XkbKey.F2 -> {
+                    println("Scene tree parent: ${scene.tree().node().parent()}")
+                    handledInCompositor = true
+
                 }
 
                 XkbKey.F12 -> {
@@ -435,17 +436,25 @@ object Tiny {
                 return
             }
 
+            // TODO: Put everything else in Passthrough branch
             else -> Unit
         }
+
 
         // Forward events to the client under the pointer
 
         val toplevelResult = desktopToplevelAt(cursor.x(), cursor.y())
 
+        toplevelResult?.let {
+            val parent = it._1.xdgToplevel.parent()
+            println("processCursorMotion >>> ${it._1.xdgToplevel.xdgToplevelPtr}.parent=${parent?.xdgToplevelPtr}")
+        }
+
+
+        // TODO: Unify these conditions, better handle null
         if (toplevelResult == null) {
             cursor.setXcursor(xcursorManager, "default")
         }
-
         if (toplevelResult?._2 != null) {
             seat.pointerNotifyEnter(toplevelResult._2, toplevelResult._3, toplevelResult._4)
             seat.pointerNotifyMotion(timeMsec, toplevelResult._3, toplevelResult._4)
@@ -456,8 +465,8 @@ object Tiny {
 
 
     fun beginInteractive(tytoplevel: TyToplevel, mode: CursorMode, foobar: Int) {
-        println(tytoplevel)
-        println(mode)
+        println("beginInteractive >>> tytoplevel=${tytoplevel}")
+        println("beginInteractive>> mode=$mode")
 
         val focusedSurface = seat.pointerState().focusedSurface()
         if (tytoplevel.xdgToplevel.base().surface().surfacePtr != focusedSurface.rootSurface.surfacePtr) {
@@ -526,6 +535,7 @@ object Tiny {
             }
 
             tyToplevels.add(tytl)
+            println("Added XDG Toplevel window, currently there are: ${tyToplevels.size} created")
         }
 
 

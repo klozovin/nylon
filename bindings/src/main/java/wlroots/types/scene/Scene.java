@@ -16,7 +16,7 @@ import static jextract.wlroots.types.wlr_scene_h.*;
 ///
 /// `struct wlr_scene {}`
 @NullMarked
-public class Scene {
+public final class Scene {
     MemorySegment scenePtr;
 
 
@@ -32,9 +32,15 @@ public class Scene {
     }
 
 
+    // *** Getters and setters **************************************************************************** //
+
+
     public SceneTree tree() {
         return new SceneTree(wlr_scene.tree(scenePtr));
     }
+
+
+    // *** Methods **************************************************************************************** //
 
 
     public SceneOutputLayout attachOutputLayout(OutputLayout outputLayout) {

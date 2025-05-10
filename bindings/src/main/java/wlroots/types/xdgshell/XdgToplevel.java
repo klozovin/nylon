@@ -29,6 +29,11 @@ public class XdgToplevel {
     }
 
 
+    public static @Nullable XdgToplevel ofPtrOrNull(MemorySegment ptr) {
+        return !ptr.equals(NULL) ? new XdgToplevel(ptr) : null;
+    }
+
+
     /// Get a {@link XdgToplevel} from a {@link Surface}.
     ///
     /// Returns NULL if the surface doesn't have the xdg_surface role, the xdg_surface is not a toplevel, or
@@ -39,8 +44,16 @@ public class XdgToplevel {
     }
 
 
+    // *** Getters and setters **************************************************************************** //
+
+
     public XdgSurface base() {
         return new XdgSurface(wlr_xdg_toplevel.base(xdgToplevelPtr));
+    }
+
+
+    public @Nullable XdgToplevel parent() {
+        return XdgToplevel.ofPtrOrNull(wlr_xdg_toplevel.parent(xdgToplevelPtr));
     }
 
 
@@ -57,6 +70,8 @@ public class XdgToplevel {
         return !appIdPtr.equals(NULL) ? appIdPtr.getString(0) : "";
     }
 
+    // *** Methods **************************************************************************************** //
+
 
     public int setSize(int width, int height) {
         return wlr_xdg_toplevel_set_size(xdgToplevelPtr, width, height);
@@ -69,6 +84,9 @@ public class XdgToplevel {
     public int setActivated(boolean activated) {
         return wlr_xdg_toplevel_set_activated(xdgToplevelPtr, activated);
     }
+
+
+    // *** Events ***************************************************************************************** //
 
 
     public static class Events {
@@ -86,7 +104,6 @@ public class XdgToplevel {
         }
     }
 
-    // *** Events ***************************************************************************************** //
 
     public static class MoveEvent {
         public final XdgToplevel toplevel;

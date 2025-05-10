@@ -18,8 +18,8 @@ public class Tuple {
     }
 
 
-    public static <A, B, C, D> Tuple4<A, B, C, D> of(A a, B b, C c, D d) {
-        return new Tuple4<>(a, b, c, d);
+    public static <A, B, C, D> Tuple4<A, B, C, D> of(A val1, B val2, C val3, D val4) {
+        return new Tuple4<>(val1, val2, val3, val4);
     }
 
 
