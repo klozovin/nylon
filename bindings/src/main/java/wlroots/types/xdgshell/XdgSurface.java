@@ -4,10 +4,13 @@ import jextract.wlroots.types.wlr_xdg_surface;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wlroots.types.compositor.Surface;
+import wlroots.util.Box;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
+import static jextract.wlroots.types.wlr_xdg_shell_h.wlr_xdg_surface_get_geometry;
 import static jextract.wlroots.types.wlr_xdg_shell_h.wlr_xdg_surface_try_from_wlr_surface;
 
 
@@ -25,11 +28,13 @@ public class XdgSurface {
 
 
     /// @return NULL if the surface doesn't have the xdg_surface role or if the xdg_surface has been
-    ///          destroyed.
+    ///         destroyed.
     public static @Nullable XdgSurface tryFromSurface(Surface surface) {
         var ptr = wlr_xdg_surface_try_from_wlr_surface(surface.surfacePtr);
         return !ptr.equals(NULL) ? new XdgSurface(ptr) : null;
     }
+
+    // *** Getters and setters **************************************************************************** //
 
 
     public Surface surface() {
@@ -55,5 +60,19 @@ public class XdgSurface {
     /// Whether the latest commit is an initial commit.
     public boolean initialCommit() {
         return wlr_xdg_surface.initial_commit(xdgSurfacePtr);
+    }
+
+    // *** Methods **************************************************************************************** //
+
+
+    /// Get the surface geometry.
+    ///
+    /// This is either the geometry as set by the client, or defaulted to the bounds of the surface + the
+    /// subsurfaces (as specified by the protocol). The x and y value can be < 0.
+    public Box getGeometry() {
+        // TODO: Memory management: This could work as auto?
+        var box = Box.allocate(Arena.global());
+        wlr_xdg_surface_get_geometry(xdgSurfacePtr, box.boxPtr);
+        return box;
     }
 }

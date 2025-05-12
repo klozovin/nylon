@@ -176,9 +176,13 @@ jextract --library $lib --output $output    \
 
 # wlr/util
 
-jextract --library $lib --output $output  \
-    --target-package jextract.wlroots.util\
+jextract --library $lib --output $output    \
+    --target-package jextract.wlroots.util  \
     "$libDir/wlr/util/log.h"
+
+jextract --library $lib --output $output    \
+    --target-package jextract.wlroots.util  \
+    "$libDir/wlr/util/edges.h"
 
 jextract --library $lib --output $output    \
     --target-package jextract.wlroots       \

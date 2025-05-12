@@ -5,6 +5,7 @@ import wayland.PointerButtonState
 import wayland.SeatCapability
 import wayland.server.Display
 import wayland.server.Listener
+import wayland.util.Edge
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
@@ -28,6 +29,7 @@ import wlroots.types.xdgshell.XdgPopup
 import wlroots.types.xdgshell.XdgShell
 import wlroots.types.xdgshell.XdgSurface
 import wlroots.types.xdgshell.XdgToplevel
+import wlroots.util.Box
 import wlroots.util.Log
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
@@ -70,9 +72,6 @@ object Tiny {
     lateinit var xdgShell: XdgShell
     lateinit var seat: Seat
 
-    var grabX: Double = 0.0
-    var grabY: Double = 0.0
-
     val tyToplevels = mutableListOf<TyToplevel>()
 
 
@@ -80,6 +79,10 @@ object Tiny {
     val listeners = mutableMapOf<String, Listener>()
 
     var grabbedToplevel: TyToplevel? = null
+    lateinit var grabGeobox: Box
+    var grabX: Double = 0.0
+    var grabY: Double = 0.0
+    lateinit var resizeEdges: EnumSet<Edge>
 
 
     fun main(args: Array<String>) {
@@ -377,6 +380,7 @@ object Tiny {
 
     fun onCursorMotion(event: PointerMotionEvent) {
 //        println("onCursorMotion: deltaX=${event.deltaX}, deltaY=${event.deltaY}")
+        println("cursor: ${cursor.x()} | ${cursor.y()}")
         cursor.move(event.pointer.base(), event.deltaY, event.deltaY)
         processCursorMotion(event.timeMsec)
     }
@@ -384,6 +388,8 @@ object Tiny {
 
     fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
 //        println("onCursorMotionAbsolute: x=${event.x}, y=${event.y}")
+        println("cursor: ${cursor.x()} | ${cursor.y()}")
+
         cursor.warpAbsolute(event.pointer.base(), event.x, event.y)
         processCursorMotion(event.timeMsec)
     }
@@ -391,17 +397,20 @@ object Tiny {
 
     // Mouse click event
     fun onCursorButton(event: PointerButtonEvent) {
-        println("Here we are")
-        // TODO: Raise on click, swallow mouse event
+        // TODO: Raise on click, swallow mouse event (have to detect chaning of focused toplevel window)
+
+        // Notify the client with "pointer focus" that a button press has occurred
         seat.pointerNotifyButton(event.timeMsec, event.button, event.state)
 
+        // TODO: Can go under when-pressed branch, don't need to pass null into focusTopLevel
         val toplevel = desktopToplevelAt(cursor.x(), cursor.y())
 
-        // TODO: Why not check if we're in move/resize state?
-        if (event.state == PointerButtonState.RELEASED)
-            resetCursorMode()
-        else
-            focusToplevel(toplevel?._1, toplevel?._2)
+        when (event.state) {
+            PointerButtonState.PRESSED -> focusToplevel(toplevel?._1, toplevel?._2)
+
+            // TODO: why not check if we're in the move/resize state?
+            PointerButtonState.RELEASED -> resetCursorMode()
+        }
     }
 
 
@@ -464,7 +473,7 @@ object Tiny {
     }
 
 
-    fun beginInteractive(tytoplevel: TyToplevel, mode: CursorMode, foobar: Int) {
+    fun beginInteractive(tytoplevel: TyToplevel, mode: CursorMode, edges: EnumSet<Edge>?) {
         println("beginInteractive >>> tytoplevel=${tytoplevel}")
         println("beginInteractive>> mode=$mode")
 
@@ -477,14 +486,36 @@ object Tiny {
         grabbedToplevel = tytoplevel
         cursorMode = mode
 
-        if (mode == CursorMode.Move) {
-            grabX = cursor.x() - tytoplevel.sceneTree.node().x()
-            grabY = cursor.y() - tytoplevel.sceneTree.node().y()
-            println("$grabX, $ grabY")
-        } else {
-            TODO()
-        }
+        val sceneNode = tytoplevel.sceneTree.node()
+        when (mode) {
+            CursorMode.Move -> {
+                grabX = cursor.x() - sceneNode.x()
+                grabY = cursor.y() - sceneNode.y()
+                println("$grabX, $ grabY")
+            }
 
+            CursorMode.Resize -> {
+                require(edges != null)
+                val geoBox = tytoplevel.xdgToplevel.base().getGeometry()
+
+                val borderX = (sceneNode.x() + geoBox.x()) + if (Edge.RIGHT in edges) geoBox.width() else 0
+                val borderY = (sceneNode.y() + geoBox.y()) + if (Edge.BOTTOM in edges) geoBox.height() else 0
+
+                grabX = cursor.x() - borderX
+                grabY = cursor.y() - borderY
+
+                grabGeobox = geoBox
+                with(grabGeobox) {
+                    x(x() + sceneNode.x())
+                    y(y() + sceneNode.y())
+                }
+
+                resizeEdges = edges
+                println(edges)
+            }
+
+            CursorMode.Passthrough -> TODO()
+        }
     }
 
 
@@ -498,7 +529,44 @@ object Tiny {
 
 
     private fun processCursorResize(timeMsec: Int) {
-        TODO()
+        val grabbedXdgToplevel = grabbedToplevel!!.xdgToplevel
+        val grabbedSceneTree = grabbedToplevel!!.sceneTree
+
+        val borderX = cursor.x() - grabX
+        val borderY = cursor.y() - grabY
+
+        var newLeft = grabGeobox.x()
+        var newRight = grabGeobox.x() + grabGeobox.width()
+
+        var newTop = grabGeobox.y()
+        var newBottom = grabGeobox.y() + grabGeobox.height()
+
+
+        if (Edge.TOP in resizeEdges) {
+            newTop = borderY.toInt()
+            if (newTop >= newBottom)
+                newTop = newBottom - 1
+        } else if (Edge.BOTTOM in resizeEdges) {
+            newBottom = borderY.toInt()
+            if (newBottom <= newTop)
+                newBottom = newTop + 1
+        }
+
+        if (Edge.LEFT in resizeEdges) {
+            newLeft = borderX.toInt()
+            if (newLeft >= newRight)
+                newLeft = newRight - 1
+        } else if (Edge.RIGHT in resizeEdges) {
+            newRight = borderX.toInt()
+            if (newRight <= newLeft)
+                newRight = newLeft + 1
+        }
+
+        val geoBox = grabbedXdgToplevel.base().getGeometry()
+        grabbedSceneTree.node().setPosition(newLeft - geoBox.x(), newTop - geoBox.y())
+        grabbedXdgToplevel.setSize(newRight - newLeft, newBottom - newTop)
+
+
     }
 
 
@@ -511,6 +579,7 @@ object Tiny {
     // *** XDG Shell: Top level *************************************************************************** //
 
 
+    // TODO: Remove object, only used for grouping
     object TopLevel {
 
         fun onNew(toplevel: XdgToplevel) {
@@ -606,13 +675,14 @@ object Tiny {
         beginInteractive(
             tyToplevels.find { it.xdgToplevel.xdgToplevelPtr == event.toplevel.xdgToplevelPtr }!!,
             CursorMode.Move,
-            0
+            null
         )
     }
 
 
-    fun onXdgToplevelRequestResize(event: XdgToplevel.ResizeEvent) {
-        TODO()
+    fun onXdgToplevelRequestResize(event: XdgToplevel.Events.Resize) {
+        val tyToplevel = tyToplevels.find { it.xdgToplevel == event.toplevel }!!
+        beginInteractive(tyToplevel, CursorMode.Resize, event.edges)
     }
 
 

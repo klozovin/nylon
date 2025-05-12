@@ -2,15 +2,18 @@ package wlroots.types.xdgshell;
 
 import jextract.wlroots.types.wlr_xdg_toplevel;
 import jextract.wlroots.types.wlr_xdg_toplevel_move_event;
+import jextract.wlroots.types.wlr_xdg_toplevel_resize_event;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal0;
 import wayland.server.Signal.Signal1;
+import wayland.util.Edge;
 import wlroots.types.compositor.Surface;
 import wlroots.types.seat.SeatClient;
 
 import java.lang.foreign.MemorySegment;
+import java.util.EnumSet;
 
 import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wlroots.types.wlr_xdg_shell_h.*;
@@ -43,6 +46,14 @@ public class XdgToplevel {
         return !xdgToplevelPtr.equals(NULL) ? new XdgToplevel(xdgToplevelPtr) : null;
     }
 
+
+    @Override
+    public boolean equals(Object obj) {
+        return switch (obj) {
+            case XdgToplevel tl -> xdgToplevelPtr.equals(tl.xdgToplevelPtr);
+            default -> false;
+        };
+    }
 
     // *** Getters and setters **************************************************************************** //
 
@@ -91,16 +102,32 @@ public class XdgToplevel {
 
     public static class Events {
         public final Signal1<MoveEvent> requestMove;
-        public final Signal1<ResizeEvent> requestResize;
+        public final Signal1<Resize> requestResize;
         public final Signal0 requestMaximize;
         public final Signal0 requestFullscreen;
 
 
         public Events(MemorySegment eventsPtr) {
             this.requestMove = Signal.of(wlr_xdg_toplevel.events.request_move(eventsPtr), MoveEvent::new);
-            this.requestResize = Signal.of(wlr_xdg_toplevel.events.request_resize(eventsPtr), ResizeEvent::new);
+            this.requestResize = Signal.of(wlr_xdg_toplevel.events.request_resize(eventsPtr), Resize::new);
             this.requestMaximize = Signal.of(wlr_xdg_toplevel.events.request_maximize(eventsPtr));
             this.requestFullscreen = Signal.of(wlr_xdg_toplevel.events.request_fullscreen(eventsPtr));
+        }
+
+
+        /// `struct wlr_xdg_toplevel_resize_event`
+        public static class Resize {
+            public final XdgToplevel toplevel;
+            public final SeatClient seat;
+            public final int serial;
+            public final EnumSet<Edge> edges;
+
+            public Resize(MemorySegment ptr) {
+                this.toplevel = new XdgToplevel(wlr_xdg_toplevel_resize_event.toplevel(ptr));
+                this.seat = new SeatClient(wlr_xdg_toplevel_resize_event.seat(ptr));
+                this.serial = wlr_xdg_toplevel_resize_event.serial(ptr);
+                this.edges = Edge.fromBitset(wlr_xdg_toplevel_resize_event.edges(ptr));
+            }
         }
     }
 
@@ -115,11 +142,6 @@ public class XdgToplevel {
             this.toplevel = new XdgToplevel(wlr_xdg_toplevel_move_event.toplevel(moveEventPtr));
             this.seat = new SeatClient(wlr_xdg_toplevel_move_event.seat(moveEventPtr));
             this.serial = wlr_xdg_toplevel_move_event.serial(moveEventPtr);
-        }
-    }
-
-    public static class ResizeEvent {
-        public ResizeEvent(MemorySegment resizeEventPtr) {
         }
     }
 }
