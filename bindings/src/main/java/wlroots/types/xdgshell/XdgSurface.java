@@ -10,8 +10,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_xdg_shell_h.wlr_xdg_surface_get_geometry;
-import static jextract.wlroots.types.wlr_xdg_shell_h.wlr_xdg_surface_try_from_wlr_surface;
+import static jextract.wlroots.types.wlr_xdg_shell_h.*;
 
 
 /// An xdg-surface is a user interface element requiring management by the compositor. An xdg-surface alone
@@ -62,6 +61,7 @@ public class XdgSurface {
         return wlr_xdg_surface.initial_commit(xdgSurfacePtr);
     }
 
+
     // *** Methods **************************************************************************************** //
 
 
@@ -74,5 +74,11 @@ public class XdgSurface {
         var box = Box.allocate(Arena.global());
         wlr_xdg_surface_get_geometry(xdgSurfacePtr, box.boxPtr);
         return box;
+    }
+
+
+    /// Schedule a surface configuration. This should only be called by protocols extending the shell.
+    public int scheduleConfigure() {
+        return wlr_xdg_surface_schedule_configure(xdgSurfacePtr);
     }
 }

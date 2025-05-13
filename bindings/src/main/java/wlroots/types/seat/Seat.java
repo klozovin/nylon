@@ -7,6 +7,7 @@ import wayland.*;
 import wayland.server.Display;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
+import wlroots.types.DataSource;
 import wlroots.types.Keyboard;
 import wlroots.types.KeyboardModifiers;
 import wlroots.types.compositor.Surface;
@@ -16,6 +17,7 @@ import java.lang.foreign.MemorySegment;
 import java.util.EnumSet;
 
 import static java.lang.foreign.MemorySegment.NULL;
+import static jextract.wlroots.types.wlr_data_device_h.wlr_seat_set_selection;
 import static jextract.wlroots.types.wlr_xdg_shell_h.*;
 
 
@@ -149,9 +151,29 @@ public class Seat {
     }
 
 
+    // *** Other *** //
+
+
     public void setCapabilities(EnumSet<SeatCapability> capabilities) {
         wlr_seat_set_capabilities(seatPtr, SeatCapability.setToBitfield(capabilities));
     }
+
+
+    /// Sets the current selection for the seat. NULL can be provided to clear it. This removes the previous
+    /// one if there was any. In case the selection doesn't come from a client, wl_display_next_serial() can
+    /// be used to generate a serial.
+    public void setSelection(@Nullable DataSource source, int serial) {
+        wlr_seat_set_selection(
+            seatPtr,
+            switch (source) {
+                case DataSource s -> s.dataSourcePtr;
+                case null -> NULL;
+            },
+            serial);
+    }
+
+
+    // *** Events ***************************************************************************************** //
 
 
     public static class Events {

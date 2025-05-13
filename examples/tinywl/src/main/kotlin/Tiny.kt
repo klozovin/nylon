@@ -1,3 +1,4 @@
+import jextract.wlroots.types.wlr_xdg_surface
 import nylon.Tuple
 import nylon.Tuple.Tuple4
 import wayland.KeyboardKeyState
@@ -34,6 +35,7 @@ import wlroots.util.Log
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
 import xkbcommon.XkbKey
+import java.lang.foreign.MemorySegment
 import java.util.*
 import kotlin.system.exitProcess
 
@@ -195,13 +197,6 @@ object Tiny {
             )
         }
     }
-
-    data class DesktopToplevelAtResult(
-        val ttl: TyToplevel,
-        val surface: Surface,
-        val sx: Double,
-        val sy: Double,
-    )
 
     // TODO: can ttl be !null and surface null?
     fun desktopToplevelAt(targetX: Double, targetY: Double): Tuple4<TyToplevel, Surface, Double, Double>? {
@@ -686,12 +681,22 @@ object Tiny {
     }
 
 
-    fun onXdgToplevelRequestMaximize() {
-        TODO()
+    // Client wants to maximize itself, but we don't support that. Just send configure, by xdg-shell protocol
+    // specification.
+    fun onXdgToplevelRequestMaximize(listener: Listener) {
+
+        val tytoplevel = tyToplevels.find { it.onRrequestMaximizeListener.listenerPtr == listener.listenerPtr }!!
+        if (tytoplevel.xdgToplevel.base().initialized())
+            tytoplevel.xdgToplevel.base().scheduleConfigure()
     }
 
-    fun onXdgToplevelRequestFullscreen() {
-        TODO()
+
+    // Client wants to fullscreen itself, but we don't support that.
+    fun onXdgToplevelRequestFullscreen(listener: Listener) {
+        tyToplevels.find { it.onRrequestFullscreenListener.listenerPtr == listener.listenerPtr }?.let {
+            if (it.xdgToplevel.base().initialized())
+                it.xdgToplevel.base().scheduleConfigure()
+        }
     }
 
     fun onXdgPopupCommit(surface: Surface) {
@@ -705,23 +710,24 @@ object Tiny {
 
     // *** Seat events ************************************************************************************ //
 
+
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
         val focusedClient = seat.pointerState().focusedClient()
         if (focusedClient?.seatClientPtr == event.seatClient().seatClientPtr)
             cursor.setSurface(event.surface(), event.hotspotX(), event.hotspotY())
     }
 
-    fun onSeatRequestSetSelection(selection: RequestSetSelectionEvent) {
-        TODO()
 
+    fun onSeatRequestSetSelection(event: RequestSetSelectionEvent) {
+        seat.setSelection(event.source, event.serial)
     }
+
 
     enum class CursorMode {
         Passthrough,
         Move,
         Resize
     }
-
 }
 
 
