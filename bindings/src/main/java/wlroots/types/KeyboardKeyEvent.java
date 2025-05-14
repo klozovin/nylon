@@ -19,6 +19,8 @@ public class KeyboardKeyEvent {
         this.keyboardKeyEventPtr = keyboardKeyEventPtr;
     }
 
+    // *** Fields *** //
+
 
     public int timeMsec() {
         return wlr_keyboard_key_event.time_msec(keyboardKeyEventPtr);

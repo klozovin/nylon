@@ -20,11 +20,11 @@ public enum Edge {
 
 
     /// Create an EnumSet of Edges from the C bitmask
-    public static EnumSet<Edge> fromBitset(int bitSet) {
-        assert bitSet >= 0;
+    public static EnumSet<Edge> fromBitset(int bitset) {
+        assert bitset >= 0;
         var edges = EnumSet.noneOf(Edge.class);
         for (var edge : values())
-            if ((edge.value & bitSet) != 0)
+            if ((edge.value & bitset) != 0)
                 edges.add(edge);
         return edges;
     }

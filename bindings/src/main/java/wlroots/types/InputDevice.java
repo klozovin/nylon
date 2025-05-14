@@ -2,6 +2,7 @@ package wlroots.types;
 
 import jextract.wlroots.types.wlr_input_device;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
 
@@ -12,29 +13,32 @@ import static jextract.wlroots.types.wlr_input_device_h.*;
 import static jextract.wlroots.types.wlr_keyboard_h.wlr_keyboard_from_input_device;
 
 
+@NullMarked
 public final class InputDevice {
-    public final @NonNull MemorySegment inputDevicePtr;
-    public final @NonNull Events events;
+    public final MemorySegment inputDevicePtr;
+    public final Events events;
 
 
-    public InputDevice(@NonNull MemorySegment inputDevicePtr) {
+    public InputDevice(MemorySegment inputDevicePtr) {
         assert !inputDevicePtr.equals(NULL);
         this.inputDevicePtr = inputDevicePtr;
         this.events = new Events(wlr_input_device.events(inputDevicePtr));
     }
 
 
-    public @NonNull Keyboard keyboardFromInputDevice() {
-        return new Keyboard(wlr_keyboard_from_input_device(inputDevicePtr));
+    // *** Fields ***************************************************************************************** //
+
+
+    public Type type() {
+        return Type.of(wlr_input_device.type(inputDevicePtr));
     }
 
 
-    public @NonNull Type type() {
-        var inputDeviceType = wlr_input_device.type(inputDevicePtr);
-        for (var e : Type.values())
-            if (e.idx == inputDeviceType)
-                return e;
-        throw new RuntimeException("Unreachable");
+    // *** Methods *** //
+
+
+    public  Keyboard keyboardFromInputDevice() {
+        return new Keyboard(wlr_keyboard_from_input_device(inputDevicePtr));
     }
 
 
@@ -46,13 +50,24 @@ public final class InputDevice {
         TABLET_PAD(WLR_INPUT_DEVICE_TABLET_PAD()),  // struct wlr_tablet_pad
         SWITCH(WLR_INPUT_DEVICE_SWITCH());          // struct wlr_switch
 
-        public final int idx;
+        public final int value;
 
 
         Type(int constant) {
-            this.idx = constant;
+            this.value = constant;
+        }
+
+
+        public static Type of(int value) {
+            for (var e : values())
+                if (e.value == value)
+                    return e;
+            throw new RuntimeException("Invalid enum value from C code");
         }
     }
+
+
+    // *** Events *** //
 
     public final static class Events {
         public final @NonNull Signal1<InputDevice> destroy;

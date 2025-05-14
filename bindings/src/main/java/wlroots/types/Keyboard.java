@@ -29,6 +29,9 @@ public class Keyboard {
     }
 
 
+    // *** Fields *** //
+
+
     public XkbState xkbState() {
         return new XkbState(wlr_keyboard.xkb_state(keyboardPtr));
     }
@@ -50,6 +53,7 @@ public class Keyboard {
 
     }
 
+
     public MemorySegment keycodesPtr() {
         return wlr_keyboard.keycodes(keyboardPtr);
     }
@@ -58,6 +62,9 @@ public class Keyboard {
     public long keycodesNum() {
         return wlr_keyboard.num_keycodes(keyboardPtr);
     }
+
+
+    // *** Methods *** //
 
 
     public boolean setKeymap(Keymap keymap) {
@@ -80,6 +87,25 @@ public class Keyboard {
     }
 
 
+    public final static class Modifiers {
+
+        private final int modifiers;
+
+
+        public Modifiers(int modifiers) {
+            this.modifiers = modifiers;
+        }
+
+
+        public boolean isAltDown() {
+            return (modifiers & WLR_MODIFIER_ALT()) != 0;
+        }
+    }
+
+
+    // *** Events *** //
+
+
     public final static class Events {
         public final MemorySegment eventsPtr;
 
@@ -96,23 +122,8 @@ public class Keyboard {
         public Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
 
-            this.key       = Signal.of(wlr_keyboard.events.key(eventsPtr), KeyboardKeyEvent::new);
+            this.key = Signal.of(wlr_keyboard.events.key(eventsPtr), KeyboardKeyEvent::new);
             this.modifiers = Signal.of(wlr_keyboard.events.modifiers(eventsPtr), Keyboard::new);
-        }
-    }
-
-
-    public final static class Modifiers {
-        private final int modifiers;
-
-
-        public Modifiers(int modifiers) {
-            this.modifiers = modifiers;
-        }
-
-
-        public boolean isAltDown() {
-            return (modifiers & WLR_MODIFIER_ALT()) != 0;
         }
     }
 }

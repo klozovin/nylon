@@ -50,7 +50,7 @@ public class XdgToplevel {
     @Override
     public boolean equals(Object obj) {
         return switch (obj) {
-            case XdgToplevel tl -> xdgToplevelPtr.equals(tl.xdgToplevelPtr);
+            case XdgToplevel t -> xdgToplevelPtr.equals(t.xdgToplevelPtr);
             default -> false;
         };
     }
@@ -109,10 +109,10 @@ public class XdgToplevel {
 
 
         public Events(MemorySegment eventsPtr) {
-            this.destroy = Signal.of(wlr_xdg_toplevel.events.destroy(eventsPtr));
-            this.requestMove = Signal.of(wlr_xdg_toplevel.events.request_move(eventsPtr), MoveEvent::new);
-            this.requestResize = Signal.of(wlr_xdg_toplevel.events.request_resize(eventsPtr), Resize::new);
-            this.requestMaximize = Signal.of(wlr_xdg_toplevel.events.request_maximize(eventsPtr));
+            this.destroy           = Signal.of(wlr_xdg_toplevel.events.destroy(eventsPtr));
+            this.requestMove       = Signal.of(wlr_xdg_toplevel.events.request_move(eventsPtr), MoveEvent::new);
+            this.requestResize     = Signal.of(wlr_xdg_toplevel.events.request_resize(eventsPtr), Resize::new);
+            this.requestMaximize   = Signal.of(wlr_xdg_toplevel.events.request_maximize(eventsPtr));
             this.requestFullscreen = Signal.of(wlr_xdg_toplevel.events.request_fullscreen(eventsPtr));
         }
 

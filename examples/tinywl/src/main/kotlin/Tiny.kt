@@ -46,6 +46,14 @@ data class TyOutput(
 )
 
 
+data class TyKeyboard(
+    val keyboard: Keyboard,
+    val keyListener: Listener,
+    val modifiersListener: Listener,
+    val destroyListener: Listener,
+)
+
+
 class TyToplevel(val xdgToplevel: XdgToplevel, val sceneTree: SceneTree) {
     lateinit var onMapListener: Listener
     lateinit var onCommitListener: Listener
@@ -71,8 +79,6 @@ object Tiny {
     lateinit var renderer: Renderer
     lateinit var allocator: Allocator
 
-    lateinit var keyboard: Keyboard
-
     lateinit var cursor: Cursor
     lateinit var xcursorManager: XcursorManager
     lateinit var cursorMode: CursorMode
@@ -94,6 +100,7 @@ object Tiny {
 
 
     val OUTPUTS = mutableListOf<TyOutput>()
+    val KEYBOARDS = mutableListOf<TyKeyboard>()
     val TOPLEVELS = mutableListOf<TyToplevel>()
     val POPUPS = mutableListOf<TyPopup>()
 
@@ -298,12 +305,12 @@ object Tiny {
 
 
     fun onNewInput(inputDevice: InputDevice) {
-        when (inputDevice.type()) {
+        val seatCapabilities = seat.capabilities()
 
-            // Typing device
+        when (inputDevice.type()) {
             InputDevice.Type.KEYBOARD -> {
-                require(!::keyboard.isInitialized) { "Only one keyboard input device supported" }
-                keyboard = inputDevice.keyboardFromInputDevice()
+                val keyboard = inputDevice.keyboardFromInputDevice()
+
                 val context = XkbContext.of(XkbContext.Flags.NO_FLAGS) ?: error {
                     Log.logError("Failed to create XKB context")
                     exitProcess(1)
@@ -315,34 +322,45 @@ object Tiny {
                 with(keyboard) {
                     setKeymap(keymap)
                     setRepeatInfo(25, 600)
-                    events.modifiers.add(::onKeyboardModifiers)
-                    events.key.add(::onKeyboardKey)
+//                    events.modifiers.add(::onKeyboardModifiers)
+//                    events.key.add(::onKeyboardKey)
                 }
-                inputDevice.events.destroy.add(::onKeyboardDestroy)
+
                 seat.setKeyboard(keyboard)
 
                 keymap.unref()
                 context.unref()
+
+
+                seatCapabilities.add(SeatCapability.KEYBOARD)
+
+                KEYBOARDS.add(
+                    TyKeyboard(
+                        keyboard = keyboard,
+                        keyListener = keyboard.events.key.add(::onKeyboardKey),
+                        modifiersListener = keyboard.events.modifiers.add(::onKeyboardModifiers),
+                        destroyListener = inputDevice.events.destroy.add(::onKeyboardDestroy)
+                    )
+                )
             }
 
-            // Pointing device
-            InputDevice.Type.POINTER -> cursor.attachInputDevice(inputDevice)
+            InputDevice.Type.POINTER -> {
+                cursor.attachInputDevice(inputDevice)
+                seatCapabilities.add(SeatCapability.POINTER)
+            }
 
             else -> println("Unknown device type: ${inputDevice.type()}")
         }
 
-        val capabilities = EnumSet.of(SeatCapability.POINTER)
-        if (::keyboard.isInitialized)
-            capabilities.add(SeatCapability.KEYBOARD)
-        seat.setCapabilities(capabilities)
+        seat.setCapabilities(seatCapabilities)
     }
 
 
     // *** Keyboard events ******************************************************************************** //
 
 
-    fun onKeyboardKey(event: KeyboardKeyEvent) {
-        println("Handling key")
+    fun onKeyboardKey(listener: Listener, event: KeyboardKeyEvent) {
+        val keyboard = KEYBOARDS.find { it.keyListener == listener }!!.keyboard
         val keycode = event.keycode() + 8
         val keysym = keyboard.xkbState().keyGetOneSym(keycode)
 
@@ -351,43 +369,48 @@ object Tiny {
 
         if (keyboard.modifiers.isAltDown && event.state() == KeyboardKeyState.PRESSED) {
             when (keysym) {
-                XkbKey.Escape -> {
-                    display.terminate()
-                    handledInCompositor = true
-                }
-
                 XkbKey.F1 -> {
                     // TODO: 	case XKB_KEY_F1
                     // cycle
                     handledInCompositor = true
                 }
-
                 XkbKey.F2 -> {
                     println("Scene tree parent: ${scene.tree().node().parent()}")
                     handledInCompositor = true
 
                 }
-
                 XkbKey.F12 -> {
                     Log.logInfo("Heeelllooouuu from TinyWL")
+                    handledInCompositor = true
+                }
+                XkbKey.Escape -> {
+                    display.terminate()
                     handledInCompositor = true
                 }
             }
         }
 
         if (!handledInCompositor) {
-            seat.setKeyboard(keyboard) // TODO: What if multiple keyboards
+            seat.setKeyboard(keyboard)
             seat.keyboardNotifyKey(event.timeMsec(), event.keycode(), event.state())
         }
     }
 
+
     fun onKeyboardModifiers(keyboard: Keyboard) {
-        seat.setKeyboard(keyboard) // TODO: What if multiple keyboards
+        seat.setKeyboard(keyboard)
         seat.keyboardNotifyModifiers(keyboard.modifiers())
     }
 
-    fun onKeyboardDestroy(device: InputDevice) {
-        TODO()
+
+    fun onKeyboardDestroy(listener: Listener, device: InputDevice) {
+        val idx = KEYBOARDS.indexOfFirst {it.destroyListener == listener  }
+         KEYBOARDS.get(idx).apply {
+             modifiersListener.remove()
+             keyListener.remove()
+             destroyListener.remove()
+         }
+        KEYBOARDS.removeAt(idx)
     }
 
 
@@ -462,7 +485,6 @@ object Tiny {
 
 
         // Forward events to the client under the pointer
-
         val toplevelResult = desktopToplevelAt(cursor.x(), cursor.y())
 
         toplevelResult?.let {

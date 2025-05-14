@@ -41,7 +41,12 @@ public class Seat {
         }
     }
 
-    // *** Struct fields getters and setters ************************************************************** //
+    // *** Fields ***************************************************************************************** //
+
+
+    public EnumSet<SeatCapability> capabilities() {
+        return SeatCapability.fromBitset(wlr_seat.capabilities(seatPtr));
+    }
 
 
     public PointerState pointerState() {
@@ -49,12 +54,12 @@ public class Seat {
     }
 
 
-    // *** Keyboard *************************************************************************************** //
-
-
     public KeyboardState keyboardState() {
         return new KeyboardState(wlr_seat.keyboard_state(seatPtr));
     }
+
+
+    // *** Keyboard methods ******************************************************************************* //
 
 
     /// Set this keyboard as the active keyboard for the seat.
@@ -182,9 +187,9 @@ public class Seat {
         public final Signal1<RequestSetSelectionEvent> requestSetSelection;
 
 
-        public Events(MemorySegment eventsPtr) {
-            this.requestSetCursor = Signal.of(wlr_seat.events.request_set_cursor(eventsPtr), PointerRequestSetCursorEvent::new);
-            this.requestSetSelection = Signal.of(wlr_seat.events.request_set_selection(eventsPtr), RequestSetSelectionEvent::new);
+        public Events(MemorySegment ptr) {
+            this.requestSetCursor    = Signal.of(wlr_seat.events.request_set_cursor(ptr), PointerRequestSetCursorEvent::new);
+            this.requestSetSelection = Signal.of(wlr_seat.events.request_set_selection(ptr), RequestSetSelectionEvent::new);
         }
     }
 }
