@@ -30,6 +30,15 @@ public class Listener implements List.Element<Listener> {
     }
 
 
+    @Override
+    public boolean equals(Object obj) {
+        return switch (obj) {
+            case Listener l -> listenerPtr.equals(l.listenerPtr);
+            default -> false;
+        };
+    }
+
+
     public static Listener allocate(Arena arena, wl_notify_func_t.Function notify) {
         var listenerPtr = wl_listener.allocate(arena);
         var notifyFunctionPtr = wl_notify_func_t.allocate(notify, arena);

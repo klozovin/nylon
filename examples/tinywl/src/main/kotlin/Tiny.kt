@@ -1,4 +1,3 @@
-import jextract.wlroots.types.wlr_xdg_surface
 import nylon.Tuple
 import nylon.Tuple.Tuple4
 import wayland.KeyboardKeyState
@@ -35,7 +34,6 @@ import wlroots.util.Log
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
 import xkbcommon.XkbKey
-import java.lang.foreign.MemorySegment
 import java.util.*
 import kotlin.system.exitProcess
 
@@ -141,8 +139,10 @@ object Tiny {
 
         // Run startup command or the default terminal
         ProcessBuilder().apply {
-            if (args.isEmpty()) command("/usr/bin/foot")
-            else command(*args)
+            if (args.isEmpty())
+                command("/usr/bin/foot")
+            else
+                command(*args)
             environment().put("WAYLAND_DISPLAY", socket)
             start()
         }
@@ -374,17 +374,12 @@ object Tiny {
 
 
     fun onCursorMotion(event: PointerMotionEvent) {
-//        println("onCursorMotion: deltaX=${event.deltaX}, deltaY=${event.deltaY}")
-        println("cursor: ${cursor.x()} | ${cursor.y()}")
         cursor.move(event.pointer.base(), event.deltaY, event.deltaY)
         processCursorMotion(event.timeMsec)
     }
 
 
     fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
-//        println("onCursorMotionAbsolute: x=${event.x}, y=${event.y}")
-        println("cursor: ${cursor.x()} | ${cursor.y()}")
-
         cursor.warpAbsolute(event.pointer.base(), event.x, event.y)
         processCursorMotion(event.timeMsec)
     }
@@ -579,50 +574,46 @@ object Tiny {
 
         fun onNew(toplevel: XdgToplevel) {
             val sceneTree = scene.tree().xdgSurfaceCreate(toplevel.base())
-
-            val tytl = TyToplevel(toplevel, sceneTree)
+            val tytop = TyToplevel(toplevel, sceneTree)
 
             // Event handlers for the base Surface
             with(toplevel.base().surface().events) {
-                tytl.onMapListener = map.add(::onMap)
-                tytl.onUnmapListener = unmap.add(::onUnmap)
-                tytl.onCommitListener = commit.add(::onCommit)
-                tytl.onDestroyListener = destroy.add(::onXdgToplevelDestroy)
+                tytop.onMapListener = map.add(::onMap)
+                tytop.onUnmapListener = unmap.add(::onUnmap)
+                tytop.onCommitListener = commit.add(::onCommit)
             }
 
             // Event handlers for the XDG Toplevel surface
             with(toplevel.events) {
-                tytl.onRrequestMoveListener = requestMove.add(::onXdgToplevelRequestMove)
-                tytl.onRrequestResizeListener = requestResize.add(::onXdgToplevelRequestResize)
-                tytl.onRrequestMaximizeListener = requestMaximize.add(::onXdgToplevelRequestMaximize)
-                tytl.onRrequestFullscreenListener = requestFullscreen.add(::onXdgToplevelRequestFullscreen)
+                tytop.onDestroyListener = destroy.add(::onXdgToplevelDestroy)
+                tytop.onRrequestMoveListener = requestMove.add(::onXdgToplevelRequestMove)
+                tytop.onRrequestResizeListener = requestResize.add(::onXdgToplevelRequestResize)
+                tytop.onRrequestMaximizeListener = requestMaximize.add(::onXdgToplevelRequestMaximize)
+                tytop.onRrequestFullscreenListener = requestFullscreen.add(::onXdgToplevelRequestFullscreen)
             }
-
-            tyToplevels.add(tytl)
-            println("Added XDG Toplevel window, currently there are: ${tyToplevels.size} created")
+            tyToplevels.add(tytop)
         }
 
 
-        fun onCommit(surface: Surface) {
-            val topLevel = tyToplevels
-                .find { it.xdgToplevel.base().surface().surfacePtr == surface.surfacePtr }!!
-                .xdgToplevel
+        fun onCommit(listener: Listener, surface: Surface) {
+            val xdgToplevel = tyToplevels.find { it.onCommitListener == listener }!!.xdgToplevel
 
             // When an xdg_surface performs an initial commit, the compositor must reply with a configure so the
             // client can map the surface. tinywl configures the xdg_toplevel with 0,0 size to let the client pick
             // the dimensions itself.
-            if (topLevel.base().initialCommit())
-                topLevel.setSize(0, 0)
+            if (xdgToplevel.base().initialCommit())
+                xdgToplevel.setSize(0, 0)
         }
 
+
         fun onMap(listener: Listener) {
-            val tinyXdgToplevel = tyToplevels.find { it.onMapListener.listenerPtr == listener.listenerPtr }!!
+            val tinyXdgToplevel = tyToplevels.find { it.onMapListener == listener }!!
             focusToplevel(tinyXdgToplevel, tinyXdgToplevel.xdgToplevel.base().surface())
         }
 
 
         fun onUnmap(listener: Listener) {
-            val tyToplevel = tyToplevels.find { it.onUnmapListener.listenerPtr == listener.listenerPtr }!!
+            val tyToplevel = tyToplevels.find { it.onUnmapListener == listener }!!
 
             // Reset the cursor mode if the grabbed toplevel was unmapped
             // TODO: Test this
@@ -631,8 +622,8 @@ object Tiny {
         }
 
 
-        fun onXdgToplevelDestroy(listener: Listener, surface: Surface) {
-            val idx = tyToplevels.indexOfFirst { it.onDestroyListener.listenerPtr == listener.listenerPtr }
+        fun onXdgToplevelDestroy(listener: Listener) {
+            val idx = tyToplevels.indexOfFirst { it.onDestroyListener == listener }
             val element = tyToplevels[idx]
 
             element.onMapListener.remove()
@@ -649,7 +640,6 @@ object Tiny {
         }
     }
 
-    //
 
     fun onNewPopup(popup: XdgPopup) {
         TODO()
@@ -684,16 +674,15 @@ object Tiny {
     // Client wants to maximize itself, but we don't support that. Just send configure, by xdg-shell protocol
     // specification.
     fun onXdgToplevelRequestMaximize(listener: Listener) {
-
-        val tytoplevel = tyToplevels.find { it.onRrequestMaximizeListener.listenerPtr == listener.listenerPtr }!!
-        if (tytoplevel.xdgToplevel.base().initialized())
-            tytoplevel.xdgToplevel.base().scheduleConfigure()
+        val xdgToplevel = tyToplevels.find { it.onRrequestMaximizeListener == listener }!!.xdgToplevel
+        if (xdgToplevel.base().initialized())
+            xdgToplevel.base().scheduleConfigure()
     }
 
 
     // Client wants to fullscreen itself, but we don't support that.
     fun onXdgToplevelRequestFullscreen(listener: Listener) {
-        tyToplevels.find { it.onRrequestFullscreenListener.listenerPtr == listener.listenerPtr }?.let {
+        tyToplevels.find { it.onRrequestFullscreenListener == listener }?.let {
             if (it.xdgToplevel.base().initialized())
                 it.xdgToplevel.base().scheduleConfigure()
         }

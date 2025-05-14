@@ -3,6 +3,8 @@ package wlroots.types.xdgshell;
 import jextract.wlroots.types.wlr_xdg_surface;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import wayland.server.Signal;
+import wayland.server.Signal.Signal0;
 import wlroots.types.compositor.Surface;
 import wlroots.util.Box;
 
@@ -18,11 +20,13 @@ import static jextract.wlroots.types.wlr_xdg_shell_h.*;
 @NullMarked
 public class XdgSurface {
     public final MemorySegment xdgSurfacePtr;
+    public final Events events;
 
 
     public XdgSurface(MemorySegment xdgSurfacePtr) {
         assert !xdgSurfacePtr.equals(NULL);
         this.xdgSurfacePtr = xdgSurfacePtr;
+        this.events = new Events(wlr_xdg_surface.events(xdgSurfacePtr));
     }
 
 
@@ -80,5 +84,15 @@ public class XdgSurface {
     /// Schedule a surface configuration. This should only be called by protocols extending the shell.
     public int scheduleConfigure() {
         return wlr_xdg_surface_schedule_configure(xdgSurfacePtr);
+    }
+
+
+    public static class Events {
+        public final Signal0 destroy;
+
+
+        public Events(MemorySegment eventsPtr) {
+            this.destroy = Signal.of(wlr_xdg_surface.events.destroy(eventsPtr));
+        }
     }
 }
