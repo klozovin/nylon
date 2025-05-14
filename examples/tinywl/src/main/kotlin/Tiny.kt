@@ -293,11 +293,13 @@ object Tiny {
 
 
     fun onOutputDestroy(listener: Listener, output: Output) {
-        OUTPUTS.find { it.destroyListener == listener }!!.apply {
+        val idx = OUTPUTS.indexOfFirst { it.destroyListener == listener }
+        OUTPUTS.get(idx).apply {
             frameListener.remove()
             requestStateListener.remove()
             destroyListener.remove()
         }
+        OUTPUTS.removeAt(idx)
     }
 
 
@@ -404,12 +406,12 @@ object Tiny {
 
 
     fun onKeyboardDestroy(listener: Listener, device: InputDevice) {
-        val idx = KEYBOARDS.indexOfFirst {it.destroyListener == listener  }
-         KEYBOARDS.get(idx).apply {
-             modifiersListener.remove()
-             keyListener.remove()
-             destroyListener.remove()
-         }
+        val idx = KEYBOARDS.indexOfFirst { it.destroyListener == listener }
+        KEYBOARDS.get(idx).apply {
+            modifiersListener.remove()
+            keyListener.remove()
+            destroyListener.remove()
+        }
         KEYBOARDS.removeAt(idx)
     }
 
@@ -667,18 +669,17 @@ object Tiny {
 
         fun onXdgToplevelDestroy(listener: Listener) {
             val idx = TOPLEVELS.indexOfFirst { it.onDestroyListener == listener }
-            val element = TOPLEVELS[idx]
+            TOPLEVELS.get(idx).apply {
+                onMapListener.remove()
+                onUnmapListener.remove()
+                onCommitListener.remove()
+                onDestroyListener.remove()
 
-            element.onMapListener.remove()
-            element.onUnmapListener.remove()
-            element.onCommitListener.remove()
-            element.onDestroyListener.remove()
-
-            element.onRrequestMoveListener.remove()
-            element.onRrequestResizeListener.remove()
-            element.onRrequestMaximizeListener.remove()
-            element.onRrequestFullscreenListener.remove()
-
+                onRrequestMoveListener.remove()
+                onRrequestResizeListener.remove()
+                onRrequestMaximizeListener.remove()
+                onRrequestFullscreenListener.remove()
+            }
             TOPLEVELS.removeAt(idx)
         }
     }
@@ -723,7 +724,13 @@ object Tiny {
 
     fun onNewPopup(popup: XdgPopup) {
         val parent = XdgSurface.tryFromSurface(popup.parent()) ?: error("Popup's parent can't be null")
-        val parentSceneTree = TOPLEVELS.find { it.xdgToplevel.base() == parent }!!.sceneTree
+
+        println(">>>>>>>>>>>>>> ${parent.role()}")
+
+        // Have to search both TOPLEVELS and POPUPS, because there can be nested popups (ie. popup whose parent is a popup itself.
+        val parentSceneTree = TOPLEVELS.find { it.xdgToplevel.base() == parent }?.sceneTree
+            ?: POPUPS.find { it.xdgPopup.base() == parent }!!.sceneTree
+
         val popupSceneTree = parentSceneTree.xdgSurfaceCreate(popup.base())
 
         POPUPS.add(TyPopup(popup, popupSceneTree).apply {
@@ -742,9 +749,12 @@ object Tiny {
 
 
     fun onXdgPopupDestroy(listener: Listener) {
-        val popup = POPUPS.find { it.onDestroyListener == listener } ?: error("Can't proceed without popup")
-        popup.onCommitListener.remove()
-        popup.onDestroyListener.remove()
+        val idx = POPUPS.indexOfFirst { it.onDestroyListener == listener }
+        POPUPS.get(idx).apply {
+            onCommitListener.remove()
+            onDestroyListener.remove()
+        }
+        POPUPS.removeAt(idx) // Mandatory!!!
     }
 
 

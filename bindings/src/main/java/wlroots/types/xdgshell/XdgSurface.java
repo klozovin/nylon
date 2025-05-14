@@ -55,6 +55,11 @@ public class XdgSurface {
     }
 
 
+    public SurfaceRole role() {
+        return SurfaceRole.of(wlr_xdg_surface.role(xdgSurfacePtr));
+    }
+
+
     public boolean configured() {
         return wlr_xdg_surface.configured(xdgSurfacePtr);
     }
@@ -95,6 +100,34 @@ public class XdgSurface {
     public int scheduleConfigure() {
         return wlr_xdg_surface_schedule_configure(xdgSurfacePtr);
     }
+
+
+    // *** Associated *** //
+
+
+    public enum SurfaceRole {
+        NONE(WLR_XDG_SURFACE_ROLE_NONE()),
+        TOPLEVEL(WLR_XDG_SURFACE_ROLE_TOPLEVEL()),
+        POPUP(WLR_XDG_SURFACE_ROLE_POPUP());
+
+
+        public final int value;
+
+
+        SurfaceRole(int value) {
+            this.value = value;
+        }
+
+        public static SurfaceRole of(int value) {
+            for (var role: values())
+                if (role.value == value)
+                    return role;
+            throw new RuntimeException("Invalid enum value from C code for wlr_xdg_surface_role");
+        }
+    }
+
+
+    // *** Events ***************************************************************************************** //
 
 
     public static class Events {
