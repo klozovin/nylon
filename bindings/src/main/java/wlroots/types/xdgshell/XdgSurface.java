@@ -37,6 +37,16 @@ public class XdgSurface {
         return !ptr.equals(NULL) ? new XdgSurface(ptr) : null;
     }
 
+
+    @Override
+    public boolean equals(Object obj) {
+        return switch (obj) {
+            case XdgSurface s -> xdgSurfacePtr.equals(s.xdgSurfacePtr);
+            default -> false;
+        };
+    }
+
+
     // *** Getters and setters **************************************************************************** //
 
 

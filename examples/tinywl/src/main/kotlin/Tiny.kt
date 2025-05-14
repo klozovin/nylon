@@ -38,6 +38,14 @@ import java.util.*
 import kotlin.system.exitProcess
 
 
+data class TyOutput(
+    val output: Output,
+    val frameListener: Listener,
+    val requestStateListener: Listener,
+    val destroyListener: Listener
+)
+
+
 class TyToplevel(val xdgToplevel: XdgToplevel, val sceneTree: SceneTree) {
     lateinit var onMapListener: Listener
     lateinit var onCommitListener: Listener
@@ -51,13 +59,17 @@ class TyToplevel(val xdgToplevel: XdgToplevel, val sceneTree: SceneTree) {
 }
 
 
-object Tiny {
+class TyPopup(val xdgPopup: XdgPopup, val sceneTree: SceneTree) {
+    lateinit var onCommitListener: Listener
+    lateinit var onDestroyListener: Listener
+}
 
+
+object Tiny {
     lateinit var display: Display
     lateinit var backend: Backend
     lateinit var renderer: Renderer
     lateinit var allocator: Allocator
-    lateinit var output: Output
 
     lateinit var keyboard: Keyboard
 
@@ -72,17 +84,18 @@ object Tiny {
     lateinit var xdgShell: XdgShell
     lateinit var seat: Seat
 
-    val tyToplevels = mutableListOf<TyToplevel>()
 
-
-    // TODO: Better way to handle this? (what if multiple outputs, output gets reconnected...?)
-    val listeners = mutableMapOf<String, Listener>()
-
+    // Moving and resizing windows
     var grabbedToplevel: TyToplevel? = null
     lateinit var grabGeobox: Box
     var grabX: Double = 0.0
     var grabY: Double = 0.0
     lateinit var resizeEdges: EnumSet<Edge>
+
+
+    val OUTPUTS = mutableListOf<TyOutput>()
+    val TOPLEVELS = mutableListOf<TyToplevel>()
+    val POPUPS = mutableListOf<TyPopup>()
 
 
     fun main(args: Array<String>) {
@@ -162,6 +175,8 @@ object Tiny {
         display.destroy()
     }
 
+    // *** Helper functions ******************************************************************************* //
+
 
     // TODO: Remove surface parameter, can get it from toplevel
     fun focusToplevel(toplevel: TyToplevel?, surface: Surface?) {
@@ -210,14 +225,14 @@ object Tiny {
 
 
         val toplevel9 = sceneNode.parentIterator.firstNotNullOfOrNull { sc ->
-            tyToplevels.find { it.sceneTree.sceneTreePtr == sc.sceneTreePtr }
+            TOPLEVELS.find { it.sceneTree.sceneTreePtr == sc.sceneTreePtr }
         }
 
         // TODO: Remove after sanity check
         var tree = sceneNode.parent()
-        while (tree != null && tyToplevels.find { it.sceneTree.sceneTreePtr == tree.sceneTreePtr } == null)
+        while (tree != null && TOPLEVELS.find { it.sceneTree.sceneTreePtr == tree.sceneTreePtr } == null)
             tree = tree.node().parent()
-        val tytoplevel = tyToplevels.find { it.sceneTree.sceneTreePtr == tree!!.sceneTreePtr }
+        val tytoplevel = TOPLEVELS.find { it.sceneTree.sceneTreePtr == tree!!.sceneTreePtr }
 
 
         require(toplevel9?.xdgToplevel?.xdgToplevelPtr == tytoplevel?.xdgToplevel?.xdgToplevelPtr)
@@ -229,13 +244,10 @@ object Tiny {
     }
 
 
-    // *** Backend events: newOutput, newInput ************************************************************ //
+    // *** Output events: ********************************************************************************* //
 
 
-    fun onNewOutput(newOutput: Output) {
-        require(!::output.isInitialized) { "Only one output supported." }
-
-        output = newOutput
+    fun onNewOutput(output: Output) {
         output.initRender(allocator, renderer)
 
         OutputState.allocateConfined { outputState ->
@@ -246,14 +258,43 @@ object Tiny {
             outputState.finish()
         }
 
-        listeners["output.frame"] = output.events.frame.add(::onOutputFrame)
-        listeners["output.request_state"] = output.events.requestState.add(::onOutputRequestState)
-        listeners["output.destroy"] = output.events.destroy.add(::onOutputDestroy)
-
         val outputLayoutOutput = outputLayout.addAuto(output)
         val sceneOutput = SceneOutput.create(scene, output)
         sceneOutputLayout.addOutput(outputLayoutOutput, sceneOutput)
+
+        OUTPUTS.add(
+            TyOutput(
+                output = output,
+                frameListener = output.events.frame.add(::onOutputFrame),
+                requestStateListener = output.events.requestState.add(::onOutputRequestState),
+                destroyListener = output.events.destroy.add(::onOutputDestroy)
+            )
+        )
     }
+
+
+    fun onOutputFrame(output: Output) {
+        val sceneOutput = scene.getSceneOutput(output)!!
+        sceneOutput.commit()
+        sceneOutput.sendFrameDone()
+    }
+
+
+    fun onOutputRequestState(event: EventRequestState) {
+        event.output.commitState(event.state)
+    }
+
+
+    fun onOutputDestroy(listener: Listener, output: Output) {
+        OUTPUTS.find { it.destroyListener == listener }!!.apply {
+            frameListener.remove()
+            requestStateListener.remove()
+            destroyListener.remove()
+        }
+    }
+
+
+    // *** Input devices ********************************************************************************** //
 
 
     fun onNewInput(inputDevice: InputDevice) {
@@ -294,26 +335,6 @@ object Tiny {
         if (::keyboard.isInitialized)
             capabilities.add(SeatCapability.KEYBOARD)
         seat.setCapabilities(capabilities)
-    }
-
-    // *** Output events ********************************************************************************** //
-
-
-    fun onOutputFrame(output: Output) {
-        val sceneOutput = scene.getSceneOutput(output)!!
-        sceneOutput.commit()
-        sceneOutput.sendFrameDone()
-    }
-
-    fun onOutputRequestState(event: EventRequestState) {
-        output.commitState(event.state)
-    }
-
-    fun onOutputDestroy(output: Output) {
-        TODO()
-        listeners["output.frame"]!!.remove()
-        listeners["output.request_state"]!!.remove()
-        listeners["output.destroy"]!!.remove()
     }
 
 
@@ -591,12 +612,12 @@ object Tiny {
                 tytop.onRrequestMaximizeListener = requestMaximize.add(::onXdgToplevelRequestMaximize)
                 tytop.onRrequestFullscreenListener = requestFullscreen.add(::onXdgToplevelRequestFullscreen)
             }
-            tyToplevels.add(tytop)
+            TOPLEVELS.add(tytop)
         }
 
 
         fun onCommit(listener: Listener, surface: Surface) {
-            val xdgToplevel = tyToplevels.find { it.onCommitListener == listener }!!.xdgToplevel
+            val xdgToplevel = TOPLEVELS.find { it.onCommitListener == listener }!!.xdgToplevel
 
             // When an xdg_surface performs an initial commit, the compositor must reply with a configure so the
             // client can map the surface. tinywl configures the xdg_toplevel with 0,0 size to let the client pick
@@ -607,13 +628,13 @@ object Tiny {
 
 
         fun onMap(listener: Listener) {
-            val tinyXdgToplevel = tyToplevels.find { it.onMapListener == listener }!!
+            val tinyXdgToplevel = TOPLEVELS.find { it.onMapListener == listener }!!
             focusToplevel(tinyXdgToplevel, tinyXdgToplevel.xdgToplevel.base().surface())
         }
 
 
         fun onUnmap(listener: Listener) {
-            val tyToplevel = tyToplevels.find { it.onUnmapListener == listener }!!
+            val tyToplevel = TOPLEVELS.find { it.onUnmapListener == listener }!!
 
             // Reset the cursor mode if the grabbed toplevel was unmapped
             // TODO: Test this
@@ -623,8 +644,8 @@ object Tiny {
 
 
         fun onXdgToplevelDestroy(listener: Listener) {
-            val idx = tyToplevels.indexOfFirst { it.onDestroyListener == listener }
-            val element = tyToplevels[idx]
+            val idx = TOPLEVELS.indexOfFirst { it.onDestroyListener == listener }
+            val element = TOPLEVELS[idx]
 
             element.onMapListener.remove()
             element.onUnmapListener.remove()
@@ -636,29 +657,15 @@ object Tiny {
             element.onRrequestMaximizeListener.remove()
             element.onRrequestFullscreenListener.remove()
 
-            tyToplevels.removeAt(idx)
+            TOPLEVELS.removeAt(idx)
         }
     }
 
 
-    fun onNewPopup(popup: XdgPopup) {
-        TODO()
-
-        val parent = XdgSurface.tryFromSurface(popup.parent()) ?: error("Popup parent can't be null")
-
-        // TODO: Is this way ok???
-        val parentSceneTree =
-            tyToplevels.find { it.xdgToplevel.base().xdgSurfacePtr == parent.xdgSurfacePtr }!!.sceneTree
-        parentSceneTree.xdgSurfaceCreate(popup.base())
-
-        popup.base().surface().events.commit.add(::onXdgPopupCommit)
-        popup.events.destroy.add(::onXdgPopupDestroy)
-    }
-
     fun onXdgToplevelRequestMove(event: XdgToplevel.MoveEvent) {
         println(event)
         beginInteractive(
-            tyToplevels.find { it.xdgToplevel.xdgToplevelPtr == event.toplevel.xdgToplevelPtr }!!,
+            TOPLEVELS.find { it.xdgToplevel.xdgToplevelPtr == event.toplevel.xdgToplevelPtr }!!,
             CursorMode.Move,
             null
         )
@@ -666,34 +673,56 @@ object Tiny {
 
 
     fun onXdgToplevelRequestResize(event: XdgToplevel.Events.Resize) {
-        val tyToplevel = tyToplevels.find { it.xdgToplevel == event.toplevel }!!
+        val tyToplevel = TOPLEVELS.find { it.xdgToplevel == event.toplevel }!!
         beginInteractive(tyToplevel, CursorMode.Resize, event.edges)
+    }
+
+
+    // Client wants to fullscreen itself, but we don't support that.
+    fun onXdgToplevelRequestFullscreen(listener: Listener) {
+        TOPLEVELS.find { it.onRrequestFullscreenListener == listener }?.let {
+            if (it.xdgToplevel.base().initialized())
+                it.xdgToplevel.base().scheduleConfigure()
+        }
     }
 
 
     // Client wants to maximize itself, but we don't support that. Just send configure, by xdg-shell protocol
     // specification.
     fun onXdgToplevelRequestMaximize(listener: Listener) {
-        val xdgToplevel = tyToplevels.find { it.onRrequestMaximizeListener == listener }!!.xdgToplevel
+        val xdgToplevel = TOPLEVELS.find { it.onRrequestMaximizeListener == listener }!!.xdgToplevel
         if (xdgToplevel.base().initialized())
             xdgToplevel.base().scheduleConfigure()
     }
 
 
-    // Client wants to fullscreen itself, but we don't support that.
-    fun onXdgToplevelRequestFullscreen(listener: Listener) {
-        tyToplevels.find { it.onRrequestFullscreenListener == listener }?.let {
-            if (it.xdgToplevel.base().initialized())
-                it.xdgToplevel.base().scheduleConfigure()
-        }
+    // *** XDG Shell: Popups ****************************************************************************** //
+
+
+    fun onNewPopup(popup: XdgPopup) {
+        val parent = XdgSurface.tryFromSurface(popup.parent()) ?: error("Popup's parent can't be null")
+        val parentSceneTree = TOPLEVELS.find { it.xdgToplevel.base() == parent }!!.sceneTree
+        val popupSceneTree = parentSceneTree.xdgSurfaceCreate(popup.base())
+
+        POPUPS.add(TyPopup(popup, popupSceneTree).apply {
+            onCommitListener = popup.base().surface().events.commit.add(::onXdgPopupCommit)
+            onDestroyListener = popup.events.destroy.add(::onXdgPopupDestroy)
+        })
     }
 
-    fun onXdgPopupCommit(surface: Surface) {
-        TODO()
+
+    fun onXdgPopupCommit(listener: Listener, surface: Surface) {
+        val popup = POPUPS.find { it.onCommitListener == listener }?.xdgPopup
+            ?: error("Cant proceed without popup")
+        if (popup.base().initialCommit())
+            popup.base().scheduleConfigure()
     }
 
-    fun onXdgPopupDestroy() {
-        TODO()
+
+    fun onXdgPopupDestroy(listener: Listener) {
+        val popup = POPUPS.find { it.onDestroyListener == listener } ?: error("Can't proceed without popup")
+        popup.onCommitListener.remove()
+        popup.onDestroyListener.remove()
     }
 
 

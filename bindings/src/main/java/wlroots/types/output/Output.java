@@ -5,7 +5,6 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Display;
 import wayland.server.Signal;
-import wayland.server.Signal.Signal0;
 import wayland.server.Signal.Signal1;
 import wlroots.render.Allocator;
 import wlroots.render.BufferPassOptions;
@@ -20,11 +19,11 @@ import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static jextract.wlroots.types.wlr_output_h.*;
 
 
-/// A compositor output region. This typically corresponds to a monitor that displays part of the
-/// compositor space.
+/// A compositor output region. This typically corresponds to a monitor that displays part of the compositor
+/// space.
 ///
-/// The {@link Events#frame} event will be emitted when it is a good time for the compositor to
-/// submit a new frame.
+/// The {@link Events#frame} event will be emitted when it is a good time for the compositor to submit a new
+/// frame.
 ///
 /// `struct wlr_output {};`
 @NullMarked
@@ -40,6 +39,9 @@ public final class Output {
     }
 
 
+    // *** Getters and setters *** //
+
+
     public int width() {
         return wlr_output.width(outputPtr);
     }
@@ -48,6 +50,9 @@ public final class Output {
     public int height() {
         return wlr_output.height(outputPtr);
     }
+
+
+    // *** Methods *** //
 
 
     /// Returns the preferred mode for this output. If the output doesn't support modes, returns NULL.
@@ -124,6 +129,9 @@ public final class Output {
     }
 
 
+    // *** Events ***************************************************************************************** //
+
+
     public final static class Events {
         public final MemorySegment eventsPtr;
 
@@ -139,9 +147,9 @@ public final class Output {
         Events(MemorySegment eventsPtr) {
             this.eventsPtr = eventsPtr;
 
-            this.frame         = Signal.of(wlr_output.events.frame(eventsPtr), Output::new);
-            this.destroy       = Signal.of(wlr_output.events.destroy(eventsPtr), Output::new);
-            this.requestState  = Signal.of(wlr_output.events.request_state(eventsPtr), EventRequestState::new);
+            this.frame        = Signal.of(wlr_output.events.frame(eventsPtr), Output::new);
+            this.destroy      = Signal.of(wlr_output.events.destroy(eventsPtr), Output::new);
+            this.requestState = Signal.of(wlr_output.events.request_state(eventsPtr), EventRequestState::new);
         }
     }
 }

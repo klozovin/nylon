@@ -24,6 +24,8 @@ public class XdgPopup {
     }
 
 
+    // *** Getters and setters *** //
+
     public XdgSurface base() {
         return new XdgSurface(wlr_xdg_popup.base(xdgPopupPtr));
     }
@@ -32,6 +34,9 @@ public class XdgPopup {
     public Surface parent() {
         return new Surface(wlr_xdg_popup.parent(xdgPopupPtr));
     }
+
+
+    // *** Events *** //
 
 
     public static class Events {
