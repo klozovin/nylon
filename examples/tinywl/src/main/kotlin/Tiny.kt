@@ -376,15 +376,18 @@ object Tiny {
                     // cycle
                     handledInCompositor = true
                 }
+
                 XkbKey.F2 -> {
                     println("Scene tree parent: ${scene.tree().node().parent()}")
                     handledInCompositor = true
 
                 }
+
                 XkbKey.F12 -> {
                     Log.logInfo("Heeelllooouuu from TinyWL")
                     handledInCompositor = true
                 }
+
                 XkbKey.Escape -> {
                     display.terminate()
                     handledInCompositor = true
@@ -481,38 +484,32 @@ object Tiny {
                 return
             }
 
-            // TODO: Put everything else in Passthrough branch
-            else -> Unit
-        }
+            CursorMode.Passthrough ->  {
+                // Forward events to the client under the pointer
+                val toplevelResult = desktopToplevelAt(cursor.x(), cursor.y())
 
+                toplevelResult?.let {
+                    val parent = it._1.xdgToplevel.parent()
+                }
 
-        // Forward events to the client under the pointer
-        val toplevelResult = desktopToplevelAt(cursor.x(), cursor.y())
-
-        toplevelResult?.let {
-            val parent = it._1.xdgToplevel.parent()
-            println("processCursorMotion >>> ${it._1.xdgToplevel.xdgToplevelPtr}.parent=${parent?.xdgToplevelPtr}")
-        }
-
-
-        // TODO: Unify these conditions, better handle null
-        if (toplevelResult == null) {
-            cursor.setXcursor(xcursorManager, "default")
-        }
-        if (toplevelResult?._2 != null) {
-            seat.pointerNotifyEnter(toplevelResult._2, toplevelResult._3, toplevelResult._4)
-            seat.pointerNotifyMotion(timeMsec, toplevelResult._3, toplevelResult._4)
-        } else {
-            seat.pointerClearFocus()
+                // TODO: Unify these conditions, better handle null
+                if (toplevelResult == null) {
+                    cursor.setXcursor(xcursorManager, "default")
+                }
+                if (toplevelResult?._2 != null) {
+                    seat.pointerNotifyEnter(toplevelResult._2, toplevelResult._3, toplevelResult._4)
+                    seat.pointerNotifyMotion(timeMsec, toplevelResult._3, toplevelResult._4)
+                } else {
+                    seat.pointerClearFocus()
+                }
+            }
         }
     }
 
 
     fun beginInteractive(tytoplevel: TyToplevel, mode: CursorMode, edges: EnumSet<Edge>?) {
-        println("beginInteractive >>> tytoplevel=${tytoplevel}")
-        println("beginInteractive>> mode=$mode")
-
         val focusedSurface = seat.pointerState().focusedSurface()
+
         if (tytoplevel.xdgToplevel.base().surface().surfacePtr != focusedSurface.rootSurface.surfacePtr) {
             println("Returning!!! Ohnoes")
             return
@@ -549,7 +546,7 @@ object Tiny {
                 println(edges)
             }
 
-            CursorMode.Passthrough -> TODO()
+            CursorMode.Passthrough -> error("Unreachable")
         }
     }
 
@@ -686,9 +683,8 @@ object Tiny {
 
 
     fun onXdgToplevelRequestMove(event: XdgToplevel.MoveEvent) {
-        println(event)
         beginInteractive(
-            TOPLEVELS.find { it.xdgToplevel.xdgToplevelPtr == event.toplevel.xdgToplevelPtr }!!,
+            TOPLEVELS.find { it.xdgToplevel == event.toplevel }!!,
             CursorMode.Move,
             null
         )
@@ -696,8 +692,11 @@ object Tiny {
 
 
     fun onXdgToplevelRequestResize(event: XdgToplevel.Events.Resize) {
-        val tyToplevel = TOPLEVELS.find { it.xdgToplevel == event.toplevel }!!
-        beginInteractive(tyToplevel, CursorMode.Resize, event.edges)
+        beginInteractive(
+            TOPLEVELS.find { it.xdgToplevel == event.toplevel }!!,
+            CursorMode.Resize,
+            event.edges
+        )
     }
 
 
