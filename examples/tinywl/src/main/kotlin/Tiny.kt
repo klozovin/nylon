@@ -406,7 +406,7 @@ object Tiny {
 
 
     fun onCursorMotion(event: PointerMotionEvent) {
-        cursor.move(event.pointer.base(), event.deltaY, event.deltaY)
+        cursor.move(event.pointer.base(), event.deltaX, event.deltaY)
         processCursorMotion(event.timeMsec)
     }
 
