@@ -10,6 +10,7 @@ import java.nio.file.Path
 import kotlin.io.path.name
 import dewey.fsnav.DirectoryListingResult as DirectoryListing
 
+
 // TODO: Can't be singleton when multiple tabs implemented
 object DirectoryBrowserState {
     var cwdListing: DirectoryListing by SubjectDelegate()
@@ -114,6 +115,7 @@ class WidgetDirectoryBrowser(path: Path) {
             else -> unreachable()
         }
 
+
     private fun ListView.selectedItem(): BaseDirectoryEntry? =
         selectedItemIdx()?.let { idx ->
             when (val cwd = pathNavigator.working) {
@@ -122,6 +124,7 @@ class WidgetDirectoryBrowser(path: Path) {
                 is DirectoryListing.Error -> null
             }
         }
+
 
     private fun ListView.showDirectoryListing(count: Int, factory: BaseItemFactory) {
         val model = ListIndexModel.newInstance(count)
@@ -137,6 +140,7 @@ class WidgetDirectoryBrowser(path: Path) {
         this.model = selection
         this.factory = factory
     }
+
 
     private fun ListView.showErrorListing(message: String) {
         val model = StringList(arrayOf(message))
@@ -260,7 +264,7 @@ class WidgetDirectoryBrowser(path: Path) {
         DirectoryBrowserState.selectedItem = directoryListWidget.selectedItem()
     }
 
-    // ----- HELPER INNER CLASSES ----------------------------------------------------------------------------------- //
+    // ----- HELPER INNER CLASSES ------------------------------------------------------------------------- //
 
 
     /**

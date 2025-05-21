@@ -1,5 +1,3 @@
-import nylon.Tuple
-import nylon.Tuple.Tuple4
 import wayland.KeyboardKeyState
 import wayland.PointerButtonState
 import wayland.SeatCapability
@@ -35,6 +33,7 @@ import xkbcommon.Keymap
 import xkbcommon.XkbContext
 import xkbcommon.XkbKey
 import java.util.*
+import kotlin.properties.Delegates
 import kotlin.system.exitProcess
 
 
@@ -98,6 +97,9 @@ object Tiny {
     var grabY: Double = 0.0
     lateinit var resizeEdges: EnumSet<Edge>
 
+    // Used for cycling through toplevel windows
+    var focusedToplevel by Delegates.notNull<Int>()
+
 
     val OUTPUTS = mutableListOf<TyOutput>()
     val KEYBOARDS = mutableListOf<TyKeyboard>()
@@ -127,7 +129,7 @@ object Tiny {
         sceneOutputLayout = scene.attachOutputLayout(outputLayout)
 
         xdgShell = XdgShell.create(display, 3)
-        xdgShell.events.newToplevel.add(TopLevel::onNew)
+        xdgShell.events.newToplevel.add(::onXdgToplevelNew)
         xdgShell.events.newPopup.add(::onNewPopup)
 
         cursor = Cursor.create().apply {
@@ -185,17 +187,14 @@ object Tiny {
     // *** Helper functions ******************************************************************************* //
 
 
-    // TODO: Remove surface parameter, can get it from toplevel
-    fun focusToplevel(toplevel: TyToplevel?, surface: Surface?) {
-        if (toplevel == null)
-            return
-
-        require(surface != null)
-
+    fun focusToplevel(toplevel: TyToplevel) {
+        val xdgToplevel = toplevel.xdgToplevel
         val previouslyFocusedSurface = seat.keyboardState().focusedSurface()
 
+        focusedToplevel = TOPLEVELS.indexOfFirst { it.xdgToplevel == toplevel.xdgToplevel }
+
         // Don't refocus already focused surface
-        if (previouslyFocusedSurface?.surfacePtr == surface.surfacePtr) {
+        if (previouslyFocusedSurface?.surfacePtr == xdgToplevel.base().surface().surfacePtr) {
             return
         }
 
@@ -212,7 +211,7 @@ object Tiny {
 
         seat.getKeyboard()?.let { keyboard ->
             seat.keyboardNotifyEnter(
-                toplevel.xdgToplevel.base().surface(),
+                xdgToplevel.base().surface(),
                 keyboard.keycodesPtr(),
                 keyboard.keycodesNum(),
                 keyboard.modifiers()
@@ -220,8 +219,16 @@ object Tiny {
         }
     }
 
-    // TODO: can ttl be !null and surface null?
-    fun desktopToplevelAt(targetX: Double, targetY: Double): Tuple4<TyToplevel, Surface, Double, Double>? {
+
+    data class UnderCursor(
+        val tyToplevel: TyToplevel,
+        val surface: Surface,
+        val nx: Double,
+        val ny: Double,
+    )
+
+
+    fun desktopToplevelAt(targetX: Double, targetY: Double): UnderCursor? {
         val (sceneNode, nx, ny) = scene.tree().node().nodeAt(targetX, targetY) ?: return null
 
         if (sceneNode.type() != SceneNode.Type.BUFFER)
@@ -230,24 +237,11 @@ object Tiny {
         val sceneBuffer = SceneBuffer.fromNode(sceneNode)
         val sceneSurface = SceneSurface.tryFromBuffer(sceneBuffer) ?: return null
 
-
-        val toplevel9 = sceneNode.parentIterator.firstNotNullOfOrNull { sc ->
+        return sceneNode.parentIterator.firstNotNullOfOrNull { sc ->
             TOPLEVELS.find { it.sceneTree.sceneTreePtr == sc.sceneTreePtr }
+        }?.let {
+            UnderCursor(it, sceneSurface.surface(), nx, ny)
         }
-
-        // TODO: Remove after sanity check
-        var tree = sceneNode.parent()
-        while (tree != null && TOPLEVELS.find { it.sceneTree.sceneTreePtr == tree.sceneTreePtr } == null)
-            tree = tree.node().parent()
-        val tytoplevel = TOPLEVELS.find { it.sceneTree.sceneTreePtr == tree!!.sceneTreePtr }
-
-
-        require(toplevel9?.xdgToplevel?.xdgToplevelPtr == tytoplevel?.xdgToplevel?.xdgToplevelPtr)
-
-        return if (tytoplevel != null)
-            Tuple.of(tytoplevel, sceneSurface.surface(), nx, ny)
-        else
-            null
     }
 
 
@@ -324,15 +318,12 @@ object Tiny {
                 with(keyboard) {
                     setKeymap(keymap)
                     setRepeatInfo(25, 600)
-//                    events.modifiers.add(::onKeyboardModifiers)
-//                    events.key.add(::onKeyboardKey)
                 }
 
                 seat.setKeyboard(keyboard)
 
                 keymap.unref()
                 context.unref()
-
 
                 seatCapabilities.add(SeatCapability.KEYBOARD)
 
@@ -366,25 +357,17 @@ object Tiny {
         val keycode = event.keycode() + 8
         val keysym = keyboard.xkbState().keyGetOneSym(keycode)
 
-        // TODO: Just return this flag from if-when
         var handledInCompositor = false
-
         if (keyboard.modifiers.isAltDown && event.state() == KeyboardKeyState.PRESSED) {
             when (keysym) {
                 XkbKey.F1 -> {
-                    // TODO: 	case XKB_KEY_F1
-                    // cycle
-                    handledInCompositor = true
-                }
-
-                XkbKey.F2 -> {
-                    println("Scene tree parent: ${scene.tree().node().parent()}")
-                    handledInCompositor = true
-
-                }
-
-                XkbKey.F12 -> {
-                    Log.logInfo("Heeelllooouuu from TinyWL")
+                    if (TOPLEVELS.isNotEmpty()) {
+                        val nextIdx = focusedToplevel + 1
+                        if (nextIdx < TOPLEVELS.size)
+                            focusToplevel(TOPLEVELS[nextIdx])
+                        else
+                            focusToplevel(TOPLEVELS[0])
+                    }
                     handledInCompositor = true
                 }
 
@@ -436,19 +419,18 @@ object Tiny {
 
     // Mouse click event
     fun onCursorButton(event: PointerButtonEvent) {
-        // TODO: Raise on click, swallow mouse event (have to detect chaning of focused toplevel window)
-
         // Notify the client with "pointer focus" that a button press has occurred
         seat.pointerNotifyButton(event.timeMsec, event.button, event.state)
 
-        // TODO: Can go under when-pressed branch, don't need to pass null into focusTopLevel
-        val toplevel = desktopToplevelAt(cursor.x(), cursor.y())
-
         when (event.state) {
-            PointerButtonState.PRESSED -> focusToplevel(toplevel?._1, toplevel?._2)
+            PointerButtonState.PRESSED ->
+                desktopToplevelAt(cursor.x(), cursor.y())?.let { (tytoplevel, _, _, _) ->
+                    focusToplevel(tytoplevel)
+                }
 
-            // TODO: why not check if we're in the move/resize state?
-            PointerButtonState.RELEASED -> resetCursorMode()
+            PointerButtonState.RELEASED ->
+                if (cursorMode == CursorMode.Move || cursorMode == CursorMode.Resize)
+                    resetCursorMode()
         }
     }
 
@@ -472,37 +454,27 @@ object Tiny {
 
 
     fun processCursorMotion(timeMsec: Int) {
-        // Process the event in the compositor: either moving or resizing the window
         when (cursorMode) {
-            CursorMode.Move -> {
-                processCursorMove(timeMsec)
-                return
-            }
+            CursorMode.Move -> processCursorMove(timeMsec)
 
-            CursorMode.Resize -> {
-                processCursorResize(timeMsec)
-                return
-            }
+            CursorMode.Resize -> processCursorResize(timeMsec)
 
-            CursorMode.Passthrough ->  {
-                // Forward events to the client under the pointer
-                val toplevelResult = desktopToplevelAt(cursor.x(), cursor.y())
+            CursorMode.Passthrough ->
+                when (val underCursor = desktopToplevelAt(cursor.x(), cursor.y())) {
+                    // Find the toplevel under the pointer and send the cursor events along.
+                    is UnderCursor -> {
+                        val (_, surface, nx, ny) = underCursor
+                        seat.pointerNotifyEnter(surface, nx, ny)
+                        seat.pointerNotifyMotion(timeMsec, nx, ny)
+                    }
 
-                toplevelResult?.let {
-                    val parent = it._1.xdgToplevel.parent()
+                    // Clear pointer focus so the future button events are not sent to the last client to
+                    // have the cursor over it.
+                    null -> {
+                        seat.pointerClearFocus()
+                        cursor.setXcursor(xcursorManager, "default")
+                    }
                 }
-
-                // TODO: Unify these conditions, better handle null
-                if (toplevelResult == null) {
-                    cursor.setXcursor(xcursorManager, "default")
-                }
-                if (toplevelResult?._2 != null) {
-                    seat.pointerNotifyEnter(toplevelResult._2, toplevelResult._3, toplevelResult._4)
-                    seat.pointerNotifyMotion(timeMsec, toplevelResult._3, toplevelResult._4)
-                } else {
-                    seat.pointerClearFocus()
-                }
-            }
         }
     }
 
@@ -523,7 +495,6 @@ object Tiny {
             CursorMode.Move -> {
                 grabX = cursor.x() - sceneNode.x()
                 grabY = cursor.y() - sceneNode.y()
-                println("$grabX, $ grabY")
             }
 
             CursorMode.Resize -> {
@@ -611,74 +582,69 @@ object Tiny {
     // *** XDG Shell: Top level *************************************************************************** //
 
 
-    // TODO: Remove object, only used for grouping
-    object TopLevel {
+    fun onXdgToplevelNew(toplevel: XdgToplevel) {
+        val sceneTree = scene.tree().xdgSurfaceCreate(toplevel.base())
+        val tytop = TyToplevel(toplevel, sceneTree)
 
-        fun onNew(toplevel: XdgToplevel) {
-            val sceneTree = scene.tree().xdgSurfaceCreate(toplevel.base())
-            val tytop = TyToplevel(toplevel, sceneTree)
-
-            // Event handlers for the base Surface
-            with(toplevel.base().surface().events) {
-                tytop.onMapListener = map.add(::onMap)
-                tytop.onUnmapListener = unmap.add(::onUnmap)
-                tytop.onCommitListener = commit.add(::onCommit)
-            }
-
-            // Event handlers for the XDG Toplevel surface
-            with(toplevel.events) {
-                tytop.onDestroyListener = destroy.add(::onXdgToplevelDestroy)
-                tytop.onRrequestMoveListener = requestMove.add(::onXdgToplevelRequestMove)
-                tytop.onRrequestResizeListener = requestResize.add(::onXdgToplevelRequestResize)
-                tytop.onRrequestMaximizeListener = requestMaximize.add(::onXdgToplevelRequestMaximize)
-                tytop.onRrequestFullscreenListener = requestFullscreen.add(::onXdgToplevelRequestFullscreen)
-            }
-            TOPLEVELS.add(tytop)
+        // Event handlers for the base Surface
+        with(toplevel.base().surface().events) {
+            tytop.onMapListener = map.add(::onXdgToplevelMap)
+            tytop.onUnmapListener = unmap.add(::onXdgToplevelUnmap)
+            tytop.onCommitListener = commit.add(::onXdgToplevelCommit)
         }
 
-
-        fun onCommit(listener: Listener, surface: Surface) {
-            val xdgToplevel = TOPLEVELS.find { it.onCommitListener == listener }!!.xdgToplevel
-
-            // When an xdg_surface performs an initial commit, the compositor must reply with a configure so the
-            // client can map the surface. tinywl configures the xdg_toplevel with 0,0 size to let the client pick
-            // the dimensions itself.
-            if (xdgToplevel.base().initialCommit())
-                xdgToplevel.setSize(0, 0)
+        // Event handlers for the XDG Toplevel surface
+        with(toplevel.events) {
+            tytop.onDestroyListener = destroy.add(::onXdgToplevelDestroy)
+            tytop.onRrequestMoveListener = requestMove.add(::onXdgToplevelRequestMove)
+            tytop.onRrequestResizeListener = requestResize.add(::onXdgToplevelRequestResize)
+            tytop.onRrequestMaximizeListener = requestMaximize.add(::onXdgToplevelRequestMaximize)
+            tytop.onRrequestFullscreenListener = requestFullscreen.add(::onXdgToplevelRequestFullscreen)
         }
+        TOPLEVELS.add(tytop)
+    }
 
 
-        fun onMap(listener: Listener) {
-            val tinyXdgToplevel = TOPLEVELS.find { it.onMapListener == listener }!!
-            focusToplevel(tinyXdgToplevel, tinyXdgToplevel.xdgToplevel.base().surface())
+    fun onXdgToplevelCommit(listener: Listener, surface: Surface) {
+        val xdgToplevel = TOPLEVELS.find { it.onCommitListener == listener }!!.xdgToplevel
+
+        // When an xdg_surface performs an initial commit, the compositor must reply with a configure so the
+        // client can map the surface. tinywl configures the xdg_toplevel with 0,0 size to let the client pick
+        // the dimensions itself.
+        if (xdgToplevel.base().initialCommit())
+            xdgToplevel.setSize(0, 0)
+    }
+
+
+    fun onXdgToplevelMap(listener: Listener) {
+        val tytoplevel = TOPLEVELS.find { it.onMapListener == listener }!!
+        focusToplevel(tytoplevel)
+    }
+
+
+    fun onXdgToplevelUnmap(listener: Listener) {
+        val tyToplevel = TOPLEVELS.find { it.onUnmapListener == listener }!!
+
+        // Reset the cursor mode if the grabbed toplevel was unmapped
+        if (grabbedToplevel?.xdgToplevel == tyToplevel.xdgToplevel)
+            resetCursorMode()
+    }
+
+
+    fun onXdgToplevelDestroy(listener: Listener) {
+        val idx = TOPLEVELS.indexOfFirst { it.onDestroyListener == listener }
+        TOPLEVELS.get(idx).apply {
+            onMapListener.remove()
+            onUnmapListener.remove()
+            onCommitListener.remove()
+            onDestroyListener.remove()
+
+            onRrequestMoveListener.remove()
+            onRrequestResizeListener.remove()
+            onRrequestMaximizeListener.remove()
+            onRrequestFullscreenListener.remove()
         }
-
-
-        fun onUnmap(listener: Listener) {
-            val tyToplevel = TOPLEVELS.find { it.onUnmapListener == listener }!!
-
-            // Reset the cursor mode if the grabbed toplevel was unmapped
-            // TODO: Test this
-            if (grabbedToplevel?.xdgToplevel?.xdgToplevelPtr == tyToplevel.xdgToplevel.xdgToplevelPtr)
-                resetCursorMode()
-        }
-
-
-        fun onXdgToplevelDestroy(listener: Listener) {
-            val idx = TOPLEVELS.indexOfFirst { it.onDestroyListener == listener }
-            TOPLEVELS.get(idx).apply {
-                onMapListener.remove()
-                onUnmapListener.remove()
-                onCommitListener.remove()
-                onDestroyListener.remove()
-
-                onRrequestMoveListener.remove()
-                onRrequestResizeListener.remove()
-                onRrequestMaximizeListener.remove()
-                onRrequestFullscreenListener.remove()
-            }
-            TOPLEVELS.removeAt(idx)
-        }
+        TOPLEVELS.removeAt(idx)
     }
 
 
@@ -732,10 +698,11 @@ object Tiny {
 
         val popupSceneTree = parentSceneTree.xdgSurfaceCreate(popup.base())
 
-        POPUPS.add(TyPopup(popup, popupSceneTree).apply {
-            onCommitListener = popup.base().surface().events.commit.add(::onXdgPopupCommit)
-            onDestroyListener = popup.events.destroy.add(::onXdgPopupDestroy)
-        })
+        POPUPS.add(
+            TyPopup(popup, popupSceneTree).apply {
+                onCommitListener = popup.base().surface().events.commit.add(::onXdgPopupCommit)
+                onDestroyListener = popup.events.destroy.add(::onXdgPopupDestroy)
+            })
     }
 
 
@@ -783,7 +750,6 @@ object Tiny {
 fun main(args: Array<String>) {
     Log.init(Log.Importance.DEBUG)
     Tiny.main(args)
-    // TODO: take startup command from input
 }
 
 

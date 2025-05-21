@@ -20,7 +20,7 @@ public class SceneNode {
     public final MemorySegment sceneNodePtr;
 
     /// Iterate over the .parent field all the way up to the root of the tree.
-    public final Iterable<SceneTree> parentIterator = () -> new ParentIterator();
+    public final Iterable<SceneTree> parentIterator = ParentIterator::new;
 
 
     public SceneNode(MemorySegment sceneNodePtr) {
