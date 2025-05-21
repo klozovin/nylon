@@ -2,6 +2,7 @@ package wlroots.types.compositor;
 
 import jextract.wlroots.types.wlr_surface;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal0;
 import wayland.server.Signal.Signal1;
@@ -24,6 +25,12 @@ public class Surface {
         this.surfacePtr = surfacePtr;
         this.events = new Events(wlr_surface.events(surfacePtr));
     }
+
+
+    public static @Nullable Surface ofPtrOrNull(MemorySegment ptr) {
+        return !ptr.equals(NULL) ? new Surface(ptr) : null;
+    }
+
 
     // *** Struct fields getters and setters ************************************************************** //
 

@@ -101,8 +101,16 @@ public class Cursor {
 
     /// Set the cursor surface. The surface can be committed to update the cursor image. The surface position
     /// is subtracted from the hotspot. A NULL surface commit hides the cursor.
-    public void setSurface(Surface surface, int hotspotX, int hotspotY) {
-        wlr_cursor_set_surface(cursorPtr, surface.surfacePtr, hotspotX, hotspotY);
+    public void setSurface(@Nullable Surface surface, int hotspotX, int hotspotY) {
+        wlr_cursor_set_surface(
+            cursorPtr,
+            switch (surface) {
+                case Surface s -> s.surfacePtr;
+                case null -> NULL;
+            },
+            hotspotX,
+            hotspotY
+        );
     }
 
 

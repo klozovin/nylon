@@ -762,8 +762,8 @@ object Tiny {
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
         val focusedClient = seat.pointerState().focusedClient()
-        if (focusedClient?.seatClientPtr == event.seatClient().seatClientPtr)
-            cursor.setSurface(event.surface(), event.hotspotX(), event.hotspotY())
+        if (focusedClient?.seatClientPtr == event.seatClient.seatClientPtr)
+            cursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
     }
 
 
