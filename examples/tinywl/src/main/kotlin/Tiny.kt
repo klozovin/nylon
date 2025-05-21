@@ -91,6 +91,8 @@ object Tiny {
 
 
     // Moving and resizing windows
+    var mouseButtonHeld = false
+
     var grabbedToplevel: TyToplevel? = null
     lateinit var grabGeobox: Box
     var grabX: Double = 0.0
@@ -423,14 +425,17 @@ object Tiny {
         seat.pointerNotifyButton(event.timeMsec, event.button, event.state)
 
         when (event.state) {
-            PointerButtonState.PRESSED ->
+            PointerButtonState.PRESSED -> {
+                mouseButtonHeld = true
                 desktopToplevelAt(cursor.x(), cursor.y())?.let { (tytoplevel, _, _, _) ->
                     focusToplevel(tytoplevel)
                 }
+            }
 
-            PointerButtonState.RELEASED ->
-                if (cursorMode == CursorMode.Move || cursorMode == CursorMode.Resize)
-                    resetCursorMode()
+            PointerButtonState.RELEASED -> {
+                mouseButtonHeld = false
+                if (cursorMode == CursorMode.Move || cursorMode == CursorMode.Resize) resetCursorMode()
+            }
         }
     }
 
@@ -649,6 +654,12 @@ object Tiny {
 
 
     fun onXdgToplevelRequestMove(event: XdgToplevel.MoveEvent) {
+        if (!mouseButtonHeld) {
+            // Hack: Apps using Rust's winit (alacritty, neovide) try to do this, so the window get's stuck
+            //       to the cursor.
+            Log.logDebug("Client trying to start drag action without having the mouse button pressed")
+            return
+        }
         beginInteractive(
             TOPLEVELS.find { it.xdgToplevel == event.toplevel }!!,
             CursorMode.Move,
@@ -658,6 +669,12 @@ object Tiny {
 
 
     fun onXdgToplevelRequestResize(event: XdgToplevel.Events.Resize) {
+        if (!mouseButtonHeld) {
+            // Hack: Apps using Rust's winit (alacritty, neovide) try to do this, so the window get's stuck
+            //       to the cursor.
+            Log.logDebug("Client trying to start resize action without having the mouse button pressed")
+            return
+        }
         beginInteractive(
             TOPLEVELS.find { it.xdgToplevel == event.toplevel }!!,
             CursorMode.Resize,

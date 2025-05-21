@@ -32,6 +32,15 @@ public class XdgToplevel {
     }
 
 
+    @Override
+    public boolean equals(Object obj) {
+        return switch (obj) {
+            case XdgToplevel other -> xdgToplevelPtr.equals(other.xdgToplevelPtr);
+            default -> false;
+        };
+    }
+
+
     public static @Nullable XdgToplevel ofPtrOrNull(MemorySegment ptr) {
         return !ptr.equals(NULL) ? new XdgToplevel(ptr) : null;
     }
@@ -44,15 +53,6 @@ public class XdgToplevel {
     public static @Nullable XdgToplevel tryFromSurface(Surface surface) {
         var xdgToplevelPtr = wlr_xdg_toplevel_try_from_wlr_surface(surface.surfacePtr);
         return !xdgToplevelPtr.equals(NULL) ? new XdgToplevel(xdgToplevelPtr) : null;
-    }
-
-
-    @Override
-    public boolean equals(Object obj) {
-        return switch (obj) {
-            case XdgToplevel t -> xdgToplevelPtr.equals(t.xdgToplevelPtr);
-            default -> false;
-        };
     }
 
     // *** Getters and setters **************************************************************************** //
@@ -109,10 +109,10 @@ public class XdgToplevel {
 
 
         public Events(MemorySegment eventsPtr) {
-            this.destroy           = Signal.of(wlr_xdg_toplevel.events.destroy(eventsPtr));
-            this.requestMove       = Signal.of(wlr_xdg_toplevel.events.request_move(eventsPtr), MoveEvent::new);
-            this.requestResize     = Signal.of(wlr_xdg_toplevel.events.request_resize(eventsPtr), Resize::new);
-            this.requestMaximize   = Signal.of(wlr_xdg_toplevel.events.request_maximize(eventsPtr));
+            this.destroy = Signal.of(wlr_xdg_toplevel.events.destroy(eventsPtr));
+            this.requestMove = Signal.of(wlr_xdg_toplevel.events.request_move(eventsPtr), MoveEvent::new);
+            this.requestResize = Signal.of(wlr_xdg_toplevel.events.request_resize(eventsPtr), Resize::new);
+            this.requestMaximize = Signal.of(wlr_xdg_toplevel.events.request_maximize(eventsPtr));
             this.requestFullscreen = Signal.of(wlr_xdg_toplevel.events.request_fullscreen(eventsPtr));
         }
 
@@ -123,6 +123,7 @@ public class XdgToplevel {
             public final SeatClient seat;
             public final int serial;
             public final EnumSet<Edge> edges;
+
 
             public Resize(MemorySegment ptr) {
                 this.toplevel = new XdgToplevel(wlr_xdg_toplevel_resize_event.toplevel(ptr));
