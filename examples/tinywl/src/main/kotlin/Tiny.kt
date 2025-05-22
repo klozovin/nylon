@@ -90,14 +90,13 @@ object Tiny {
     lateinit var seat: Seat
 
 
-    // Moving and resizing windows
-    var mouseButtonHeld = false
-
+    // Moving and resizing toplevel windows
     var grabbedToplevel: TyToplevel? = null
     lateinit var grabGeobox: Box
     var grabX: Double = 0.0
     var grabY: Double = 0.0
     lateinit var resizeEdges: EnumSet<Edge>
+
 
     // Used for cycling through toplevel windows
     var focusedToplevel by Delegates.notNull<Int>()
@@ -344,7 +343,7 @@ object Tiny {
                 seatCapabilities.add(SeatCapability.POINTER)
             }
 
-            else -> println("Unknown device type: ${inputDevice.type()}")
+            else -> Log.logDebug("Unknown device type: ${inputDevice.type()}")
         }
 
         seat.setCapabilities(seatCapabilities)
@@ -425,17 +424,14 @@ object Tiny {
         seat.pointerNotifyButton(event.timeMsec, event.button, event.state)
 
         when (event.state) {
-            PointerButtonState.PRESSED -> {
-                mouseButtonHeld = true
+            PointerButtonState.PRESSED ->
                 desktopToplevelAt(cursor.x(), cursor.y())?.let { (tytoplevel, _, _, _) ->
                     focusToplevel(tytoplevel)
                 }
-            }
 
-            PointerButtonState.RELEASED -> {
-                mouseButtonHeld = false
-                if (cursorMode == CursorMode.Move || cursorMode == CursorMode.Resize) resetCursorMode()
-            }
+            PointerButtonState.RELEASED ->
+                if (cursorMode == CursorMode.Move || cursorMode == CursorMode.Resize)
+                    resetCursorMode()
         }
     }
 
@@ -488,7 +484,6 @@ object Tiny {
         val focusedSurface = seat.pointerState().focusedSurface()
 
         if (tytoplevel.xdgToplevel.base().surface().surfacePtr != focusedSurface.rootSurface.surfacePtr) {
-            println("Returning!!! Ohnoes")
             return
         }
 
@@ -519,7 +514,6 @@ object Tiny {
                 }
 
                 resizeEdges = edges
-                println(edges)
             }
 
             CursorMode.Passthrough -> error("Unreachable")
@@ -654,12 +648,9 @@ object Tiny {
 
 
     fun onXdgToplevelRequestMove(event: XdgToplevel.MoveEvent) {
-        if (!mouseButtonHeld) {
-            // Hack: Apps using Rust's winit (alacritty, neovide) try to do this, so the window get's stuck
-            //       to the cursor.
-            Log.logDebug("Client trying to start drag action without having the mouse button pressed")
+        // Fix: Clients (using winit Rust library) trying to initiate drag after mouse button has been released
+        if (!seat.validatePointerGrabSerial(seat.pointerState().focusedSurface(), event.serial))
             return
-        }
         beginInteractive(
             TOPLEVELS.find { it.xdgToplevel == event.toplevel }!!,
             CursorMode.Move,
@@ -669,12 +660,9 @@ object Tiny {
 
 
     fun onXdgToplevelRequestResize(event: XdgToplevel.Events.Resize) {
-        if (!mouseButtonHeld) {
-            // Hack: Apps using Rust's winit (alacritty, neovide) try to do this, so the window get's stuck
-            //       to the cursor.
-            Log.logDebug("Client trying to start resize action without having the mouse button pressed")
+        if (!seat.validatePointerGrabSerial(seat.pointerState().focusedSurface(), event.serial))
             return
-        }
+
         beginInteractive(
             TOPLEVELS.find { it.xdgToplevel == event.toplevel }!!,
             CursorMode.Resize,
@@ -706,8 +694,6 @@ object Tiny {
 
     fun onNewPopup(popup: XdgPopup) {
         val parent = XdgSurface.tryFromSurface(popup.parent()) ?: error("Popup's parent can't be null")
-
-        println(">>>>>>>>>>>>>> ${parent.role()}")
 
         // Have to search both TOPLEVELS and POPUPS, because there can be nested popups (ie. popup whose parent is a popup itself.
         val parentSceneTree = TOPLEVELS.find { it.xdgToplevel.base() == parent }?.sceneTree

@@ -27,6 +27,7 @@ public class PointerState {
     }
 
 
+    // TODO: Is this nullable?
     public Surface focusedSurface() {
         return new Surface(wlr_seat_pointer_state.focused_surface(pointerStatePtr));
     }

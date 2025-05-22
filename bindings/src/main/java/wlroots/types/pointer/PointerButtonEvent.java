@@ -13,6 +13,7 @@ import static java.lang.foreign.MemorySegment.NULL;
 public class PointerButtonEvent {
     public final MemorySegment pointerButtonEventPtr;
 
+
     public int timeMsec;
     public int button;
     public PointerButtonState state;

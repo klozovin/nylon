@@ -99,6 +99,7 @@ public class Seat {
         );
     }
 
+
     // *** Pointer **************************************************************************************** //
 
 
@@ -156,7 +157,12 @@ public class Seat {
     }
 
 
-    // *** Other *** //
+    public boolean validatePointerGrabSerial(Surface origin, int serial) {
+        return wlr_seat_validate_pointer_grab_serial(seatPtr, origin.surfacePtr, serial);
+    }
+
+
+    // *** Other ****************************************************************************************** //
 
 
     public void setCapabilities(EnumSet<SeatCapability> capabilities) {
