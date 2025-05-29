@@ -8,7 +8,7 @@ import wayland.server.Display;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
 import wlroots.types.DataSource;
-import wlroots.types.Keyboard;
+import wlroots.types.input.Keyboard;
 import wlroots.types.KeyboardModifiers;
 import wlroots.types.compositor.Surface;
 
@@ -89,6 +89,8 @@ public class Seat {
     }
 
 
+    /// Notify the seat that the keyboard focus has changed and request it to be the focused surface for this
+    /// keyboard. Defers to any current grab of the seat's keyboard.
     public void keyboardNotifyEnter(Surface surface, MemorySegment keycodes, long numKeycodes, KeyboardModifiers modifiers) {
         wlr_seat_keyboard_notify_enter(
             seatPtr,

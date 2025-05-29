@@ -15,7 +15,7 @@ public class Utils {
     ///
     /// @param memberPtr Pointer to a member of a struct
     /// @param layout    The way the struct looks in memory (specified with Panama)
-    /// @param name      Name of the member link
+    /// @param name      Name of the member link (that is, name of the member struct memberPtr points to)
     public static MemorySegment containerOf(MemorySegment memberPtr, GroupLayout layout, String name) {
         var linkMemberByteOffset = layout.byteOffset(groupElement(name));
         var address = memberPtr.address() - linkMemberByteOffset;

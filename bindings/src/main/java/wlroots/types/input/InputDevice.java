@@ -1,7 +1,6 @@
-package wlroots.types;
+package wlroots.types.input;
 
 import jextract.wlroots.types.wlr_input_device;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
@@ -34,14 +33,6 @@ public final class InputDevice {
     }
 
 
-    // *** Methods *** //
-
-
-    public  Keyboard keyboardFromInputDevice() {
-        return new Keyboard(wlr_keyboard_from_input_device(inputDevicePtr));
-    }
-
-
     public enum Type {
         KEYBOARD(WLR_INPUT_DEVICE_KEYBOARD()),      // struct wlr_keyboard
         POINTER(WLR_INPUT_DEVICE_POINTER()),        // struct wlr_pointer
@@ -50,7 +41,7 @@ public final class InputDevice {
         TABLET_PAD(WLR_INPUT_DEVICE_TABLET_PAD()),  // struct wlr_tablet_pad
         SWITCH(WLR_INPUT_DEVICE_SWITCH());          // struct wlr_switch
 
-        public final int value;
+        final int value;
 
 
         Type(int constant) {
@@ -62,18 +53,19 @@ public final class InputDevice {
             for (var e : values())
                 if (e.value == value)
                     return e;
-            throw new RuntimeException("Invalid enum value from C code");
+            throw new RuntimeException("Invalid enum value for wlr_input_device_type");
         }
     }
 
 
-    // *** Events *** //
+    // *** Events ***************************************************************************************** //
+
 
     public final static class Events {
-        public final @NonNull Signal1<InputDevice> destroy;
+        public final  Signal1<InputDevice> destroy;
 
 
-        public Events(@NonNull MemorySegment eventsPtr) {
+        public Events(MemorySegment eventsPtr) {
             assert !eventsPtr.equals(NULL);
             this.destroy = Signal.of(wlr_input_device.events.destroy(eventsPtr), InputDevice::new);
         }

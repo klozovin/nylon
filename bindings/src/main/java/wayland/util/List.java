@@ -30,6 +30,7 @@ public final class List<T extends List.Element<@NonNull T>> {
         return list;
     }
 
+    // *** Fields ***************************************************************************************** //
 
     ///  Get `wl_list.prev` field (last element in the list).
     public @NonNull MemorySegment prev() {
@@ -47,6 +48,9 @@ public final class List<T extends List.Element<@NonNull T>> {
     public void init() {
         wl_list_init(listPtr);
     }
+
+
+    // *** Methods **************************************************************************************** //
 
 
     /// Determines if the list is empty.
@@ -79,7 +83,7 @@ public final class List<T extends List.Element<@NonNull T>> {
     }
 
 
-    /*** Additional helper methods not present in C implementation. ***/
+    /*** Helper methods not present in C implementation. ***/
 
 
     public @Nullable T getFirst() {

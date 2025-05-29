@@ -7,7 +7,9 @@ import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.RectOptions
 import wlroots.render.Renderer
-import wlroots.types.*
+import wlroots.types.input.InputDevice
+import wlroots.types.input.Keyboard
+import wlroots.types.input.KeyboardKeyEvent
 import wlroots.types.output.Output
 import wlroots.types.output.OutputState
 import xkbcommon.Keymap
@@ -80,7 +82,7 @@ fun newOutputNotify(output: Output) {
  */
 fun newInputNotify(inputDevice: InputDevice) {
     if (inputDevice.type() == InputDevice.Type.KEYBOARD) {
-        State.keyboard = inputDevice.keyboardFromInputDevice()
+        State.keyboard = Keyboard.fromInputDevice(inputDevice)
         State.keyboardKeyListener = State.keyboard.events.key.add(::keyboardKeyNotify)
         State.keyboardDestroyListener = inputDevice.events.destroy.add(::keyboardDestroyNotify)
 

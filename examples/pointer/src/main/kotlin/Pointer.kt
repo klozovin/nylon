@@ -7,19 +7,23 @@ import wlroots.render.Allocator
 import wlroots.render.RectOptions
 import wlroots.render.Renderer
 import wlroots.types.*
-import wlroots.types.InputDevice.Type.*
+import wlroots.types.Cursor
+import wlroots.types.input.InputDevice
+import wlroots.types.input.InputDevice.Type.*
+import wlroots.types.input.Keyboard
+import wlroots.types.input.KeyboardKeyEvent
 import wlroots.types.output.Output
 import wlroots.types.output.OutputLayout
 import wlroots.types.output.OutputState
-import wlroots.types.pointer.PointerAxisEvent
-import wlroots.types.pointer.PointerButtonEvent
-import wlroots.types.pointer.PointerMotionAbsoluteEvent
-import wlroots.types.pointer.PointerMotionEvent
-import wlroots.types.tablet.TabletToolAxisEvent
-import wlroots.types.touch.TouchCancelEvent
-import wlroots.types.touch.TouchDownEvent
-import wlroots.types.touch.TouchMotionEvent
-import wlroots.types.touch.TouchUpEvent
+import wlroots.types.input.PointerAxisEvent
+import wlroots.types.input.PointerButtonEvent
+import wlroots.types.input.PointerMotionAbsoluteEvent
+import wlroots.types.input.PointerMotionEvent
+import wlroots.types.input.TabletToolAxisEvent
+import wlroots.types.input.TouchCancelEvent
+import wlroots.types.input.TouchDownEvent
+import wlroots.types.input.TouchMotionEvent
+import wlroots.types.input.TouchUpEvent
 import wlroots.util.Log
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
@@ -144,7 +148,8 @@ object Pointer {
         when (device.type()) {
             POINTER, TOUCH, TABLET -> cursor.attachInputDevice(device)
             KEYBOARD -> {
-                keyboard = device.keyboardFromInputDevice()
+//                keyboard = device.keyboardFromInputDevice()
+                keyboard = Keyboard.fromInputDevice(device)
                 keyboardKeyListener = keyboard.events.key.add(::onKeyboardKey)
                 inputDeviceDestroyListener = device.events.destroy.add(::onKeyboardDestroy)
 

@@ -1,4 +1,4 @@
-package wlroots.types.touch;
+package wlroots.types.input;
 
 import org.jspecify.annotations.NullMarked;
 

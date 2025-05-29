@@ -1,9 +1,10 @@
-package wlroots.types;
+package wlroots.types.input;
 
 import jextract.wlroots.types.wlr_keyboard;
 import org.jspecify.annotations.NullMarked;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
+import wlroots.types.KeyboardModifiers;
 import xkbcommon.Keymap;
 import xkbcommon.XkbState;
 
@@ -29,7 +30,13 @@ public class Keyboard {
     }
 
 
-    // *** Fields *** //
+    ///  Get a {@link Keyboard} from {@link InputDevice}, asserting that the input device is a keyboard.
+    public static Keyboard fromInputDevice(InputDevice inputDevice) {
+        return new Keyboard(wlr_keyboard_from_input_device(inputDevice.inputDevicePtr));
+    }
+
+
+    // *** Fields ***************************************************************************************** //
 
 
     public XkbState xkbState() {
@@ -64,7 +71,7 @@ public class Keyboard {
     }
 
 
-    // *** Methods *** //
+    // *** Methods **************************************************************************************** //
 
 
     public boolean setKeymap(Keymap keymap) {
@@ -87,6 +94,10 @@ public class Keyboard {
     }
 
 
+    // *** Modifiers *** //
+
+
+    // TODO: Move to enum, and enumset, move out from Keyboard class
     public final static class Modifiers {
 
         private final int modifiers;
@@ -103,12 +114,10 @@ public class Keyboard {
     }
 
 
-    // *** Events *** //
+    // *** Events ***************************************************************************************** //
 
 
     public final static class Events {
-        public final MemorySegment eventsPtr;
-
         /// Raised when a key has been pressed or released on the keyboard. Emitted before the xkb state of
         /// the keyboard has been updated (including modifiers).
         public final Signal1<KeyboardKeyEvent> key;
@@ -119,11 +128,10 @@ public class Keyboard {
         public final Signal1<Keyboard> modifiers;
 
 
-        public Events(MemorySegment eventsPtr) {
-            this.eventsPtr = eventsPtr;
-
-            this.key = Signal.of(wlr_keyboard.events.key(eventsPtr), KeyboardKeyEvent::new);
-            this.modifiers = Signal.of(wlr_keyboard.events.modifiers(eventsPtr), Keyboard::new);
+        public Events(MemorySegment ptr) {
+            assert !ptr.equals(NULL);
+            this.key       = Signal.of(wlr_keyboard.events.key(ptr), KeyboardKeyEvent::new);
+            this.modifiers = Signal.of(wlr_keyboard.events.modifiers(ptr), Keyboard::new);
         }
     }
 }

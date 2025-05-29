@@ -1,13 +1,12 @@
 package wlroots.backend;
 
 import jextract.wlroots.wlr_backend;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.EventLoop;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
-import wlroots.types.InputDevice;
+import wlroots.types.input.InputDevice;
 import wlroots.types.output.Output;
 
 import java.lang.foreign.MemorySegment;
@@ -20,12 +19,13 @@ import static jextract.wlroots.backend_h.*;
 ///
 /// Buffer capabilities and features can change over the lifetime of a backend, for instance when a
 /// child backend is added to a multi-backend.
+@NullMarked
 public final class Backend {
-    public final @NonNull MemorySegment backendPtr;
-    public final @NonNull Events events;
+    public final MemorySegment backendPtr;
+    public final Events events;
 
 
-    public Backend(@NonNull MemorySegment backendPtr) {
+    public Backend(MemorySegment backendPtr) {
         assert !backendPtr.equals(NULL);
         this.backendPtr = backendPtr;
         this.events = new Events(wlr_backend.events(backendPtr));
@@ -47,7 +47,7 @@ public final class Backend {
     ///     struct wlr_session **session_ptr
     /// );
     ///```
-    public static @Nullable Backend autocreate(@NonNull EventLoop eventLoop, @Nullable Session session) {
+    public static @Nullable Backend autocreate(EventLoop eventLoop, @Nullable Session session) {
         var backendPtr = wlr_backend_autocreate(
             eventLoop.eventLoopPtr,
             switch (session) {
@@ -56,6 +56,8 @@ public final class Backend {
             });
         return !backendPtr.equals(NULL) ? new Backend(backendPtr) : null;
     }
+
+    // *** Methods **************************************************************************************** //
 
 
     public boolean start() {
@@ -68,22 +70,25 @@ public final class Backend {
     }
 
 
-    @NullMarked
-    public final static class Events {
-        public final MemorySegment eventsPtr;
+    // *** Events ***************************************************************************************** //
 
+
+    public final static class Events {
         /// Raised when a new output (display, monitor, VR) becomes available
         public final Signal1<Output> newOutput;
 
         /// Raised when a new input device becomes available
         public final Signal1<InputDevice> newInput;
 
+        ///  Raised when backend destroyed
+        public final Signal1<Backend> destroy;
+
 
         Events(MemorySegment eventsPtr) {
             assert !eventsPtr.equals(NULL);
-            this.eventsPtr = eventsPtr;
             newOutput = Signal.of(wlr_backend.events.new_output(eventsPtr), Output::new);
-            newInput = Signal.of(wlr_backend.events.new_input(eventsPtr), InputDevice::new);
+            newInput  = Signal.of(wlr_backend.events.new_input(eventsPtr), InputDevice::new);
+            destroy   = Signal.of(wlr_backend.events.destroy(eventsPtr), Backend::new);
         }
     }
 }

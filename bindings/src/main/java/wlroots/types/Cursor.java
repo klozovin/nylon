@@ -6,13 +6,8 @@ import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
 import wlroots.types.compositor.Surface;
+import wlroots.types.input.*;
 import wlroots.types.output.OutputLayout;
-import wlroots.types.pointer.*;
-import wlroots.types.tablet.TabletToolAxisEvent;
-import wlroots.types.touch.TouchCancelEvent;
-import wlroots.types.touch.TouchDownEvent;
-import wlroots.types.touch.TouchMotionEvent;
-import wlroots.types.touch.TouchUpEvent;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -33,6 +28,7 @@ public class Cursor {
 
 
     public Cursor(MemorySegment cursorPtr) {
+        assert !cursorPtr.equals(NULL);
         this.cursorPtr = cursorPtr;
         this.events = new Events(wlr_cursor.events(cursorPtr));
     }
@@ -41,6 +37,9 @@ public class Cursor {
     public static Cursor create() {
         return new Cursor(wlr_cursor_create());
     }
+
+
+    // *** Fields ***************************************************************************************** //
 
 
     public double x() {
@@ -132,8 +131,6 @@ public class Cursor {
 
 
     public static class Events {
-        final MemorySegment eventsPtr;
-
         /// Raised by the {@link Pointer} forwarding its relative (delta) pointer motion event
         public final Signal1<PointerMotionEvent> motion;
         public final Signal1<PointerMotionAbsoluteEvent> motionAbsolute;
@@ -153,21 +150,20 @@ public class Cursor {
         public final Signal1<TabletToolAxisEvent> tabletToolAxis;
 
 
-        Events(MemorySegment eventsPtr) {
-            this.eventsPtr = eventsPtr;
+        Events(MemorySegment ptr) {
+            // TODO: Lots of missing events
+            this.motion         = Signal.of(wlr_cursor.events.motion(ptr), PointerMotionEvent::new);
+            this.motionAbsolute = Signal.of(wlr_cursor.events.motion_absolute(ptr), PointerMotionAbsoluteEvent::new);
+            this.button         = Signal.of(wlr_cursor.events.button(ptr), PointerButtonEvent::new);
+            this.axis           = Signal.of(wlr_cursor.events.axis(ptr), PointerAxisEvent::new);
+            this.frame          = Signal.of(wlr_cursor.events.frame(ptr), Cursor::new);
 
-            this.motion = Signal.of(wlr_cursor.events.motion(eventsPtr), PointerMotionEvent::new);
-            this.motionAbsolute = Signal.of(wlr_cursor.events.motion_absolute(eventsPtr), PointerMotionAbsoluteEvent::new);
-            this.button = Signal.of(wlr_cursor.events.button(eventsPtr), PointerButtonEvent::new);
-            this.axis = Signal.of(wlr_cursor.events.axis(eventsPtr), PointerAxisEvent::new);
-            this.frame = Signal.of(wlr_cursor.events.frame(eventsPtr), Cursor::new);
+            this.touchUp     = Signal.of(wlr_cursor.events.touch_up(ptr), TouchUpEvent::new);
+            this.touchDown   = Signal.of(wlr_cursor.events.touch_down(ptr), TouchDownEvent::new);
+            this.touchMotion = Signal.of(wlr_cursor.events.touch_motion(ptr), TouchMotionEvent::new);
+            this.touchCancel = Signal.of(wlr_cursor.events.touch_cancel(ptr), TouchCancelEvent::new);
 
-            this.touchUp = Signal.of(wlr_cursor.events.touch_up(eventsPtr), TouchUpEvent::new);
-            this.touchDown = Signal.of(wlr_cursor.events.touch_down(eventsPtr), TouchDownEvent::new);
-            this.touchMotion = Signal.of(wlr_cursor.events.touch_motion(eventsPtr), TouchMotionEvent::new);
-            this.touchCancel = Signal.of(wlr_cursor.events.touch_cancel(eventsPtr), TouchCancelEvent::new);
-
-            this.tabletToolAxis = Signal.of(wlr_cursor.events.tablet_tool_axis(eventsPtr), TabletToolAxisEvent::new);
+            this.tabletToolAxis = Signal.of(wlr_cursor.events.tablet_tool_axis(ptr), TabletToolAxisEvent::new);
         }
     }
 }

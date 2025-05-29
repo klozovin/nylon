@@ -11,14 +11,18 @@ import wlroots.types.*
 import wlroots.types.compositor.Compositor
 import wlroots.types.compositor.Subcompositor
 import wlroots.types.compositor.Surface
+import wlroots.types.Cursor
+import wlroots.types.input.InputDevice
+import wlroots.types.input.KeyboardKeyEvent
+import wlroots.types.input.Keyboard
 import wlroots.types.output.EventRequestState
 import wlroots.types.output.Output
 import wlroots.types.output.OutputLayout
 import wlroots.types.output.OutputState
-import wlroots.types.pointer.PointerAxisEvent
-import wlroots.types.pointer.PointerButtonEvent
-import wlroots.types.pointer.PointerMotionAbsoluteEvent
-import wlroots.types.pointer.PointerMotionEvent
+import wlroots.types.input.PointerAxisEvent
+import wlroots.types.input.PointerButtonEvent
+import wlroots.types.input.PointerMotionAbsoluteEvent
+import wlroots.types.input.PointerMotionEvent
 import wlroots.types.scene.*
 import wlroots.types.seat.PointerRequestSetCursorEvent
 import wlroots.types.seat.RequestSetSelectionEvent
@@ -306,7 +310,7 @@ object Tiny {
 
         when (inputDevice.type()) {
             InputDevice.Type.KEYBOARD -> {
-                val keyboard = inputDevice.keyboardFromInputDevice()
+                val keyboard = Keyboard.fromInputDevice(inputDevice)
 
                 val context = XkbContext.of(XkbContext.Flags.NO_FLAGS) ?: error {
                     Log.logError("Failed to create XKB context")
