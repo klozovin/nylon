@@ -39,6 +39,12 @@ public class Listener implements List.Element<Listener> {
     }
 
 
+    @Override
+    public int hashCode() {
+        return listenerPtr.hashCode();
+    }
+
+
     public static Listener allocate(Arena arena, wl_notify_func_t.Function notify) {
         var listenerPtr = wl_listener.allocate(arena);
         var notifyFunctionPtr = wl_notify_func_t.allocate(notify, arena);

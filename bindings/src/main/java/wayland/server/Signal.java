@@ -96,8 +96,6 @@ public abstract sealed class Signal {
             listenerList.append(listener);
             return listener;
         }
-
-
     }
 
 

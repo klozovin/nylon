@@ -1,5 +1,9 @@
 # Linux desktop kitchen sink.
 
+## Compositor
+
+Minimal Wayland compositor in Kotlin, based on wlroots.
+
 ## Dewey
 
 Simple GUI file manager, based on GTK and inspired by ranger.
