@@ -30,6 +30,21 @@ public class Keyboard {
     }
 
 
+    @Override
+    public boolean equals(Object obj) {
+        return switch (obj) {
+            case Keyboard kb -> keyboardPtr.equals(kb.keyboardPtr);
+            default -> false;
+        };
+    }
+
+
+    @Override
+    public int hashCode() {
+        return keyboardPtr.hashCode();
+    }
+
+
     ///  Get a {@link Keyboard} from {@link InputDevice}, asserting that the input device is a keyboard.
     public static Keyboard fromInputDevice(InputDevice inputDevice) {
         return new Keyboard(wlr_keyboard_from_input_device(inputDevice.inputDevicePtr));

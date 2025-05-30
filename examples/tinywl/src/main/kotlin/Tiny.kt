@@ -63,10 +63,10 @@ class TyToplevel(val xdgToplevel: XdgToplevel, val sceneTree: SceneTree) {
     lateinit var onUnmapListener: Listener
     lateinit var onDestroyListener: Listener
 
-    lateinit var onRrequestMoveListener: Listener
-    lateinit var onRrequestResizeListener: Listener
-    lateinit var onRrequestMaximizeListener: Listener
-    lateinit var onRrequestFullscreenListener: Listener
+    lateinit var onRequestMoveListener: Listener
+    lateinit var onRequestResizeListener: Listener
+    lateinit var onRequestMaximizeListener: Listener
+    lateinit var onRequestFullscreenListener: Listener
 }
 
 
@@ -134,8 +134,8 @@ object Tiny {
         sceneOutputLayout = scene.attachOutputLayout(outputLayout)
 
         xdgShell = XdgShell.create(display, 3)
-        xdgShell.events.newToplevel.add(::onXdgToplevelNew)
-        xdgShell.events.newPopup.add(::onNewPopup)
+        xdgShell.events.newToplevel.add(::onNewXdgToplevel)
+        xdgShell.events.newPopup.add(::onNewXdgPopup)
 
         cursor = Cursor.create().apply {
             attachOutputLayout(outputLayout)
@@ -317,7 +317,7 @@ object Tiny {
                     exitProcess(1)
                 }
                 val keymap = context.keymapNewFromNames(null, Keymap.CompileFlags.NO_FLAGS) ?: error {
-                    Log.logError("Failed to create XKB context")
+                    Log.logError("Failed to create XKB keymap")
                     exitProcess(1)
                 }
                 with(keyboard) {
@@ -585,7 +585,7 @@ object Tiny {
     // *** XDG Shell: Top level *************************************************************************** //
 
 
-    fun onXdgToplevelNew(toplevel: XdgToplevel) {
+    fun onNewXdgToplevel(toplevel: XdgToplevel) {
         val sceneTree = scene.tree().xdgSurfaceCreate(toplevel.base())
         val tytop = TyToplevel(toplevel, sceneTree)
 
@@ -599,10 +599,10 @@ object Tiny {
         // Event handlers for the XDG Toplevel surface
         with(toplevel.events) {
             tytop.onDestroyListener = destroy.add(::onXdgToplevelDestroy)
-            tytop.onRrequestMoveListener = requestMove.add(::onXdgToplevelRequestMove)
-            tytop.onRrequestResizeListener = requestResize.add(::onXdgToplevelRequestResize)
-            tytop.onRrequestMaximizeListener = requestMaximize.add(::onXdgToplevelRequestMaximize)
-            tytop.onRrequestFullscreenListener = requestFullscreen.add(::onXdgToplevelRequestFullscreen)
+            tytop.onRequestMoveListener = requestMove.add(::onXdgToplevelRequestMove)
+            tytop.onRequestResizeListener = requestResize.add(::onXdgToplevelRequestResize)
+            tytop.onRequestMaximizeListener = requestMaximize.add(::onXdgToplevelRequestMaximize)
+            tytop.onRequestFullscreenListener = requestFullscreen.add(::onXdgToplevelRequestFullscreen)
         }
         TOPLEVELS.add(tytop)
     }
@@ -642,10 +642,10 @@ object Tiny {
             onCommitListener.remove()
             onDestroyListener.remove()
 
-            onRrequestMoveListener.remove()
-            onRrequestResizeListener.remove()
-            onRrequestMaximizeListener.remove()
-            onRrequestFullscreenListener.remove()
+            onRequestMoveListener.remove()
+            onRequestResizeListener.remove()
+            onRequestMaximizeListener.remove()
+            onRequestFullscreenListener.remove()
         }
         TOPLEVELS.removeAt(idx)
     }
@@ -663,7 +663,7 @@ object Tiny {
     }
 
 
-    fun onXdgToplevelRequestResize(event: XdgToplevel.Events.Resize) {
+    fun onXdgToplevelRequestResize(event: XdgToplevel.ResizeEvent) {
         if (!seat.validatePointerGrabSerial(seat.pointerState().focusedSurface(), event.serial))
             return
 
@@ -677,7 +677,7 @@ object Tiny {
 
     // Client wants to fullscreen itself, but we don't support that.
     fun onXdgToplevelRequestFullscreen(listener: Listener) {
-        TOPLEVELS.find { it.onRrequestFullscreenListener == listener }?.let {
+        TOPLEVELS.find { it.onRequestFullscreenListener == listener }?.let {
             if (it.xdgToplevel.base().initialized())
                 it.xdgToplevel.base().scheduleConfigure()
         }
@@ -687,7 +687,7 @@ object Tiny {
     // Client wants to maximize itself, but we don't support that. Just send configure, by xdg-shell protocol
     // specification.
     fun onXdgToplevelRequestMaximize(listener: Listener) {
-        val xdgToplevel = TOPLEVELS.find { it.onRrequestMaximizeListener == listener }!!.xdgToplevel
+        val xdgToplevel = TOPLEVELS.find { it.onRequestMaximizeListener == listener }!!.xdgToplevel
         if (xdgToplevel.base().initialized())
             xdgToplevel.base().scheduleConfigure()
     }
@@ -696,7 +696,7 @@ object Tiny {
     // *** XDG Shell: Popups ****************************************************************************** //
 
 
-    fun onNewPopup(popup: XdgPopup) {
+    fun onNewXdgPopup(popup: XdgPopup) {
         val parent = XdgSurface.tryFromSurface(popup.parent()) ?: error("Popup's parent can't be null")
 
         // Have to search both TOPLEVELS and POPUPS, because there can be nested popups (ie. popup whose parent is a popup itself.

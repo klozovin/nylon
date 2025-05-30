@@ -39,7 +39,22 @@ public final class Output {
     }
 
 
-    // *** Getters and setters *** //
+    @Override
+    public boolean equals(Object other) {
+        return switch (other) {
+            case Output otherOutput -> outputPtr.equals(otherOutput.outputPtr);
+            default -> false;
+        };
+    }
+
+
+    @Override
+    public int hashCode() {
+        return outputPtr.hashCode();
+    }
+
+
+    // *** Fields ***************************************************************************************** //
 
 
     public int width() {

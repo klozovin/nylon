@@ -8,7 +8,6 @@ import wlroots.types.Cursor
 import wlroots.types.DataDeviceManager
 import wlroots.types.XcursorManager
 import wlroots.types.compositor.Subcompositor
-import wlroots.types.output.Output
 import wlroots.types.output.OutputLayout
 import wlroots.types.scene.Scene
 import wlroots.types.scene.SceneOutputLayout
@@ -16,6 +15,7 @@ import wlroots.types.seat.PointerRequestSetCursorEvent
 import wlroots.types.seat.RequestSetSelectionEvent
 import wlroots.types.seat.Seat
 import wlroots.types.xdgshell.XdgShell
+import wlroots.types.xdgshell.XdgToplevel
 import wlroots.util.Log
 import kotlin.system.exitProcess
 import wlroots.types.compositor.Compositor as WlrCompositor
@@ -39,10 +39,15 @@ class Compositor {
 
     val seat: Seat
 
+    val outputSystem: OutputSystem
     val inputSystem: InputSystem
     val windowSystem: WindowSystem
 
     lateinit var socket: String
+
+    // TODO: Move to separate state machine
+    // Grab mode: move, resize
+    var grabbedToplevel: XdgToplevel? = null
 
 
     init {
@@ -57,14 +62,16 @@ class Compositor {
 
         // TODO: systems should init handlers themselves
         inputSystem = InputSystem(this)
+        outputSystem = OutputSystem(this)
         windowSystem = WindowSystem(this)
 
 
         // TODO: Definitely move down
-        backend.events.newOutput.add(::onNewOutput)
+        // This starts everything
+        backend.events.newOutput.add(outputSystem::onNewOutput)
         backend.events.newInput.add(inputSystem::onNewInput)
 
-        // TODO: Why now keep instances around?
+        // TODO: Why not keep instances around?
         WlrCompositor.create(display, 5, renderer)
         Subcompositor.create(display)
         DataDeviceManager.create(display)
@@ -83,7 +90,7 @@ class Compositor {
             attachOutputLayout(outputLayout)
             with(events) {
                 motion.add(inputSystem::onCursorMotion)
-                motionAbsolute.add(inputSystem::onCursorMotionAbsoulute)
+                motionAbsolute.add(inputSystem::onCursorMotionAbsolute)
                 button.add(inputSystem::onCursorButton)
                 axis.add(inputSystem::onCursorAxis)
                 frame.add(inputSystem::onCursorFrame)
@@ -114,14 +121,19 @@ class Compositor {
 
         Log.logInfo("Running Wayland compositor on WAYLAND_DISPLAY=$socket")
         display.run()
+        cleanup()
     }
 
 
     fun stop() {
+        Log.logInfo("Stopping Wayland compositor on WAYLAND_DISPLAY=$socket")
         display.terminate()
+    }
 
+
+    fun cleanup() {
         // Cleanup after the wl_display_run() returns
-        // TODO: Anything missing?
+        // TODO: Anything missing? check with tinywl.c
         display.destroyClients()
         scene.tree().node().destroy()
         xcursorManager.destroy()
@@ -142,22 +154,17 @@ class Compositor {
     }
 
 
-    // *** Events *** //
-
-    fun onNewAnything(x: Any) {
-        TODO()
-    }
-
-    fun onNewOutput(output: Output) {
-
-    }
+    // *** Seat signals *** //
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
-        TODO()
+        val focusedClient = seat.pointerState().focusedClient()
+        if (focusedClient?.seatClientPtr == event.seatClient.seatClientPtr) // TODO: Implement equals() for SeatClient
+            cursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
     }
 
+
     fun onSeatRequestSetSelection(event: RequestSetSelectionEvent) {
-        TODO()
+        seat.setSelection(event.source, event.serial)
     }
 
 }

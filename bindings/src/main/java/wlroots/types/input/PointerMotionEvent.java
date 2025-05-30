@@ -10,22 +10,22 @@ import static java.lang.foreign.MemorySegment.NULL;
 
 @NullMarked
 public class PointerMotionEvent {
-    public final MemorySegment pointerMotionEventPtr;
+//    public final MemorySegment pointerMotionEventPtr;
 
     public final Pointer pointer;
-    public final int timeMsec;
     public final double deltaX;
     public final double deltaY;
+    public final int timeMsec;
 
 
-    public PointerMotionEvent(MemorySegment pointerMotionEventPtr) {
-        assert !pointerMotionEventPtr.equals(NULL);
+    public PointerMotionEvent(MemorySegment ptr) {
+        assert !ptr.equals(NULL);
 
-        this.pointerMotionEventPtr = pointerMotionEventPtr;
+//        this.pointerMotionEventPtr = pointerMotionEventPtr;
 
-        this.pointer = new Pointer(wlr_pointer_motion_event.pointer(pointerMotionEventPtr));
-        this.timeMsec = wlr_pointer_motion_event.time_msec(pointerMotionEventPtr);
-        this.deltaX = wlr_pointer_motion_event.delta_x(pointerMotionEventPtr);
-        this.deltaY = wlr_pointer_motion_event.delta_y(pointerMotionEventPtr);
+        this.pointer  = new Pointer(wlr_pointer_motion_event.pointer(ptr));
+        this.deltaX   = wlr_pointer_motion_event.delta_x(ptr);
+        this.deltaY   = wlr_pointer_motion_event.delta_y(ptr);
+        this.timeMsec = wlr_pointer_motion_event.time_msec(ptr);
     }
 }

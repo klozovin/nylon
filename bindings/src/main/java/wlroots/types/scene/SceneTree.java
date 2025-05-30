@@ -24,6 +24,21 @@ public final class SceneTree {
     }
 
 
+    @Override
+    public boolean equals(Object other) {
+        return switch (other) {
+            case SceneTree otherSceneTree -> sceneTreePtr.equals(otherSceneTree.sceneTreePtr);
+            default -> false;
+        };
+    }
+
+
+    @Override
+    public int hashCode() {
+        return sceneTreePtr.hashCode();
+    }
+
+
     public static @Nullable SceneTree ofPtrOrNull(MemorySegment ptr) {
         return !ptr.equals(NULL) ? new SceneTree(ptr) : null;
     }

@@ -33,11 +33,17 @@ public class XdgToplevel {
 
 
     @Override
-    public boolean equals(Object obj) {
-        return switch (obj) {
-            case XdgToplevel other -> xdgToplevelPtr.equals(other.xdgToplevelPtr);
+    public boolean equals(Object other) {
+        return switch (other) {
+            case XdgToplevel otherToplevel -> xdgToplevelPtr.equals(otherToplevel.xdgToplevelPtr);
             default -> false;
         };
+    }
+
+
+    @Override
+    public int hashCode() {
+        return xdgToplevelPtr.hashCode();
     }
 
 
@@ -103,38 +109,22 @@ public class XdgToplevel {
     public static class Events {
         public final Signal0 destroy;
         public final Signal1<MoveEvent> requestMove;
-        public final Signal1<Resize> requestResize;
+        public final Signal1<ResizeEvent> requestResize;
         public final Signal0 requestMaximize;
         public final Signal0 requestFullscreen;
 
 
         public Events(MemorySegment eventsPtr) {
-            this.destroy = Signal.of(wlr_xdg_toplevel.events.destroy(eventsPtr));
-            this.requestMove = Signal.of(wlr_xdg_toplevel.events.request_move(eventsPtr), MoveEvent::new);
-            this.requestResize = Signal.of(wlr_xdg_toplevel.events.request_resize(eventsPtr), Resize::new);
-            this.requestMaximize = Signal.of(wlr_xdg_toplevel.events.request_maximize(eventsPtr));
+            this.destroy           = Signal.of(wlr_xdg_toplevel.events.destroy(eventsPtr));
+            this.requestMove       = Signal.of(wlr_xdg_toplevel.events.request_move(eventsPtr), MoveEvent::new);
+            this.requestResize     = Signal.of(wlr_xdg_toplevel.events.request_resize(eventsPtr), ResizeEvent::new);
+            this.requestMaximize   = Signal.of(wlr_xdg_toplevel.events.request_maximize(eventsPtr));
             this.requestFullscreen = Signal.of(wlr_xdg_toplevel.events.request_fullscreen(eventsPtr));
-        }
-
-
-        /// `struct wlr_xdg_toplevel_resize_event`
-        public static class Resize {
-            public final XdgToplevel toplevel;
-            public final SeatClient seat;
-            public final int serial;
-            public final EnumSet<Edge> edges;
-
-
-            public Resize(MemorySegment ptr) {
-                this.toplevel = new XdgToplevel(wlr_xdg_toplevel_resize_event.toplevel(ptr));
-                this.seat = new SeatClient(wlr_xdg_toplevel_resize_event.seat(ptr));
-                this.serial = wlr_xdg_toplevel_resize_event.serial(ptr);
-                this.edges = Edge.fromBitset(wlr_xdg_toplevel_resize_event.edges(ptr));
-            }
         }
     }
 
 
+    /// `struct wlr_xdg_toplevel_move_event {}`
     public static class MoveEvent {
         public final XdgToplevel toplevel;
         public final SeatClient seat;
@@ -143,8 +133,24 @@ public class XdgToplevel {
 
         public MoveEvent(MemorySegment moveEventPtr) {
             this.toplevel = new XdgToplevel(wlr_xdg_toplevel_move_event.toplevel(moveEventPtr));
-            this.seat = new SeatClient(wlr_xdg_toplevel_move_event.seat(moveEventPtr));
-            this.serial = wlr_xdg_toplevel_move_event.serial(moveEventPtr);
+            this.seat     = new SeatClient(wlr_xdg_toplevel_move_event.seat(moveEventPtr));
+            this.serial   = wlr_xdg_toplevel_move_event.serial(moveEventPtr);
+        }
+    }
+
+    /// `struct wlr_xdg_toplevel_resize_event {}`
+    public static class ResizeEvent {
+        public final XdgToplevel toplevel;
+        public final SeatClient seat;
+        public final int serial;
+        public final EnumSet<Edge> edges;
+
+
+        public ResizeEvent(MemorySegment ptr) {
+            this.toplevel = new XdgToplevel(wlr_xdg_toplevel_resize_event.toplevel(ptr));
+            this.seat     = new SeatClient(wlr_xdg_toplevel_resize_event.seat(ptr));
+            this.serial   = wlr_xdg_toplevel_resize_event.serial(ptr);
+            this.edges    = Edge.fromBitset(wlr_xdg_toplevel_resize_event.edges(ptr));
         }
     }
 }

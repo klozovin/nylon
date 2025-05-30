@@ -20,6 +20,7 @@ public enum SeatCapability {
 
 
     public static int setToBitfield(EnumSet<SeatCapability> capabilities) {
+        // TODO: Don't use streaming ^)
         //        int bitfield = 0;
 //        for (var cap : capabilities)
 //            bitfield |= cap.value;

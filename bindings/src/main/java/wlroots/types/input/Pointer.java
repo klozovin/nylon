@@ -20,6 +20,15 @@ public class Pointer {
     }
 
 
+    @Override
+    public boolean equals(Object obj) {
+        return switch (obj) {
+            case Pointer pt -> pointerPtr.equals(pt.pointerPtr);
+            default -> false;
+        };
+    }
+
+
     ///  Get a {@link Pointer} from an {@link InputDevice}, asserting that the input device is a pointer.
     public static Pointer fromInputDevice(InputDevice inputDevice) {
         return new Pointer(wlr_pointer_from_input_device(inputDevice.inputDevicePtr));

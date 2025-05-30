@@ -172,6 +172,14 @@ public class Seat {
     }
 
 
+    /// Add {@link SeatCapability} to this seat. Convenience function not present in C code.
+    public void addCapability(SeatCapability capability) {
+        var capabilities = this.capabilities();
+        capabilities.add(capability);
+        this.setCapabilities(capabilities);
+    }
+
+
     /// Sets the current selection for the seat. NULL can be provided to clear it. This removes the previous
     /// one if there was any. In case the selection doesn't come from a client, wl_display_next_serial() can
     /// be used to generate a serial.
