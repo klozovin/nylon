@@ -5,6 +5,7 @@ import wayland.KeyboardKeyState
 import wayland.PointerButtonState
 import wayland.SeatCapability
 import wayland.server.Listener
+import wayland.util.Edge
 import wlroots.types.Cursor
 import wlroots.types.input.*
 import xkbcommon.Keymap
@@ -51,7 +52,41 @@ class InputSystem(val compositor: Compositor) {
     }
 
     fun processCursorResize(timeMsec: Int) {
-        TODO()
+        val grabbedToplevel = compositor.grabbedToplevel!!
+        val grabbedSceneTree = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!
+
+        val borderX = compositor.cursor.x() - compositor.grabX
+        val borderY = compositor.cursor.y() - compositor.grabY
+
+        var newLeft = compositor.grabGeobox.x()
+        var newRight = compositor.grabGeobox.x() + compositor.grabGeobox.width()
+
+        var newTop = compositor.grabGeobox.y()
+        var newBottom = compositor.grabGeobox.y() + compositor.grabGeobox.height()
+
+        if (Edge.TOP in compositor.resizeEdges) {
+            newTop = borderY.toInt()
+            if (newTop >= newBottom)
+                newTop = newBottom - 1
+        } else if (Edge.BOTTOM in compositor.resizeEdges) {
+            newBottom = borderY.toInt()
+            if (newBottom <= newTop)
+                newBottom = newTop + 1
+        }
+
+        if (Edge.LEFT in compositor.resizeEdges) {
+            newLeft = borderX.toInt()
+            if (newLeft >= newRight)
+                newLeft = newRight - 1
+        } else if (Edge.RIGHT in compositor.resizeEdges) {
+            newRight = borderX.toInt()
+            if (newRight <= newLeft)
+                newRight = newLeft + 1
+        }
+
+        val geoBox = grabbedToplevel.base().getGeometry()
+        grabbedSceneTree.node().setPosition(newLeft - geoBox.x(), newTop - geoBox.y())
+        grabbedToplevel.setSize(newRight - newLeft, newBottom - newTop)
     }
 
 

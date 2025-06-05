@@ -7,13 +7,18 @@ import wlroots.types.scene.SceneBuffer
 import wlroots.types.scene.SceneNode
 import wlroots.types.scene.SceneSurface
 import wlroots.types.scene.SceneTree
+import wlroots.types.xdgshell.XdgPopup
+import wlroots.types.xdgshell.XdgSurface
 import wlroots.types.xdgshell.XdgToplevel
 import java.util.*
 
 
 class WindowSystem(val compositor: Compositor) {
     val toplevels: MutableMap<Listener, XdgToplevel> = HashMap()
-    val toplevelSceneTree: MutableMap<XdgToplevel, SceneTree> = HashMap() // TODO: Use BidiMap here
+    val toplevelSceneTree: MutableMap<XdgToplevel, SceneTree> = HashMap() // TODO: Use BidiMap here?
+
+    val popups: MutableMap<Listener, XdgPopup> = HashMap()
+    val popupSceneTree: MutableMap<XdgPopup, SceneTree> = HashMap()
 
     var focusedToplevel: XdgToplevel? = null // TODO: Should go to 'cycle' class
 
@@ -77,9 +82,9 @@ class WindowSystem(val compositor: Compositor) {
 
 
     fun beginInteractive(toplevel: XdgToplevel, mode: CursorMode, edges: EnumSet<Edge>?) {
-        val focusedSurface = compositor.seat.pointerState().focusedSurface()
-
-        if (toplevel.base().surface() != focusedSurface.rootSurface)
+        // TODO: Is this the way to do it?
+        // Deny move/resize requests from unfocused clients
+        if (toplevel.base().surface() != compositor.seat.pointerState().focusedSurface().rootSurface)
             return
 
         compositor.grabbedToplevel = toplevel
@@ -93,7 +98,25 @@ class WindowSystem(val compositor: Compositor) {
             }
 
             CursorMode.Resize -> {
-                TODO()
+                require(edges != null)
+
+                val geometryBox = toplevel.base().getGeometry()
+
+                val borderX =
+                    (sceneNode.x() + geometryBox.x()) + if (Edge.RIGHT in edges) geometryBox.width() else 0
+                val borderY =
+                    (sceneNode.y() + geometryBox.y()) + if (Edge.BOTTOM in edges) geometryBox.height() else 0
+
+                compositor.grabX = compositor.cursor.x() - borderX
+                compositor.grabY = compositor.cursor.y() - borderY
+
+                compositor.grabGeobox = geometryBox
+                with(compositor.grabGeobox) {
+                    x(x() + sceneNode.x())
+                    y(y() + sceneNode.y())
+                }
+
+                compositor.resizeEdges = edges
             }
 
             CursorMode.Passthrough -> {
@@ -108,39 +131,81 @@ class WindowSystem(val compositor: Compositor) {
     //
 
     fun onNewToplevel(toplevel: XdgToplevel) {
-        val sceneTree = compositor.scene.tree().xdgSurfaceCreate(toplevel.base())
-        toplevelSceneTree.put(toplevel, sceneTree)
-
-        // Signal listeners for this toplevel's base surface
-        with(toplevel.base().surface().events) {
-            toplevels.put(map.add(::onToplevelMap), toplevel)
-            toplevels.put(unmap.add(::onToplevelUnmap), toplevel)
-            toplevels.put(commit.add(::onToplevelCommit), toplevel)
-        }
-
-        // Signal listeners for the XDG toplevel
-        with(toplevel.events) {
-            toplevels.put(destroy.add(::onToplevelDestroy), toplevel)
-            toplevels.put(requestMove.add(::onToplevelRequestMove), toplevel)
-            toplevels.put(requestResize.add(::onToplevelRequestResize), toplevel)
-            toplevels.put(requestMaximize.add(::onToplevelRequestMaximize), toplevel)
-            toplevels.put(requestFullscreen.add(::onToplevelRequestFullscreen), toplevel)
-        }
+        // Create the SceneTree for this XdgToplevel and add all signal handlers we have to deal with.
+        toplevelSceneTree[toplevel] = compositor.scene.tree().xdgSurfaceCreate(toplevel.base())
+        arrayOf(
+            *with(toplevel.base().surface().events) {
+                // Listeners for the base surface
+                arrayOf(
+                    map.add(::onToplevelMap),
+                    unmap.add(::onToplevelUnmap),
+                    commit.add(::onToplevelCommit)
+                )
+            },
+            *with(toplevel.events) {
+                // Listeners for the XDG toplevel
+                arrayOf(
+                    destroy.add(::onToplevelDestroy),
+                    requestMove.add(::onToplevelRequestMove),
+                    requestResize.add(::onToplevelRequestResize),
+                    requestMaximize.add(::onToplevelRequestMaximize),
+                    requestFullscreen.add(::onToplevelRequestFullscreen),
+                )
+            }
+        ).forEach { toplevels.put(it, toplevel) }
     }
 
 
     fun onToplevelDestroy(listener: Listener) {
         val toplevel = toplevels[listener]!!
-        val listeners = toplevels.filterValues(toplevel::equals).keys
 
-        require(listeners.size == 8)
 
-        // Remove all the Listeners associated with this XdgToplevel window
+        // For sanity check at the end
+        val listenersNumBefore = arrayOf(
+            with(toplevel.base().surface().events) { arrayOf(map, unmap, commit) },
+            with(toplevel.events) {
+                arrayOf(
+                    destroy,
+                    requestMove,
+                    requestResize,
+                    requestMaximize,
+                    requestFullscreen
+                )
+            }
+        ).flatten().sumOf { it.listenerList.length() }
+
+
+        // All listeners added to this XdgToplevel
+        val listeners = toplevels.entries.filter { it.value == toplevel }
+
+        // Remove listeners from this XdgToplevel's signals
         // TODO: Memory management: close the Arena for every Listener
-        listeners.forEach { it.remove() }
+        listeners.forEach { (listener, _) -> listener.remove() }
+
+        // Remove all listener->toplevel entries in the hash map
+        toplevels.entries.removeAll(listeners)
 
         // Remove its SceneTree
         toplevelSceneTree.remove(toplevel)!!
+
+
+        // Sanity checks
+        require(listeners.isNotEmpty())
+        require(toplevels.values.none(toplevel::equals))
+
+        val listenersNumAfter = arrayOf(
+            with(toplevel.base().surface().events) { arrayOf(map, unmap, commit) },
+            with(toplevel.events) {
+                arrayOf(
+                    destroy,
+                    requestMove,
+                    requestResize,
+                    requestMaximize,
+                    requestFullscreen
+                )
+            }
+        ).flatten().sumOf { it.listenerList.length() }
+        require(listenersNumBefore - listenersNumAfter == listeners.size)
     }
 
 
@@ -183,8 +248,7 @@ class WindowSystem(val compositor: Compositor) {
                 compositor.seat.pointerState().focusedSurface(),
                 event.serial
             )
-        )
-            return
+        ) return
         beginInteractive(event.toplevel, CursorMode.Resize, event.edges)
     }
 
@@ -209,17 +273,57 @@ class WindowSystem(val compositor: Compositor) {
     // Listeners: XDG popups
     //
 
-    fun onNewPopup(x: Any) {}
+    fun onNewPopup(popup: XdgPopup) {
+        val parentSurface = XdgSurface.tryFromSurface(popup.parent())
+            ?: error("Popup's parent can't be null")
 
-    fun onPopupCommit() {
+        // Search for the parent of this new XdgPopup: first XdgToplevels, then other XdgPopups (popups are nestable)
+        val parentSceneTree =
+            toplevelSceneTree.asSequence().find { (toplevel, _) -> toplevel.base() == parentSurface }?.value
+                ?: popupSceneTree.asSequence().find { (popup, _) -> popup.base() == parentSurface }?.value
+                ?: error("BUG: Can't have a XdgPopup without a parent")
 
+        popupSceneTree[popup] = parentSceneTree.xdgSurfaceCreate(popup.base())
+        popups[popup.base().surface().events.commit.add(::onPopupCommit)] = popup
+        popups[popup.events.destroy.add(::onPopupDestroy)] = popup
     }
 
 
-    fun onPopupDestroy() {
-
-
+    fun onPopupCommit(listener: Listener, surface: Surface) {
+        val popup = popups[listener]!!
+        if (popup.base().initialCommit())
+            popup.base().scheduleConfigure()
     }
+
+
+    fun onPopupDestroy(listener: Listener) {
+        val popup = popups[listener]!!
+
+        // For sanity check at the end
+        val listenersNumBefore = popup.base()
+            .surface().events.commit.listenerList.length() + popup.events.destroy.listenerList.length()
+
+        // All listeners added to this XdgToplevel
+        val listeners = popups.entries.filter { it.value == popup }
+
+        // Remove listeners from XdgPopup signals
+        listeners.forEach { (listener, _) -> listener.remove() }
+
+        // Remove the listener->popup entry in the hash map
+        popups.entries.removeAll(listeners)
+
+        // Remove the scene tree
+        popupSceneTree.remove(popup)!!
+
+        // Sanity checks
+        // TODO: Add to DEVEL block conditional compilation
+        require(listeners.isNotEmpty())
+        require(popups.values.none(popup::equals))
+        val listenersNumAfter = popup.base()
+            .surface().events.commit.listenerList.length() + popup.events.destroy.listenerList.length()
+        require(listenersNumBefore - listenersNumAfter == listeners.size)
+    }
+
 
     //
     // Helper classes

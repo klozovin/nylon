@@ -1,6 +1,7 @@
 package compositor
 
 import wayland.server.Display
+import wayland.util.Edge
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
@@ -16,7 +17,9 @@ import wlroots.types.seat.RequestSetSelectionEvent
 import wlroots.types.seat.Seat
 import wlroots.types.xdgshell.XdgShell
 import wlroots.types.xdgshell.XdgToplevel
+import wlroots.util.Box
 import wlroots.util.Log
+import java.util.EnumSet
 import kotlin.system.exitProcess
 import wlroots.types.compositor.Compositor as WlrCompositor
 
@@ -48,6 +51,8 @@ class Compositor {
     // TODO: Move to separate state machine
     // Grab mode: move, resize
     var grabbedToplevel: XdgToplevel? = null
+    lateinit var grabGeobox: Box
+    lateinit var resizeEdges: EnumSet<Edge>
     var grabX: Double = 0.0
     var grabY: Double = 0.0
 
@@ -168,7 +173,6 @@ class Compositor {
     // *** Seat signals *** //
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
-        println("tusmo")
         val focusedClient = seat.pointerState().focusedClient()
         if (focusedClient?.seatClientPtr == event.seatClient.seatClientPtr) // TODO: Implement equals() for SeatClient
             cursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
