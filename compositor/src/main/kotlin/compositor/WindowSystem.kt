@@ -3,31 +3,108 @@ package compositor
 import wayland.server.Listener
 import wayland.util.Edge
 import wlroots.types.compositor.Surface
+import wlroots.types.scene.SceneBuffer
+import wlroots.types.scene.SceneNode
+import wlroots.types.scene.SceneSurface
 import wlroots.types.scene.SceneTree
 import wlroots.types.xdgshell.XdgToplevel
-import java.util.EnumSet
+import java.util.*
 
 
 class WindowSystem(val compositor: Compositor) {
     val toplevels: MutableMap<Listener, XdgToplevel> = HashMap()
-    val toplevelSceneTree: MutableMap<XdgToplevel, SceneTree> = HashMap()
+    val toplevelSceneTree: MutableMap<XdgToplevel, SceneTree> = HashMap() // TODO: Use BidiMap here
+
+    var focusedToplevel: XdgToplevel? = null // TODO: Should go to 'cycle' class
 
 
     fun focusToplevel(toplevel: XdgToplevel) {
-        TODO()
+        val prevFocusedSurface = compositor.seat.keyboardState().focusedSurface()
+        val prevFocusedToplevel = focusedToplevel
+        focusedToplevel = toplevel
+
+        // Don't focus what's alread focused
+        if (prevFocusedSurface == toplevel.base().surface())
+            return
+
+        // Deactivate the previously focused surface, let the client know it lost focus so it can repaint
+        // accordingly (e.g. stop drawing a caret)
+        prevFocusedSurface?.let {
+            // TODO: Why do it like this, we already have the focused toplevel?
+            val prevToplevelFromSurface = XdgToplevel.tryFromSurface(prevFocusedSurface)
+            require(prevFocusedToplevel == prevToplevelFromSurface)
+            prevToplevelFromSurface?.setActivated(false)
+        }
+
+        toplevelSceneTree[toplevel]!!.node().raiseToTop()
+        toplevel.setActivated(true)
+
+        compositor.seat.getKeyboard()?.let { keyboard ->
+            compositor.seat.keyboardNotifyEnter(
+                toplevel.base().surface(),
+                keyboard.keycodesPtr(),
+                keyboard.keycodesNum(),
+                keyboard.modifiers()
+            )
+        }
     }
 
-    fun resetCursorMode() {
-        TODO()
+
+    fun toplevelAtCoordinates(x: Double, y: Double): UnderCursor? {
+        val (sceneNode, nx, ny) = compositor.scene.tree().node().nodeAt(x, y)
+            ?: return null
+
+        if (sceneNode.type() != SceneNode.Type.BUFFER)
+            return null
+
+        val sceneBuffer = SceneBuffer.fromNode(sceneNode)
+        val sceneSurface = SceneSurface.tryFromBuffer(sceneBuffer) ?: return null
+
+        for (sceneTree in sceneNode.parentIterator)
+            for ((toplevel, toplevelSceneTree) in toplevelSceneTree)
+                if (sceneTree == toplevelSceneTree)
+                    return UnderCursor(toplevel, sceneSurface.surface(), nx, ny)
+
+        unreachable()
     }
+
+
+    // TODO: Shouldn't this go to input system? - No, it goes into the grab mode. Reset the state machine to base state
+    fun resetCursorMode() {
+        compositor.cursorMode = CursorMode.Passthrough
+        compositor.grabbedToplevel = null
+    }
+
 
     fun beginInteractive(toplevel: XdgToplevel, mode: CursorMode, edges: EnumSet<Edge>?) {
-        TODO()
+        val focusedSurface = compositor.seat.pointerState().focusedSurface()
+
+        if (toplevel.base().surface() != focusedSurface.rootSurface)
+            return
+
+        compositor.grabbedToplevel = toplevel
+        compositor.cursorMode = mode
+
+        val sceneNode = toplevelSceneTree[toplevel]!!.node()
+        when (mode) {
+            CursorMode.Move -> {
+                compositor.grabX = compositor.cursor.x() - sceneNode.x()
+                compositor.grabY = compositor.cursor.y() - sceneNode.y()
+            }
+
+            CursorMode.Resize -> {
+                TODO()
+            }
+
+            CursorMode.Passthrough -> {
+                unreachable()
+            }
+        }
     }
 
 
     //
-    // Listeners: XDG toplevel windows
+    // *** Listeners: XDG toplevel windows ***
     //
 
     fun onNewToplevel(toplevel: XdgToplevel) {
@@ -90,7 +167,11 @@ class WindowSystem(val compositor: Compositor) {
 
     fun onToplevelRequestMove(event: XdgToplevel.MoveEvent) {
         // Fix: Clients (using "winit" Rust library) trying to initiate drag after mouse button has been released
-        if (!compositor.seat.validatePointerGrabSerial(compositor.seat.pointerState().focusedSurface(), event.serial))
+        if (!compositor.seat.validatePointerGrabSerial(
+                compositor.seat.pointerState().focusedSurface(),
+                event.serial
+            )
+        )
             return
         beginInteractive(event.toplevel, CursorMode.Move, null)
     }
@@ -98,7 +179,11 @@ class WindowSystem(val compositor: Compositor) {
 
     fun onToplevelRequestResize(event: XdgToplevel.ResizeEvent) {
         // Fix: Same as for the move event
-        if (!compositor.seat.validatePointerGrabSerial(compositor.seat.pointerState().focusedSurface(), event.serial))
+        if (!compositor.seat.validatePointerGrabSerial(
+                compositor.seat.pointerState().focusedSurface(),
+                event.serial
+            )
+        )
             return
         beginInteractive(event.toplevel, CursorMode.Resize, event.edges)
     }
@@ -126,4 +211,24 @@ class WindowSystem(val compositor: Compositor) {
 
     fun onNewPopup(x: Any) {}
 
+    fun onPopupCommit() {
+
+    }
+
+
+    fun onPopupDestroy() {
+
+
+    }
+
+    //
+    // Helper classes
+    //
+
+    data class UnderCursor(
+        val toplevel: XdgToplevel,
+        val surface: Surface,
+        val nx: Double,
+        val ny: Double,
+    )
 }

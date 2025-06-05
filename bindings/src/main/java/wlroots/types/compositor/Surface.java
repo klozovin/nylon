@@ -1,6 +1,7 @@
 package wlroots.types.compositor;
 
 import jextract.wlroots.types.wlr_surface;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
@@ -27,12 +28,23 @@ public class Surface {
     }
 
 
+    @Override
+    public boolean equals(Object other) {
+        return switch (other) {
+            case Surface otherSurface -> surfacePtr.equals(otherSurface.surfacePtr);
+            case null -> false;
+            // TODO: How dumb is this? Why not add non null annotation?
+            default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
+        };
+    }
+
+
     public static @Nullable Surface ofPtrOrNull(MemorySegment ptr) {
         return !ptr.equals(NULL) ? new Surface(ptr) : null;
     }
 
 
-    // *** Struct fields getters and setters ************************************************************** //
+    // *** Fields ***************************************************************************************** //
 
 
     /// Contains the current, committed surface state.
@@ -57,6 +69,7 @@ public class Surface {
     public void lockPending() {
         throw new RuntimeException("Not implemented");
     }
+
 
     // *** Methods **************************************************************************************** //
 
@@ -99,10 +112,10 @@ public class Surface {
 
         public Events(MemorySegment eventsPtr) {
             this.clientCommit = Signal.of(wlr_surface.events.client_commit(eventsPtr));
-            this.commit = Signal.of(wlr_surface.events.commit(eventsPtr), Surface::new);
-            this.map = Signal.of(wlr_surface.events.map(eventsPtr));
-            this.unmap = Signal.of(wlr_surface.events.unmap(eventsPtr));
-            this.destroy = Signal.of(wlr_surface.events.destroy(eventsPtr), Surface::new);
+            this.commit       = Signal.of(wlr_surface.events.commit(eventsPtr), Surface::new);
+            this.map          = Signal.of(wlr_surface.events.map(eventsPtr));
+            this.unmap        = Signal.of(wlr_surface.events.unmap(eventsPtr));
+            this.destroy      = Signal.of(wlr_surface.events.destroy(eventsPtr), Surface::new);
         }
     }
 }

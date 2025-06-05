@@ -33,7 +33,7 @@ class Compositor {
 
     val cursor: Cursor
     val xcursorManager: XcursorManager
-    val cursorMode: CursorMode
+    var cursorMode: CursorMode
 
     val xdgShell: XdgShell
 
@@ -48,6 +48,8 @@ class Compositor {
     // TODO: Move to separate state machine
     // Grab mode: move, resize
     var grabbedToplevel: XdgToplevel? = null
+    var grabX: Double = 0.0
+    var grabY: Double = 0.0
 
 
     init {
@@ -119,6 +121,15 @@ class Compositor {
             exitProcess(1)
         }
 
+        // TODO: DELETE
+        ProcessBuilder().apply {
+            command("/usr/bin/foot")
+            environment().put("WAYLAND_DISPLAY", socket)
+            start()
+        }
+
+
+
         Log.logInfo("Running Wayland compositor on WAYLAND_DISPLAY=$socket")
         display.run()
         cleanup()
@@ -157,6 +168,7 @@ class Compositor {
     // *** Seat signals *** //
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
+        println("tusmo")
         val focusedClient = seat.pointerState().focusedClient()
         if (focusedClient?.seatClientPtr == event.seatClient.seatClientPtr) // TODO: Implement equals() for SeatClient
             cursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
@@ -171,7 +183,7 @@ class Compositor {
 
 
 enum class CursorMode {
-    Passthrough,
     Move,
-    Resize
+    Resize,
+    Passthrough
 }

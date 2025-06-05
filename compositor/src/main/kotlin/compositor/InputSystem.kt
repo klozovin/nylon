@@ -1,6 +1,8 @@
 package compositor
 
+import compositor.WindowSystem.UnderCursor
 import wayland.KeyboardKeyState
+import wayland.PointerButtonState
 import wayland.SeatCapability
 import wayland.server.Listener
 import wlroots.types.Cursor
@@ -16,8 +18,42 @@ class InputSystem(val compositor: Compositor) {
 
 
     fun processCursorMotion(timeMsec: Int) {
-
+        when (compositor.cursorMode) {
+            CursorMode.Move -> processCursorMove(timeMsec)
+            CursorMode.Resize -> processCursorResize(timeMsec)
+            CursorMode.Passthrough ->
+                when (val tpl = compositor.windowSystem.toplevelAtCoordinates(
+                    compositor.cursor.x(),
+                    compositor.cursor.y()
+                )) {
+                    // Find the XdgToplevel under the pointer and forward the cursor events.
+                    is UnderCursor -> {
+                        compositor.seat.pointerNotifyEnter(tpl.surface, tpl.nx, tpl.ny)
+                        compositor.seat.pointerNotifyMotion(timeMsec, tpl.nx, tpl.ny)
+                    }
+                    // Clear pointer focus so the future button evenets are not sent to the last client to
+                    // have cursor over it
+                    null -> {
+                        compositor.seat.pointerClearFocus()
+                        compositor.cursor.setXcursor(compositor.xcursorManager, "default")
+                    }
+                }
+        }
     }
+
+
+    fun processCursorMove(timeMsec: Int) {
+        // TODO: Moving a window should be a method on the WindowSystem
+        compositor.windowSystem.toplevelSceneTree[compositor.grabbedToplevel!!]!!.node().setPosition(
+            (compositor.cursor.x() - compositor.grabX).toInt(),
+            (compositor.cursor.y() - compositor.grabY).toInt()
+        )
+    }
+
+    fun processCursorResize(timeMsec: Int) {
+        TODO()
+    }
+
 
     //
     // Listeners: Input devices appearing and disappearing
@@ -128,7 +164,20 @@ class InputSystem(val compositor: Compositor) {
 
 
     fun onCursorButton(event: PointerButtonEvent) {
-        TODO()
+        compositor.seat.pointerNotifyButton(event.timeMsec, event.button, event.state)
+
+        when (event.state) {
+            PointerButtonState.PRESSED -> {
+                compositor.windowSystem.toplevelAtCoordinates(compositor.cursor.x(), compositor.cursor.y())
+                    ?.let {
+                        compositor.windowSystem.focusToplevel(it.toplevel)
+                    }
+            }
+
+            PointerButtonState.RELEASED ->
+                if (compositor.cursorMode == CursorMode.Move || compositor.cursorMode == CursorMode.Resize)
+                    compositor.windowSystem.resetCursorMode()
+        }
     }
 
 
