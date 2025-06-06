@@ -20,8 +20,8 @@ class InputSystem(val compositor: Compositor) {
 
     fun processCursorMotion(timeMsec: Int) {
         when (compositor.cursorMode) {
-            CursorMode.Move -> processCursorMove(timeMsec)
-            CursorMode.Resize -> processCursorResize(timeMsec)
+            CursorMode.Move -> processCursorMoveWindow(timeMsec)
+            CursorMode.Resize -> processCursorResizeWindow(timeMsec)
             CursorMode.Passthrough ->
                 when (val tpl = compositor.windowSystem.toplevelAtCoordinates(
                     compositor.cursor.x(),
@@ -43,7 +43,7 @@ class InputSystem(val compositor: Compositor) {
     }
 
 
-    fun processCursorMove(timeMsec: Int) {
+    fun processCursorMoveWindow(timeMsec: Int) {
         // TODO: Moving a window should be a method on the WindowSystem
         compositor.windowSystem.toplevelSceneTree[compositor.grabbedToplevel!!]!!.node().setPosition(
             (compositor.cursor.x() - compositor.grabX).toInt(),
@@ -51,7 +51,7 @@ class InputSystem(val compositor: Compositor) {
         )
     }
 
-    fun processCursorResize(timeMsec: Int) {
+    fun processCursorResizeWindow(timeMsec: Int) {
         val grabbedToplevel = compositor.grabbedToplevel!!
         val grabbedSceneTree = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!
 
@@ -104,17 +104,19 @@ class InputSystem(val compositor: Compositor) {
 
 
     fun onNewKeyboard(keyboard: Keyboard) {
-        val context = XkbContext.of(XkbContext.Flags.NO_FLAGS) ?: error("Failed to create XKB context")
+        val context = XkbContext.of(XkbContext.Flags.NO_FLAGS)
+            ?: error("Failed to create XKB context")
         val keymap = context.keymapNewFromNames(null, Keymap.CompileFlags.NO_FLAGS)
             ?: error("Failed to create XKB keymap")
         keyboard.setKeymap(keymap)
         keyboard.setRepeatInfo(25, 200)
+
         compositor.seat.setKeyboard(keyboard)
 
-        with(keyboards) {
-            put(keyboard.events.key.add(::onKeyboardKey), keyboard)
-            put(keyboard.events.modifiers.add(::onKeyboardModifiers), keyboard)
-            put(keyboard.base.events.destroy.add(::onKeyboardDestroy), keyboard)
+        with(keyboard) {
+            keyboards[events.key.add(::onKeyboardKey)] = keyboard
+            keyboards[events.modifiers.add(::onKeyboardModifiers)] = keyboard
+            keyboards[base.events.destroy.add(::onKeyboardDestroy)] = keyboard
         }
 
         keymap.unref()
@@ -127,9 +129,18 @@ class InputSystem(val compositor: Compositor) {
     fun onKeyboardDestroy(listener: Listener, device: InputDevice) {
         // For the given keyboard, find all of its listeners and destroy them
         val keyboard = keyboards[listener]!!
-        val listeners = keyboards.filterValues(keyboard::equals).keys
-        require(listeners.size == 3) // TODO: Remove later
-        listeners.forEach { it.remove() } // TODO: Memory management: Close the confined arena here
+
+        // All listeners added to this keyboard
+        val listeners = keyboards.entries.filter { it.value == keyboard }
+
+        // Remove listeners from their signals
+        listeners.forEach { (listener, _) -> listener.remove() }
+
+        // Remove listener->keyboard entries from hash map
+        keyboards.entries.removeAll(listeners)
+
+        require(listeners.size == 3) // TODO: Remove sanity check
+        // TODO: Memory management: Close the confined arena here
     }
 
 
@@ -145,14 +156,16 @@ class InputSystem(val compositor: Compositor) {
 
     fun onKeyboardKey(listener: Listener, event: KeyboardKeyEvent) {
         val keyboard = keyboards[listener]!!
-        val keycode = event.keycode() + 8
+        val keycode = event.keycode + 8
         val keysym = keyboard.xkbState().keyGetOneSym(keycode)
 
+        // Should we swallow this key combo?
         var handledInCompositor = false
-        if (keyboard.modifiers.isAltDown && event.state() == KeyboardKeyState.PRESSED) {
+
+        if (keyboard.modifiers.containsAlt() && event.state == KeyboardKeyState.PRESSED) {
             when (keysym) {
                 XkbKey.F1 -> {
-                    // TODO
+                    // TODO window cycle
 //                    if (TOPLEVELS.isNotEmpty()) {
 //                        val nextIdx = focusedToplevel + 1
 //                        if (nextIdx < TOPLEVELS.size)
@@ -170,9 +183,18 @@ class InputSystem(val compositor: Compositor) {
             }
         }
 
+        if (keyboard.modifiers.containsLogo() && event.state == KeyboardKeyState.PRESSED) {
+            when (keysym) {
+                XkbKey.Insert -> {
+                    println("Meta+Insert")
+                    handledInCompositor = true
+                }
+            }
+        }
+
         if (!handledInCompositor) {
             compositor.seat.setKeyboard(keyboard)
-            compositor.seat.keyboardNotifyKey(event.timeMsec(), event.keycode(), event.state())
+            compositor.seat.keyboardNotifyKey(event.timeMsec, event.keycode, event.state)
         }
     }
 
@@ -181,6 +203,7 @@ class InputSystem(val compositor: Compositor) {
         compositor.seat.setKeyboard(keyboard)
         compositor.seat.keyboardNotifyModifiers(keyboard.modifiers())
     }
+
 
     //
     // Listeners: Mouse input: button clicks, scrolling, moving
@@ -199,32 +222,30 @@ class InputSystem(val compositor: Compositor) {
 
 
     fun onCursorButton(event: PointerButtonEvent) {
+        // Notify the client with the "pointer focus" that there's been a button press
         compositor.seat.pointerNotifyButton(event.timeMsec, event.button, event.state)
 
         when (event.state) {
             PointerButtonState.PRESSED -> {
-                compositor.windowSystem.toplevelAtCoordinates(compositor.cursor.x(), compositor.cursor.y())
-                    ?.let {
-                        compositor.windowSystem.focusToplevel(it.toplevel)
-                    }
+                val x = compositor.cursor.x()
+                val y = compositor.cursor.y()
+                compositor.windowSystem.toplevelAtCoordinates(x, y)?.let {
+                    compositor.windowSystem.focusToplevel(it.toplevel)
+                }
             }
 
-            PointerButtonState.RELEASED ->
-                if (compositor.cursorMode == CursorMode.Move || compositor.cursorMode == CursorMode.Resize)
+            PointerButtonState.RELEASED -> {
+                val isMove   = compositor.cursorMode == CursorMode.Move
+                val isResize = compositor.cursorMode == CursorMode.Resize
+                if (isMove || isResize)
                     compositor.windowSystem.resetCursorMode()
+            }
         }
     }
 
 
     fun onCursorAxis(event: PointerAxisEvent) {
-        compositor.seat.pointerNotifyAxis(
-            event.timeMsec,
-            event.orientation,
-            event.delta,
-            event.deltaDiscrete,
-            event.source,
-            event.relativeDirection
-        )
+        compositor.seat.pointerNotifyAxis(event)
     }
 
 

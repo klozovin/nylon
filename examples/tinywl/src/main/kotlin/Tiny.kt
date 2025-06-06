@@ -359,11 +359,11 @@ object Tiny {
 
     fun onKeyboardKey(listener: Listener, event: KeyboardKeyEvent) {
         val keyboard = KEYBOARDS.find { it.keyListener == listener }!!.keyboard
-        val keycode = event.keycode() + 8
+        val keycode = event.keycode + 8
         val keysym = keyboard.xkbState().keyGetOneSym(keycode)
 
         var handledInCompositor = false
-        if (keyboard.modifiers.isAltDown && event.state() == KeyboardKeyState.PRESSED) {
+        if (keyboard.modifiers.containsAlt() && event.state == KeyboardKeyState.PRESSED) {
             when (keysym) {
                 XkbKey.F1 -> {
                     if (TOPLEVELS.isNotEmpty()) {
@@ -385,7 +385,7 @@ object Tiny {
 
         if (!handledInCompositor) {
             seat.setKeyboard(keyboard)
-            seat.keyboardNotifyKey(event.timeMsec(), event.keycode(), event.state())
+            seat.keyboardNotifyKey(event.timeMsec, event.keycode, event.state)
         }
     }
 

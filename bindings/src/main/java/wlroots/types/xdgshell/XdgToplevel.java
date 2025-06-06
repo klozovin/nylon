@@ -22,13 +22,14 @@ import static jextract.wlroots.types.wlr_xdg_shell_h.*;
 @NullMarked
 public class XdgToplevel {
     public final MemorySegment xdgToplevelPtr;
-    public final Events events;
+    public final Events        events;
 
 
-    public XdgToplevel(MemorySegment xdgToplevelPtr) {
-        assert !xdgToplevelPtr.equals(NULL);
-        this.xdgToplevelPtr = xdgToplevelPtr;
-        this.events = new Events(wlr_xdg_toplevel.events(xdgToplevelPtr));
+    public XdgToplevel(MemorySegment ptr) {
+        assert !ptr.equals(NULL);
+
+        xdgToplevelPtr = ptr;
+        events         = new Events(wlr_xdg_toplevel.events(ptr));
     }
 
 
@@ -36,7 +37,8 @@ public class XdgToplevel {
     public boolean equals(Object other) {
         return switch (other) {
             case XdgToplevel otherToplevel -> xdgToplevelPtr.equals(otherToplevel.xdgToplevelPtr);
-            default -> false;
+            case null -> false;
+            default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }
 
@@ -127,30 +129,31 @@ public class XdgToplevel {
     /// `struct wlr_xdg_toplevel_move_event {}`
     public static class MoveEvent {
         public final XdgToplevel toplevel;
-        public final SeatClient seat;
-        public final int serial;
+        public final SeatClient  seat;
+        public final int         serial;
 
 
-        public MoveEvent(MemorySegment moveEventPtr) {
-            this.toplevel = new XdgToplevel(wlr_xdg_toplevel_move_event.toplevel(moveEventPtr));
-            this.seat     = new SeatClient(wlr_xdg_toplevel_move_event.seat(moveEventPtr));
-            this.serial   = wlr_xdg_toplevel_move_event.serial(moveEventPtr);
+        public MoveEvent(MemorySegment ptr) {
+            toplevel = new XdgToplevel(wlr_xdg_toplevel_move_event.toplevel(ptr));
+            seat     = new SeatClient(wlr_xdg_toplevel_move_event.seat(ptr));
+            serial   = wlr_xdg_toplevel_move_event.serial(ptr);
         }
     }
 
+
     /// `struct wlr_xdg_toplevel_resize_event {}`
     public static class ResizeEvent {
-        public final XdgToplevel toplevel;
-        public final SeatClient seat;
-        public final int serial;
+        public final XdgToplevel   toplevel;
+        public final SeatClient    seat;
+        public final int           serial;
         public final EnumSet<Edge> edges;
 
 
         public ResizeEvent(MemorySegment ptr) {
-            this.toplevel = new XdgToplevel(wlr_xdg_toplevel_resize_event.toplevel(ptr));
-            this.seat     = new SeatClient(wlr_xdg_toplevel_resize_event.seat(ptr));
-            this.serial   = wlr_xdg_toplevel_resize_event.serial(ptr);
-            this.edges    = Edge.fromBitset(wlr_xdg_toplevel_resize_event.edges(ptr));
+            toplevel = new XdgToplevel(wlr_xdg_toplevel_resize_event.toplevel(ptr));
+            seat     = new SeatClient(wlr_xdg_toplevel_resize_event.seat(ptr));
+            serial   = wlr_xdg_toplevel_resize_event.serial(ptr);
+            edges    = Edge.fromBitset(wlr_xdg_toplevel_resize_event.edges(ptr));
         }
     }
 }

@@ -19,4 +19,7 @@ public final class XkbKey {
     public static final int F10 = XKB_KEY_F10();
     public static final int F11 = XKB_KEY_F11();
     public static final int F12 = XKB_KEY_F12();
+
+    public static final int Insert = XKB_KEY_Insert();
+    public static final int Delete = XKB_KEY_Delete();
 }

@@ -173,8 +173,7 @@ class Compositor {
     // *** Seat signals *** //
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
-        val focusedClient = seat.pointerState().focusedClient()
-        if (focusedClient?.seatClientPtr == event.seatClient.seatClientPtr) // TODO: Implement equals() for SeatClient
+        if (seat.pointerState().focusedClient() == event.seatClient)
             cursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
     }
 
@@ -190,4 +189,11 @@ enum class CursorMode {
     Move,
     Resize,
     Passthrough
+}
+
+
+
+fun main(args: Array<String>) {
+    Log.init(Log.Importance.DEBUG)
+    Compositor().start()
 }

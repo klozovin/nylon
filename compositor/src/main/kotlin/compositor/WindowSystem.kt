@@ -65,6 +65,7 @@ class WindowSystem(val compositor: Compositor) {
         val sceneBuffer = SceneBuffer.fromNode(sceneNode)
         val sceneSurface = SceneSurface.tryFromBuffer(sceneBuffer) ?: return null
 
+        // TODO: Extract into method
         for (sceneTree in sceneNode.parentIterator)
             for ((toplevel, toplevelSceneTree) in toplevelSceneTree)
                 if (sceneTree == toplevelSceneTree)
@@ -126,9 +127,10 @@ class WindowSystem(val compositor: Compositor) {
     }
 
 
-    //
-    // *** Listeners: XDG toplevel windows ***
-    //
+    // **************************************************************************************************** //
+    // * Listeners: XDG toplevel windows                                                                  * //
+    // **************************************************************************************************** //
+
 
     fun onNewToplevel(toplevel: XdgToplevel) {
         // Create the SceneTree for this XdgToplevel and add all signal handlers we have to deal with.
@@ -159,21 +161,8 @@ class WindowSystem(val compositor: Compositor) {
     fun onToplevelDestroy(listener: Listener) {
         val toplevel = toplevels[listener]!!
 
-
-        // For sanity check at the end
-        val listenersNumBefore = arrayOf(
-            with(toplevel.base().surface().events) { arrayOf(map, unmap, commit) },
-            with(toplevel.events) {
-                arrayOf(
-                    destroy,
-                    requestMove,
-                    requestResize,
-                    requestMaximize,
-                    requestFullscreen
-                )
-            }
-        ).flatten().sumOf { it.listenerList.length() }
-
+        // Sanity checks
+        val listenersNumBefore = _countSignalHandlers(toplevel)
 
         // All listeners added to this XdgToplevel
         val listeners = toplevels.entries.filter { it.value == toplevel }
@@ -185,31 +174,16 @@ class WindowSystem(val compositor: Compositor) {
         // Remove all listener->toplevel entries in the hash map
         toplevels.entries.removeAll(listeners)
 
-        // Remove its SceneTree
+        // Remove the SceneTree belonging to this XdgToplevel window
         toplevelSceneTree.remove(toplevel)!!
-
 
         // Sanity checks
         require(listeners.isNotEmpty())
         require(toplevels.values.none(toplevel::equals))
-
-        val listenersNumAfter = arrayOf(
-            with(toplevel.base().surface().events) { arrayOf(map, unmap, commit) },
-            with(toplevel.events) {
-                arrayOf(
-                    destroy,
-                    requestMove,
-                    requestResize,
-                    requestMaximize,
-                    requestFullscreen
-                )
-            }
-        ).flatten().sumOf { it.listenerList.length() }
-        require(listenersNumBefore - listenersNumAfter == listeners.size)
+        require(listenersNumBefore - _countSignalHandlers(toplevel) == listeners.size)
     }
 
 
-    // TODO: Maybe remove surface argument?
     fun onToplevelCommit(listener: Listener, surface: Surface) {
         toplevels[listener]!!.apply {
             if (base().initialCommit())
@@ -231,53 +205,48 @@ class WindowSystem(val compositor: Compositor) {
 
 
     fun onToplevelRequestMove(event: XdgToplevel.MoveEvent) {
-        // Fix: Clients (using "winit" Rust library) trying to initiate drag after mouse button has been released
-        if (!compositor.seat.validatePointerGrabSerial(
-                compositor.seat.pointerState().focusedSurface(),
-                event.serial
-            )
-        )
+        if (!isPointerGrabValid(event.serial))
             return
+        // TODO: Cleaner API, without having to pass null for edges
         beginInteractive(event.toplevel, CursorMode.Move, null)
     }
 
 
     fun onToplevelRequestResize(event: XdgToplevel.ResizeEvent) {
-        // Fix: Same as for the move event
-        if (!compositor.seat.validatePointerGrabSerial(
-                compositor.seat.pointerState().focusedSurface(),
-                event.serial
-            )
-        ) return
+        if (!isPointerGrabValid(event.serial))
+            return
         beginInteractive(event.toplevel, CursorMode.Resize, event.edges)
     }
 
 
     fun onToplevelRequestMaximize(listener: Listener) {
         // Maximize request not supported, but protocol demands we send a configure back to client.
-        val toplevel = toplevels[listener]!!
-        if (toplevel.base().initialized())
-            toplevel.base().scheduleConfigure()
+        toplevels[listener]!!.apply {
+            if (base().initialized())
+                base().scheduleConfigure()
+        }
     }
 
 
     fun onToplevelRequestFullscreen(listener: Listener) {
         // Fullscreen request not supported, behave the same as maximize request.
-        val toplevel = toplevels[listener]!!
-        if (toplevel.base().initialized())
-            toplevel.base().scheduleConfigure()
+        toplevels[listener]!!.apply {
+            if (base().initialized())
+                base().scheduleConfigure()
+        }
     }
 
 
-    //
-    // Listeners: XDG popups
-    //
+    // **************************************************************************************************** //
+    // * Listeners: XDG popups                                                                            * //
+    // **************************************************************************************************** //
+
 
     fun onNewPopup(popup: XdgPopup) {
         val parentSurface = XdgSurface.tryFromSurface(popup.parent())
             ?: error("Popup's parent can't be null")
 
-        // Search for the parent of this new XdgPopup: first XdgToplevels, then other XdgPopups (popups are nestable)
+        // Search for the parent of this new popup: first among toplevels, then other popups (they are nestable)
         val parentSceneTree =
             toplevelSceneTree.asSequence().find { (toplevel, _) -> toplevel.base() == parentSurface }?.value
                 ?: popupSceneTree.asSequence().find { (popup, _) -> popup.base() == parentSurface }?.value
@@ -290,39 +259,73 @@ class WindowSystem(val compositor: Compositor) {
 
 
     fun onPopupCommit(listener: Listener, surface: Surface) {
-        val popup = popups[listener]!!
-        if (popup.base().initialCommit())
-            popup.base().scheduleConfigure()
+        popups[listener]!!.apply {
+            if (base().initialCommit())
+                base().scheduleConfigure()
+        }
     }
 
 
     fun onPopupDestroy(listener: Listener) {
         val popup = popups[listener]!!
 
-        // For sanity check at the end
-        val listenersNumBefore = popup.base()
-            .surface().events.commit.listenerList.length() + popup.events.destroy.listenerList.length()
-
-        // All listeners added to this XdgToplevel
-        val listeners = popups.entries.filter { it.value == popup }
-
-        // Remove listeners from XdgPopup signals
-        listeners.forEach { (listener, _) -> listener.remove() }
-
-        // Remove the listener->popup entry in the hash map
-        popups.entries.removeAll(listeners)
+        // Get rid of the listeners for this popup's signals
+        popup.cleanupListeners()
 
         // Remove the scene tree
-        popupSceneTree.remove(popup)!!
-
-        // Sanity checks
-        // TODO: Add to DEVEL block conditional compilation
-        require(listeners.isNotEmpty())
-        require(popups.values.none(popup::equals))
-        val listenersNumAfter = popup.base()
-            .surface().events.commit.listenerList.length() + popup.events.destroy.listenerList.length()
-        require(listenersNumBefore - listenersNumAfter == listeners.size)
+        popup.removeSceneTree()
     }
+
+
+    /**
+     * Unregister listeners from their signals (wlroots side), remove the cached listener entries in the
+     * hash map.
+     */
+    private fun XdgPopup.cleanupListeners() {
+        val listeners = popups.entries.filter { it.value == this }
+
+        // Sanity check
+        require(listeners.isNotEmpty())
+        val numListenersBefore = this.numOfListeners()
+
+        // Unregister all listeners from their XdgPopup signals
+        listeners.forEach { (listener, _) -> listener.remove() }
+
+        // Remove the listener entries from the hash map
+        popups.entries.removeAll(listeners)
+
+        // TODO: Memory management: Close the Arena for this popup
+
+        // Sanity check
+        require(popups.values.none(this::equals))
+        require(numListenersBefore - numOfListeners() == listeners.size)
+    }
+
+
+    /**
+     * Get the number of registered listeners for all the signals of the XdgPopup object
+     */
+    private fun XdgPopup.numOfListeners(): Int {
+        val surfaceNum = this.base().surface().events.allSignals().sumOf { it.listenerList.length() }
+        val popupNum = this.events.allSignals().sumOf { it.listenerList.length() }
+        return surfaceNum + popupNum
+    }
+
+
+    private fun XdgPopup.removeSceneTree() {
+        popupSceneTree.remove(this)!!
+    }
+
+
+    /**
+     * Check whether the pointer grab for move or resize operation is valid.
+     *
+     * Fixes bad behaviour for clients built with Rust's "winit" library: they try to initiate the move/resize
+     * after the mouse button has already been released, leading to state where the window is "stuck" to the
+     * cursor even though no mouse button are being held down.
+     */
+    private fun isPointerGrabValid(serial: Int): Boolean =
+        compositor.seat.validatePointerGrabSerial(compositor.seat.pointerState().focusedSurface(), serial)
 
 
     //
@@ -336,3 +339,20 @@ class WindowSystem(val compositor: Compositor) {
         val ny: Double,
     )
 }
+
+// TODO: Move to extension function and enumerate signals in bindings code
+private fun _countSignalHandlers(toplevel: XdgToplevel): Int =
+    arrayOf(
+        with(toplevel.base().surface().events) {
+            arrayOf(map, unmap, commit)
+        },
+        with(toplevel.events) {
+            arrayOf(
+                destroy,
+                requestMove,
+                requestResize,
+                requestMaximize,
+                requestFullscreen
+            )
+        }
+    ).flatten().sumOf { it.listenerList.length() }

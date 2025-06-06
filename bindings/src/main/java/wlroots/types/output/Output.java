@@ -43,7 +43,8 @@ public final class Output {
     public boolean equals(Object other) {
         return switch (other) {
             case Output otherOutput -> outputPtr.equals(otherOutput.outputPtr);
-            default -> false;
+            case null -> false;
+            default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }
 
@@ -148,8 +149,6 @@ public final class Output {
 
 
     public final static class Events {
-        public final MemorySegment eventsPtr;
-
         /// Raised every time an output is ready to display a frame, generally at the output's refresh rate
         public final Signal1<Output> frame;
 
@@ -159,12 +158,10 @@ public final class Output {
         public final Signal1<EventRequestState> requestState;
 
 
-        Events(MemorySegment eventsPtr) {
-            this.eventsPtr = eventsPtr;
-
-            this.frame        = Signal.of(wlr_output.events.frame(eventsPtr), Output::new);
-            this.destroy      = Signal.of(wlr_output.events.destroy(eventsPtr), Output::new);
-            this.requestState = Signal.of(wlr_output.events.request_state(eventsPtr), EventRequestState::new);
+        Events(MemorySegment ptr) {
+            frame        = Signal.of(wlr_output.events.frame(ptr), Output::new);
+            destroy      = Signal.of(wlr_output.events.destroy(ptr), Output::new);
+            requestState = Signal.of(wlr_output.events.request_state(ptr), EventRequestState::new);
         }
     }
 }

@@ -135,7 +135,7 @@ fun outputFrameNotify(output: Output) {
 
 
 fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
-    val keycode = keyboardKeyEvent.keycode() + 8
+    val keycode = keyboardKeyEvent.keycode + 8
     val keySym = State.keyboard.xkbState().keyGetOneSym(keycode)
 
     check(keySym != XkbKey.NoSymbol)
@@ -143,7 +143,7 @@ fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
 
     // BUGFIX: Have to check for Escape release, because on some keyboard setups both PRESSED and RELEASED events come
     //         together, when the key is depressed.
-    if (keySym == XkbKey.Escape && keyboardKeyEvent.state() == KeyboardKeyState.RELEASED) {
+    if (keySym == XkbKey.Escape && keyboardKeyEvent.state == KeyboardKeyState.RELEASED) {
         Log.logDebug("Terminating display...")
         State.display.terminate()
         Log.logDebug("...terminated display!")

@@ -8,9 +8,10 @@ import wayland.server.Display;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
 import wlroots.types.DataSource;
-import wlroots.types.input.Keyboard;
 import wlroots.types.KeyboardModifiers;
 import wlroots.types.compositor.Surface;
+import wlroots.types.input.Keyboard;
+import wlroots.types.input.PointerAxisEvent;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -122,6 +123,21 @@ public class Seat {
     }
 
 
+    /// Notify the seat of an axis event. Defers to any grab of the pointer.
+    ///
+    /// Convenience function, not present in C code
+    public void pointerNotifyAxis(PointerAxisEvent event) {
+        pointerNotifyAxis(
+            event.timeMsec,
+            event.orientation,
+            event.delta,
+            event.deltaDiscrete,
+            event.source,
+            event.relativeDirection
+        );
+    }
+
+
     /// Notify the seat that a button has been pressed. Returns the serial of the button press or zero if no
     /// button press was sent. Defers to any grab of the pointer.
     public int pointerNotifyButton(int timeMsec, int button, PointerButtonState state) {
@@ -200,12 +216,12 @@ public class Seat {
     public static class Events {
         /// Raised when a client provides a cursor image.
         public final Signal1<PointerRequestSetCursorEvent> requestSetCursor;
-        public final Signal1<RequestSetSelectionEvent> requestSetSelection;
+        public final Signal1<RequestSetSelectionEvent>     requestSetSelection;
 
 
         public Events(MemorySegment ptr) {
-            this.requestSetCursor    = Signal.of(wlr_seat.events.request_set_cursor(ptr), PointerRequestSetCursorEvent::new);
-            this.requestSetSelection = Signal.of(wlr_seat.events.request_set_selection(ptr), RequestSetSelectionEvent::new);
+            requestSetCursor    = Signal.of(wlr_seat.events.request_set_cursor(ptr), PointerRequestSetCursorEvent::new);
+            requestSetSelection = Signal.of(wlr_seat.events.request_set_selection(ptr), RequestSetSelectionEvent::new);
         }
     }
 }

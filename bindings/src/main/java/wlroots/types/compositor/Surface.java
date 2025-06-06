@@ -1,7 +1,6 @@
 package wlroots.types.compositor;
 
 import jextract.wlroots.types.wlr_surface;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
@@ -33,7 +32,6 @@ public class Surface {
         return switch (other) {
             case Surface otherSurface -> surfacePtr.equals(otherSurface.surfacePtr);
             case null -> false;
-            // TODO: How dumb is this? Why not add non null annotation?
             default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }
@@ -85,7 +83,6 @@ public class Surface {
 
 
     public static class Events {
-
         /// Raised when the client has sent a wl_surface.commit request. The state to committed can be
         /// accessed in {@link Surface#pending()}.
         ///
@@ -110,12 +107,17 @@ public class Surface {
         public final Signal1<Surface> destroy;
 
 
-        public Events(MemorySegment eventsPtr) {
-            this.clientCommit = Signal.of(wlr_surface.events.client_commit(eventsPtr));
-            this.commit       = Signal.of(wlr_surface.events.commit(eventsPtr), Surface::new);
-            this.map          = Signal.of(wlr_surface.events.map(eventsPtr));
-            this.unmap        = Signal.of(wlr_surface.events.unmap(eventsPtr));
-            this.destroy      = Signal.of(wlr_surface.events.destroy(eventsPtr), Surface::new);
+        public Events(MemorySegment ptr) {
+            clientCommit = Signal.of(wlr_surface.events.client_commit(ptr));
+            commit       = Signal.of(wlr_surface.events.commit(ptr), Surface::new);
+            map          = Signal.of(wlr_surface.events.map(ptr));
+            unmap        = Signal.of(wlr_surface.events.unmap(ptr));
+            destroy      = Signal.of(wlr_surface.events.destroy(ptr), Surface::new);
+        }
+
+
+        public Signal[] allSignals() {
+            return new Signal[]{clientCommit, commit, map, unmap, destroy};
         }
     }
 }

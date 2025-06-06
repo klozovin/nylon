@@ -18,9 +18,9 @@ public class PointerMotionAbsoluteEvent {
 
     public PointerMotionAbsoluteEvent(MemorySegment pointerMotionAbsoluteEventPtr) {
         assert !pointerMotionAbsoluteEventPtr.equals(NULL);
-        this.pointer  = new Pointer(wlr_pointer_motion_absolute_event.pointer(pointerMotionAbsoluteEventPtr));
-        this.timeMsec = wlr_pointer_motion_absolute_event.time_msec(pointerMotionAbsoluteEventPtr);
-        this.x        = wlr_pointer_motion_absolute_event.x(pointerMotionAbsoluteEventPtr);
-        this.y        = wlr_pointer_motion_absolute_event.y(pointerMotionAbsoluteEventPtr);
+        pointer  = new Pointer(wlr_pointer_motion_absolute_event.pointer(pointerMotionAbsoluteEventPtr));
+        timeMsec = wlr_pointer_motion_absolute_event.time_msec(pointerMotionAbsoluteEventPtr);
+        x        = wlr_pointer_motion_absolute_event.x(pointerMotionAbsoluteEventPtr);
+        y        = wlr_pointer_motion_absolute_event.y(pointerMotionAbsoluteEventPtr);
     }
 }

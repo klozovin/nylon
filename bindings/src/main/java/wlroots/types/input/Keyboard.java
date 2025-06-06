@@ -31,10 +31,11 @@ public class Keyboard {
 
 
     @Override
-    public boolean equals(Object obj) {
-        return switch (obj) {
-            case Keyboard kb -> keyboardPtr.equals(kb.keyboardPtr);
-            default -> false;
+    public boolean equals(Object other) {
+        return switch (other) {
+            case Keyboard otherKeyboard -> keyboardPtr.equals(otherKeyboard.keyboardPtr);
+            case null -> false;
+            default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }
 
@@ -112,9 +113,8 @@ public class Keyboard {
     // *** Modifiers *** //
 
 
-    // TODO: Move to enum, and enumset, move out from Keyboard class
+    // TODO: Move to enum, and enumset (benchmark), move out from Keyboard class
     public final static class Modifiers {
-
         private final int modifiers;
 
 
@@ -123,8 +123,28 @@ public class Keyboard {
         }
 
 
-        public boolean isAltDown() {
+        public boolean containsAlt() {
             return (modifiers & WLR_MODIFIER_ALT()) != 0;
+        }
+
+
+        public boolean containsMod2() {
+            return (modifiers & WLR_MODIFIER_MOD2()) != 0;
+        }
+
+
+        public boolean containsMod3() {
+            return (modifiers & WLR_MODIFIER_MOD3()) != 0;
+        }
+
+
+        public boolean containsLogo() {
+            return (modifiers & WLR_MODIFIER_LOGO()) != 0;
+        }
+
+
+        public boolean containsMod5() {
+            return (modifiers & WLR_MODIFIER_MOD5()) != 0;
         }
     }
 
@@ -145,8 +165,8 @@ public class Keyboard {
 
         public Events(MemorySegment ptr) {
             assert !ptr.equals(NULL);
-            this.key       = Signal.of(wlr_keyboard.events.key(ptr), KeyboardKeyEvent::new);
-            this.modifiers = Signal.of(wlr_keyboard.events.modifiers(ptr), Keyboard::new);
+            key       = Signal.of(wlr_keyboard.events.key(ptr), KeyboardKeyEvent::new);
+            modifiers = Signal.of(wlr_keyboard.events.modifiers(ptr), Keyboard::new);
         }
     }
 }

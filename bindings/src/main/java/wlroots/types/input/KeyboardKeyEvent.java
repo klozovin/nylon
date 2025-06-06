@@ -12,35 +12,17 @@ import static java.lang.foreign.MemorySegment.NULL;
 /// `struct wlr_keyboard_key_event {}`
 @NullMarked
 public class KeyboardKeyEvent {
-    public final MemorySegment keyboardKeyEventPtr;
+    public final int timeMsec;
+    public final int keycode;
+    public final boolean updateState;
+    public final KeyboardKeyState state;
 
 
-    public KeyboardKeyEvent(MemorySegment keyboardKeyEventPtr) {
-        assert !keyboardKeyEventPtr.equals(NULL);
-        this.keyboardKeyEventPtr = keyboardKeyEventPtr;
-    }
-
-
-    // *** Fields ***************************************************************************************** //
-
-
-    public int timeMsec() {
-        return wlr_keyboard_key_event.time_msec(keyboardKeyEventPtr);
-    }
-
-
-    public int keycode() {
-        return wlr_keyboard_key_event.keycode(keyboardKeyEventPtr);
-    }
-
-
-    /// If backend doesn't update modifiers on its own
-    public boolean updateState() {
-        return wlr_keyboard_key_event.update_state(keyboardKeyEventPtr);
-    }
-
-
-    public KeyboardKeyState state() {
-        return KeyboardKeyState.of(wlr_keyboard_key_event.state(keyboardKeyEventPtr));
+    public KeyboardKeyEvent(MemorySegment ptr) {
+        assert !ptr.equals(NULL);
+        timeMsec    = wlr_keyboard_key_event.time_msec(ptr);
+        keycode     = wlr_keyboard_key_event.keycode(ptr);
+        updateState = wlr_keyboard_key_event.update_state(ptr);
+        state       = KeyboardKeyState.of(wlr_keyboard_key_event.state(ptr));
     }
 }

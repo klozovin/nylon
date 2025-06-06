@@ -29,7 +29,7 @@ kotlin.compilerOptions {
 }
 
 application {
-    mainClass = "compositor.AppKt"
+    mainClass = "compositor.CompositorKt"
     applicationDefaultJvmArgs += listOf(
         "--enable-preview",
         "--enable-native-access=ALL-UNNAMED",

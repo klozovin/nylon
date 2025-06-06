@@ -28,12 +28,11 @@ class OutputSystem(val compositor: Compositor) {
         compositor.sceneOutputLayout.addOutput(outputLayoutOutput, sceneOutput)
 
         // Add listeners to Output's signals, associate listeners with this output.
-        with(outputs) {
-            put(output.events.frame.add(::onOutputFrame), output)
-            put(output.events.requestState.add(::onOutputRequestState), output)
-            put(output.events.destroy.add(::onOutputDestroy), output)
+        with(output.events) {
+            outputs[frame.add(::onOutputFrame)] = output
+            outputs[requestState.add(::onOutputRequestState)] = output
+            outputs[destroy.add(::onOutputDestroy)] = output
         }
-        require(outputs.size == 3)
     }
 
 
@@ -51,17 +50,16 @@ class OutputSystem(val compositor: Compositor) {
 
 
     fun onOutputDestroy(output: Output) {
-        // When destroying an output: remove all of its listeners, close the confined arena, delete the
-        // Output from the object cache.
+        // All listeners added to this output's signals
+        val listeners = outputs.entries.filter { it.value == output }
+        require(listeners.size == 3)
 
-        // TODO: Use .keys instead of map {it.key}
-        val listeners = outputs.filterValues(output::equals).map { it.key }
-        require(listeners.size == 3) { "Number of listeners: ${listeners.size}"}
+        // Remove each listener from the signal
+        listeners.forEach { (listener, _) -> listener.remove() }
 
-        // TODO: Add this back in
-//        listeners.forEach { it.remove() } // TODO: Memory management: Close the arena used for listeners
+        // Remove the listener->output entry from the hash map
+        outputs.entries.removeAll(listeners)
 
-
-        // TODO: Delete from Output cache also
+        // TODO: Memory management: Close the arena used for listeners
     }
 }

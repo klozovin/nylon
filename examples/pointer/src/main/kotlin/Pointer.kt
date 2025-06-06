@@ -173,13 +173,13 @@ object Pointer {
     }
 
     fun onKeyboardKey(key: KeyboardKeyEvent) {
-        val keycode = key.keycode() + 8 // Convert from libinput/evdev raw hardware code to xkbcommon ones.
+        val keycode = key.keycode + 8 // Convert from libinput/evdev raw hardware code to xkbcommon ones.
         val keysym = keyboard.xkbState().keyGetOneSym(keycode)
         check(keysym != XkbKey.NoSymbol)
 
-        println(">> hwkeycode=${key.keycode()} keycode=$keycode, keysym=$keysym, state=${key.state()}")
+        println(">> hwkeycode=${key.keycode} keycode=$keycode, keysym=$keysym, state=${key.state}")
 
-        if (keysym == XkbKey.Escape && key.state() == KeyboardKeyState.RELEASED) {
+        if (keysym == XkbKey.Escape && key.state == KeyboardKeyState.RELEASED) {
             Log.logDebug(">> Terminating display...")
             display.terminate()
             Log.logDebug(">> ...terminated display!")
