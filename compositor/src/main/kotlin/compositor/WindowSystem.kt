@@ -8,12 +8,15 @@ import wlroots.types.scene.SceneNode
 import wlroots.types.scene.SceneSurface
 import wlroots.types.scene.SceneTree
 import wlroots.types.xdgshell.XdgPopup
+import wlroots.types.xdgshell.XdgShell
 import wlroots.types.xdgshell.XdgSurface
 import wlroots.types.xdgshell.XdgToplevel
 import java.util.*
 
 
 class WindowSystem(val compositor: Compositor) {
+    val xdgShell: XdgShell
+
     val toplevels: MutableMap<Listener, XdgToplevel> = HashMap()
     val toplevelSceneTree: MutableMap<XdgToplevel, SceneTree> = HashMap() // TODO: Use BidiMap here?
 
@@ -23,12 +26,21 @@ class WindowSystem(val compositor: Compositor) {
     var focusedToplevel: XdgToplevel? = null // TODO: Should go to 'cycle' class
 
 
+    init {
+        xdgShell = XdgShell.create(compositor.display, 3).apply {
+            events.newToplevel.add(::onNewToplevel)
+            events.newPopup.add(::onNewPopup)
+        }
+    }
+
+
     fun focusToplevel(toplevel: XdgToplevel) {
         val prevFocusedSurface = compositor.seat.keyboardState().focusedSurface()
         val prevFocusedToplevel = focusedToplevel
+
         focusedToplevel = toplevel
 
-        // Don't focus what's alread focused
+        // Don't focus what's already focused
         if (prevFocusedSurface == toplevel.base().surface())
             return
 
@@ -54,6 +66,14 @@ class WindowSystem(val compositor: Compositor) {
         }
     }
 
+    // TODO
+    fun focusNextToplevel() {
+        // In order of last focus
+        if (toplevels.isNotEmpty()) {
+//            val nextIdx = focusedToplevel + 1
+        }
+    }
+
 
     fun toplevelAtCoordinates(x: Double, y: Double): UnderCursor? {
         val (sceneNode, nx, ny) = compositor.scene.tree().node().nodeAt(x, y)
@@ -75,15 +95,9 @@ class WindowSystem(val compositor: Compositor) {
     }
 
 
-    // TODO: Shouldn't this go to input system? - No, it goes into the grab mode. Reset the state machine to base state
-    fun resetCursorMode() {
-        compositor.cursorMode = CursorMode.Passthrough
-        compositor.grabbedToplevel = null
-    }
-
-
     fun beginInteractive(toplevel: XdgToplevel, mode: CursorMode, edges: EnumSet<Edge>?) {
-        // TODO: Is this the way to do it?
+        // TODO: Is this the way to do it? Why is not wlroots validation (validate pointer) we do upstream
+        //       enough?
         // Deny move/resize requests from unfocused clients
         if (toplevel.base().surface() != compositor.seat.pointerState().focusedSurface().rootSurface)
             return
@@ -94,8 +108,8 @@ class WindowSystem(val compositor: Compositor) {
         val sceneNode = toplevelSceneTree[toplevel]!!.node()
         when (mode) {
             CursorMode.Move -> {
-                compositor.grabX = compositor.cursor.x() - sceneNode.x()
-                compositor.grabY = compositor.cursor.y() - sceneNode.y()
+                compositor.grabX = compositor.inputSystem.cursor.x() - sceneNode.x()
+                compositor.grabY = compositor.inputSystem.cursor.y() - sceneNode.y()
             }
 
             CursorMode.Resize -> {
@@ -108,8 +122,8 @@ class WindowSystem(val compositor: Compositor) {
                 val borderY =
                     (sceneNode.y() + geometryBox.y()) + if (Edge.BOTTOM in edges) geometryBox.height() else 0
 
-                compositor.grabX = compositor.cursor.x() - borderX
-                compositor.grabY = compositor.cursor.y() - borderY
+                compositor.grabX = compositor.inputSystem.cursor.x() - borderX
+                compositor.grabY = compositor.inputSystem.cursor.y() - borderY
 
                 compositor.grabGeobox = geometryBox
                 with(compositor.grabGeobox) {
@@ -124,6 +138,13 @@ class WindowSystem(val compositor: Compositor) {
                 unreachable()
             }
         }
+    }
+
+
+    // TODO: Shouldn't this go to input system? - No, it goes into the grab mode. Reset the state machine to base state
+    fun resetCursorMode() {
+        compositor.cursorMode = CursorMode.Passthrough
+        compositor.grabbedToplevel = null
     }
 
 

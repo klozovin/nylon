@@ -14,29 +14,48 @@ import xkbcommon.XkbKey
 
 
 class InputSystem(val compositor: Compositor) {
+    val cursor: Cursor
     val keyboards: MutableMap<Listener, Keyboard> = HashMap()
     val pointers: MutableMap<Listener, Pointer> = HashMap()
+
+
+    init {
+        compositor.backend.events.newInput.add(::onNewInput)
+
+        cursor = Cursor.create().apply {
+            attachOutputLayout(compositor.outputLayout)
+            with(events) {
+                motion.add(::onCursorMotion)
+                motionAbsolute.add(::onCursorMotionAbsolute)
+                button.add(::onCursorButton)
+                axis.add(::onCursorAxis)
+                frame.add(::onCursorFrame)
+            }
+        }
+    }
 
 
     fun processCursorMotion(timeMsec: Int) {
         when (compositor.cursorMode) {
             CursorMode.Move -> processCursorMoveWindow(timeMsec)
+
             CursorMode.Resize -> processCursorResizeWindow(timeMsec)
+
             CursorMode.Passthrough ->
                 when (val tpl = compositor.windowSystem.toplevelAtCoordinates(
-                    compositor.cursor.x(),
-                    compositor.cursor.y()
+                    cursor.x(),
+                    cursor.y()
                 )) {
                     // Find the XdgToplevel under the pointer and forward the cursor events.
                     is UnderCursor -> {
                         compositor.seat.pointerNotifyEnter(tpl.surface, tpl.nx, tpl.ny)
                         compositor.seat.pointerNotifyMotion(timeMsec, tpl.nx, tpl.ny)
                     }
-                    // Clear pointer focus so the future button evenets are not sent to the last client to
-                    // have cursor over it
+                    // Clear pointer focus so the future button events are not sent to the last client to
+                    // have cursor over it.
                     null -> {
                         compositor.seat.pointerClearFocus()
-                        compositor.cursor.setXcursor(compositor.xcursorManager, "default")
+                        cursor.setXcursor(compositor.xcursorManager, "default")
                     }
                 }
         }
@@ -46,17 +65,18 @@ class InputSystem(val compositor: Compositor) {
     fun processCursorMoveWindow(timeMsec: Int) {
         // TODO: Moving a window should be a method on the WindowSystem
         compositor.windowSystem.toplevelSceneTree[compositor.grabbedToplevel!!]!!.node().setPosition(
-            (compositor.cursor.x() - compositor.grabX).toInt(),
-            (compositor.cursor.y() - compositor.grabY).toInt()
+            (cursor.x() - compositor.grabX).toInt(),
+            (cursor.y() - compositor.grabY).toInt()
         )
     }
+
 
     fun processCursorResizeWindow(timeMsec: Int) {
         val grabbedToplevel = compositor.grabbedToplevel!!
         val grabbedSceneTree = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!
 
-        val borderX = compositor.cursor.x() - compositor.grabX
-        val borderY = compositor.cursor.y() - compositor.grabY
+        val borderX = cursor.x() - compositor.grabX
+        val borderY = cursor.y() - compositor.grabY
 
         var newLeft = compositor.grabGeobox.x()
         var newRight = compositor.grabGeobox.x() + compositor.grabGeobox.width()
@@ -90,9 +110,10 @@ class InputSystem(val compositor: Compositor) {
     }
 
 
-    //
-    // Listeners: Input devices appearing and disappearing
-    //
+    // **************************************************************************************************** //
+    // Listeners: Create and destroy input devices as they come and go                                      //
+    // **************************************************************************************************** //
+
 
     fun onNewInput(device: InputDevice) {
         when (val deviceType = device.type()) {
@@ -145,7 +166,7 @@ class InputSystem(val compositor: Compositor) {
 
 
     fun onNewPointer(pointer: Pointer) {
-        compositor.cursor.attachInputDevice(pointer.base())
+        cursor.attachInputDevice(pointer.base())
         compositor.seat.addCapability(SeatCapability.POINTER)
     }
 
@@ -165,14 +186,14 @@ class InputSystem(val compositor: Compositor) {
         if (keyboard.modifiers.containsAlt() && event.state == KeyboardKeyState.PRESSED) {
             when (keysym) {
                 XkbKey.F1 -> {
-                    // TODO window cycle
-//                    if (TOPLEVELS.isNotEmpty()) {
-//                        val nextIdx = focusedToplevel + 1
-//                        if (nextIdx < TOPLEVELS.size)
-//                            focusToplevel(TOPLEVELS[nextIdx])
-//                        else
-//                            focusToplevel(TOPLEVELS[0])
-//                    }
+                    compositor.windowSystem.focusNextToplevel()
+                    handledInCompositor = true
+                }
+
+                XkbKey.F2 -> {
+                    compositor.terminalPath?.let {
+                        compositor.startProcess(it)
+                    }
                     handledInCompositor = true
                 }
 
@@ -205,18 +226,19 @@ class InputSystem(val compositor: Compositor) {
     }
 
 
-    //
-    // Listeners: Mouse input: button clicks, scrolling, moving
-    //
+    // **************************************************************************************************** //
+    // Listeners: Mouse input: button clicks, scrolling, moving the cursor                                  //
+    // **************************************************************************************************** //
+
 
     fun onCursorMotion(event: PointerMotionEvent) {
-        compositor.cursor.move(event.pointer.base(), event.deltaX, event.deltaY)
+        cursor.move(event.pointer.base(), event.deltaX, event.deltaY)
         processCursorMotion(event.timeMsec)
     }
 
 
     fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
-        compositor.cursor.warpAbsolute(event.pointer.base(), event.x, event.y)
+        cursor.warpAbsolute(event.pointer.base(), event.x, event.y)
         processCursorMotion(event.timeMsec)
     }
 
@@ -227,15 +249,15 @@ class InputSystem(val compositor: Compositor) {
 
         when (event.state) {
             PointerButtonState.PRESSED -> {
-                val x = compositor.cursor.x()
-                val y = compositor.cursor.y()
+                val x = cursor.x()
+                val y = cursor.y()
                 compositor.windowSystem.toplevelAtCoordinates(x, y)?.let {
                     compositor.windowSystem.focusToplevel(it.toplevel)
                 }
             }
 
             PointerButtonState.RELEASED -> {
-                val isMove   = compositor.cursorMode == CursorMode.Move
+                val isMove = compositor.cursorMode == CursorMode.Move
                 val isResize = compositor.cursorMode == CursorMode.Resize
                 if (isMove || isResize)
                     compositor.windowSystem.resetCursorMode()

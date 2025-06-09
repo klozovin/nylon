@@ -37,6 +37,12 @@ public class Surface {
     }
 
 
+    @Override
+    public int hashCode() {
+        return surfacePtr.hashCode();
+    }
+
+
     public static @Nullable Surface ofPtrOrNull(MemorySegment ptr) {
         return !ptr.equals(NULL) ? new Surface(ptr) : null;
     }

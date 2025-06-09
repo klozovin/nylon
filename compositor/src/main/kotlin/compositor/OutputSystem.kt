@@ -11,6 +11,11 @@ class OutputSystem(val compositor: Compositor) {
     val outputs: MutableMap<Listener, Output> = HashMap()
 
 
+    init {
+        compositor.backend.events.newOutput.add(::onNewOutput)
+    }
+
+
     fun onNewOutput(output: Output) {
         output.initRender(compositor.allocator, compositor.renderer)
 
