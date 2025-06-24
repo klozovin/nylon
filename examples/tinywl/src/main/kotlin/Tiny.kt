@@ -199,7 +199,7 @@ object Tiny {
         focusedToplevel = TOPLEVELS.indexOfFirst { it.xdgToplevel == toplevel.xdgToplevel }
 
         // Don't refocus already focused surface
-        if (previouslyFocusedSurface?.surfacePtr == xdgToplevel.base().surface().surfacePtr) {
+        if (previouslyFocusedSurface == xdgToplevel.base().surface()) {
             return
         }
 
@@ -243,7 +243,7 @@ object Tiny {
         val sceneSurface = SceneSurface.tryFromBuffer(sceneBuffer) ?: return null
 
         return sceneNode.parentIterator.firstNotNullOfOrNull { sc ->
-            TOPLEVELS.find { it.sceneTree.sceneTreePtr == sc.sceneTreePtr }
+            TOPLEVELS.find { it.sceneTree == sc }
         }?.let {
             UnderCursor(it, sceneSurface.surface(), nx, ny)
         }
@@ -487,7 +487,7 @@ object Tiny {
     fun beginInteractive(tytoplevel: TyToplevel, mode: CursorMode, edges: EnumSet<Edge>?) {
         val focusedSurface = seat.pointerState().focusedSurface()
 
-        if (tytoplevel.xdgToplevel.base().surface().surfacePtr != focusedSurface.rootSurface.surfacePtr) {
+        if (tytoplevel.xdgToplevel.base().surface() != focusedSurface.rootSurface) {
             return
         }
 
@@ -736,7 +736,7 @@ object Tiny {
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
         val focusedClient = seat.pointerState().focusedClient()
-        if (focusedClient?.seatClientPtr == event.seatClient.seatClientPtr)
+        if (focusedClient == event.seatClient)
             cursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
     }
 

@@ -18,10 +18,9 @@ public enum PointerAxis {
 
 
     public static PointerAxis of(int value) {
-        for (var e : values()) {
-            if (e.value == value)
-                return e;
-        }
+        if (value == WL_POINTER_AXIS_VERTICAL_SCROLL())   return VERTICAL_SCROLL;
+        if (value == WL_POINTER_AXIS_HORIZONTAL_SCROLL()) return HORIZONTAL_SCROLL;
+
         throw new RuntimeException("Invalid enum value from C code for wl_pointer_axis");
     }
 }

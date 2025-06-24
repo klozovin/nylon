@@ -14,6 +14,7 @@ public enum Edge {
 
     public final int value;
 
+
     Edge(int value) {
         this.value = value;
     }
@@ -21,11 +22,17 @@ public enum Edge {
 
     /// Create an EnumSet of Edges from the C bitmask
     public static EnumSet<Edge> fromBitset(int bitset) {
+        // TODO: What if WLR_EDGE_NONE gets passed in, and when does that happen?
         assert bitset >= 0;
+
         var edges = EnumSet.noneOf(Edge.class);
-        for (var edge : values())
-            if ((edge.value & bitset) != 0)
-                edges.add(edge);
+
+        if ((WLR_EDGE_NONE()   & bitset) != 0) edges.add(NONE);
+        if ((WLR_EDGE_TOP()    & bitset) != 0) edges.add(TOP);
+        if ((WLR_EDGE_BOTTOM() & bitset) != 0) edges.add(BOTTOM);
+        if ((WLR_EDGE_LEFT()   & bitset) != 0) edges.add(LEFT);
+        if ((WLR_EDGE_RIGHT()  & bitset) != 0) edges.add(RIGHT);
+
         return edges;
     }
 }

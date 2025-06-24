@@ -137,12 +137,11 @@ public class SceneNode {
 
 
         public static Type of(int value) {
-            for (var e : values()) {
-                if (e.value == value)
-                    return e;
-            }
+            if (value == WLR_SCENE_NODE_TREE())   return TREE;
+            if (value == WLR_SCENE_NODE_RECT())   return RECT;
+            if (value == WLR_SCENE_NODE_BUFFER()) return BUFFER;
+
             throw new RuntimeException("Invalid enum value from C code for wlr_scene_node_type");
         }
-
     }
 }

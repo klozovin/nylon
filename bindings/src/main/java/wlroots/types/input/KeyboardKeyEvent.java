@@ -14,6 +14,7 @@ import static java.lang.foreign.MemorySegment.NULL;
 public class KeyboardKeyEvent {
     public final int timeMsec;
     public final int keycode;
+    /// If backend doesn't update modifiers on its own
     public final boolean updateState;
     public final KeyboardKeyState state;
 

@@ -181,17 +181,16 @@ public class Buffer {
         public final int idx;
 
 
-        public static AccessFlag of(int idx) {
-            for (var e : values()) {
-                if (e.idx == idx)
-                    return e;
-            }
-            throw new RuntimeException("Invalid enum value from C code");
+        AccessFlag(int idx) {
+            this.idx = idx;
         }
 
 
-        AccessFlag(int idx) {
-            this.idx = idx;
+        public static AccessFlag of(int value) {
+            if (value == WLR_BUFFER_DATA_PTR_ACCESS_READ())  return READ;
+            if (value == WLR_BUFFER_DATA_PTR_ACCESS_WRITE()) return WRITE;
+
+            throw new RuntimeException("Invalid enum value from C code for wlr_buffer_data_ptr_access_flag");
         }
 
 

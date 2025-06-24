@@ -47,7 +47,7 @@ public class XdgSurface {
     }
 
 
-    // *** Getters and setters **************************************************************************** //
+    // *** Fields ***************************************************************************************** //
 
 
     public Surface surface() {
@@ -119,9 +119,10 @@ public class XdgSurface {
         }
 
         public static SurfaceRole of(int value) {
-            for (var role: values())
-                if (role.value == value)
-                    return role;
+            if (value == WLR_XDG_SURFACE_ROLE_NONE())     return NONE;
+            if (value == WLR_XDG_SURFACE_ROLE_TOPLEVEL()) return TOPLEVEL;
+            if (value == WLR_XDG_SURFACE_ROLE_POPUP())    return POPUP;
+
             throw new RuntimeException("Invalid enum value from C code for wlr_xdg_surface_role");
         }
     }

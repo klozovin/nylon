@@ -44,16 +44,20 @@ public final class InputDevice {
         final int value;
 
 
-        Type(int constant) {
-            this.value = constant;
+        Type(int value) {
+            this.value = value;
         }
 
 
         public static Type of(int value) {
-            for (var e : values())
-                if (e.value == value)
-                    return e;
-            throw new RuntimeException("Invalid enum value for wlr_input_device_type");
+            if (value == WLR_INPUT_DEVICE_KEYBOARD())   return KEYBOARD;
+            if (value == WLR_INPUT_DEVICE_POINTER())    return POINTER;
+            if (value == WLR_INPUT_DEVICE_TOUCH())      return TOUCH;
+            if (value == WLR_INPUT_DEVICE_TABLET())     return TABLET;
+            if (value == WLR_INPUT_DEVICE_TABLET_PAD()) return TABLET_PAD;
+            if (value == WLR_INPUT_DEVICE_SWITCH())     return SWITCH;
+
+            throw new RuntimeException("Invalid enum value from C code for wlr_input_device_type");
         }
     }
 

@@ -28,7 +28,8 @@ public final class SceneTree {
     public boolean equals(Object other) {
         return switch (other) {
             case SceneTree otherSceneTree -> sceneTreePtr.equals(otherSceneTree.sceneTreePtr);
-            default -> false;
+            case null -> false;
+            default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }
 
@@ -51,12 +52,15 @@ public final class SceneTree {
     }
 
 
-    // *** Getters and setters **************************************************************************** //
+    // *** Fields ***************************************************************************************** //
 
 
     public SceneNode node() {
         return new SceneNode(wlr_scene_tree.node(sceneTreePtr));
     }
+
+
+    // *** Methods **************************************************************************************** //
 
 
     /// Add a node displaying a xdg_surface and all of its sub-surfaces to the scene-graph.

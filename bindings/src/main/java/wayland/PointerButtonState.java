@@ -17,10 +17,9 @@ public enum PointerButtonState {
 
 
     public static PointerButtonState of(int value) {
-        for (var e : values()) {
-            if (e.value == value)
-                return e;
-        }
-        throw new RuntimeException("Invalid enum value from C code");
+        if (value == WL_POINTER_BUTTON_STATE_PRESSED())  return PRESSED;
+        if (value == WL_POINTER_BUTTON_STATE_RELEASED()) return RELEASED;
+
+        throw new RuntimeException("Invalid enum value from C code for wl_pointer_button_state");
     }
 }

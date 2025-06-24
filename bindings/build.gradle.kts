@@ -6,6 +6,7 @@ version = "0.1"
 
 plugins {
     kotlin("jvm") version "2.1.20"
+    id("org.jetbrains.kotlinx.benchmark") version "0.4.14"
 }
 
 repositories {
@@ -13,6 +14,21 @@ repositories {
 }
 
 sourceSets.create("generated")
+
+sourceSets.create("benchmark") {
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().output
+
+//    implementation(sourceSets["generated"].output)
+
+    dependencies {
+        implementation("org.jetbrains.kotlinx", "kotlinx-benchmark-runtime", "0.4.14")
+    }
+
+    configurations["benchmarkImplementation"].extendsFrom(configurations.implementation.get())
+
+}
+benchmark.targets.register("benchmark")
 
 dependencies {
     implementation(sourceSets["generated"].output)
