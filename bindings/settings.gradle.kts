@@ -1,6 +1,7 @@
 rootProject.name = "bindings"
 
 include("wlroots4j")
+include("jextracted")
 
 include("tinywl")
 

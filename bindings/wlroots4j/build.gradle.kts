@@ -8,7 +8,7 @@ plugins {
     id("org.jetbrains.kotlinx.benchmark") version "0.4.14"
 }
 
-sourceSets.create("generated")
+//sourceSets.create("generated")
 
 sourceSets.create("benchmark") {
     compileClasspath += sourceSets.main.get().output
@@ -27,7 +27,9 @@ sourceSets.create("benchmark") {
 benchmark.targets.register("benchmark")
 
 dependencies {
-    implementation(sourceSets["generated"].output)
+    implementation(project(":jextracted"))
+
+//    implementation(sourceSets["generated"].output)
     implementation("org.jspecify", "jspecify", "1.0.0")
     testImplementation("io.kotest", "kotest-runner-junit5", "5.9.1")
     testImplementation("io.kotest", "kotest-assertions-core", "5.9.1")
@@ -37,7 +39,7 @@ tasks {
     jar {
 //        dependsOn(tasks.named("classes"))
 //        dependsOn(tasks.name)
-        from(sourceSets["generated"].output)
+//        from(sourceSets["generated"].output)
     }
     test {
         useJUnitPlatform()
@@ -45,9 +47,9 @@ tasks {
     }
 }
 
-java {
-    // TODO: Necessary?
-    registerFeature("generated") {
-        usingSourceSet(sourceSets["generated"])
-    }
-}
+//java {
+//    // TODO: Necessary?
+//    registerFeature("generated") {
+//        usingSourceSet(sourceSets["generated"])
+//    }
+//}
