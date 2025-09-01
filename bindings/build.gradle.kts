@@ -5,7 +5,7 @@ group = "com.sklogw.nylon"
 version = "0.1"
 
 plugins {
-    kotlin("jvm") version "2.1.20"
+    kotlin("jvm") version "2.2.10"
     id("org.jetbrains.kotlinx.benchmark") version "0.4.14"
 }
 
@@ -50,8 +50,8 @@ tasks {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_23
-    targetCompatibility = JavaVersion.VERSION_23
+    sourceCompatibility = JavaVersion.VERSION_24
+    targetCompatibility = JavaVersion.VERSION_24
     toolchain.languageVersion = JavaLanguageVersion.of(24)
 
     // TODO: Necessary?
@@ -61,7 +61,7 @@ java {
 }
 
 kotlin.compilerOptions {
-    jvmTarget = JvmTarget.JVM_23
+    jvmTarget = JvmTarget.JVM_24
     apiVersion = KotlinVersion.KOTLIN_2_2
     languageVersion = KotlinVersion.KOTLIN_2_2
 }
