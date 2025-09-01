@@ -70,7 +70,7 @@ object SceneGraph {
             exitProcess(1)
         }
 
-        Timer(true).schedule(4000) {
+        Timer(true).schedule(8000) {
             display.terminate()
         }
 
