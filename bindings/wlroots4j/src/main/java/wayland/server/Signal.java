@@ -53,7 +53,7 @@ public abstract sealed class Signal {
     ///
     /// Convenience function, does not exist in C code.
     public void remove(Listener listener) {
-        // TODO: Assert that listener is present in listenerList
+        // TODO: (debug) Assert that listener is present in listenerList
         listenerList.remove(listener);
     }
 

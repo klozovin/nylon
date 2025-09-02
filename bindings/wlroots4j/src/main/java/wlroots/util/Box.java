@@ -26,40 +26,51 @@ public class Box {
     }
 
 
+    /// Custom copy constructor that allocates a Box in a GC collected arena.
+    public static Box allocateCopy(Box box) {
+        var newBox = Box.allocate(Arena.ofAuto());
+        newBox.setX(box.getX());
+        newBox.setY(box.getY());
+        newBox.setWidth(box.getWidth());
+        newBox.setHeight(box.getHeight());
+        return newBox;
+    }
+
+
     @Override
     public String toString() {
         return "Box[" +
-            "x=" + x() +
-            ", y=" + y() +
-            ", width=" + width() +
-            ", height=" + height() +
+            "x=" + getX() +
+            ", y=" + getY() +
+            ", width=" + getWidth() +
+            ", height=" + getHeight() +
             "]";
     }
 
     // *** Getters and setters **************************************************************************** //
 
 
-    public int x() {
+    public int getX() {
         return wlr_box.x(boxPtr);
     }
 
 
-    public void x(int x) {
+    public void setX(int x) {
         wlr_box.x(boxPtr, x);
     }
 
 
-    public int y() {
+    public int getY() {
         return wlr_box.y(boxPtr);
     }
 
 
-    public void y(int y) {
+    public void setY(int y) {
         wlr_box.y(boxPtr, y);
     }
 
 
-    public int width() {
+    public int getWidth() {
         return wlr_box.width(boxPtr);
     }
 
@@ -69,7 +80,7 @@ public class Box {
     }
 
 
-    public int height() {
+    public int getHeight() {
         return wlr_box.height(boxPtr);
     }
 

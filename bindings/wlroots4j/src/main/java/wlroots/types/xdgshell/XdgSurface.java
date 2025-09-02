@@ -81,19 +81,13 @@ public class XdgSurface {
     }
 
 
-    // *** Methods **************************************************************************************** //
-
-
-    /// Get the surface geometry.
-    ///
-    /// This is either the geometry as set by the client, or defaulted to the bounds of the surface + the
-    /// subsurfaces (as specified by the protocol). The x and y value can be < 0.
-    public Box getGeometry() {
-        // TODO: Memory management: This could work as auto?
-        var box = Box.allocate(Arena.global());
-        wlr_xdg_surface_get_geometry(xdgSurfacePtr, box.boxPtr);
-        return box;
+    ///  Surface geometry
+    public Box geometry() {
+        return new Box(wlr_xdg_surface.geometry(xdgSurfacePtr));
     }
+
+
+    // *** Methods **************************************************************************************** //
 
 
     /// Schedule a surface configuration. This should only be called by protocols extending the shell.

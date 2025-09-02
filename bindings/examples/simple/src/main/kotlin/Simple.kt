@@ -119,7 +119,7 @@ fun outputFrameNotify(output: Output) {
         val outputState = OutputState.allocate(arena)
         outputState.init()
 
-        val renderPass = State.output.beginRenderPass(outputState, 0, null) ?: error("Render pass should not be null")
+        val renderPass = State.output.beginRenderPass(outputState,null) ?: error("Render pass should not be null")
         renderPass.addRect(RectOptions.allocate(arena).apply {
             box.setWidth(State.output.width())
             box.setHeight(State.output.height())
@@ -175,8 +175,8 @@ fun main() {
     State.renderer = Renderer.autocreate(backend) ?: exitProcess(1)
     State.allocator = Allocator.autocreate(backend, State.renderer) ?: error("Failed to create wlr_allocator")
 
-    backend.events.newOutput.add(::newOutputNotify)
-    backend.events.newInput.add(::newInputNotify)
+    val backendNewOutputListener = backend.events.newOutput.add(::newOutputNotify)
+    val backendNewInputListener = backend.events.newInput.add(::newInputNotify)
 
     State.lastFrame = System.currentTimeMillis()
 
@@ -187,6 +187,11 @@ fun main() {
     }
 
     State.display.run()
+
+    // Cleanup needed because wlroots asserts there are no more listeners
+    backend.events.newOutput.remove(backendNewOutputListener)
+    backend.events.newInput.remove(backendNewInputListener)
+
     State.display.destroy()
 }
 

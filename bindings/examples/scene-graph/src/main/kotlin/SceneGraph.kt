@@ -1,4 +1,5 @@
 import wayland.server.Display
+import wayland.server.Listener
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
@@ -13,7 +14,6 @@ import wlroots.types.scene.SceneSurface
 import wlroots.types.xdgshell.XdgShell
 import wlroots.types.xdgshell.XdgToplevel
 import wlroots.util.Log
-import java.lang.foreign.MemorySegment
 import java.util.*
 import kotlin.concurrent.schedule
 import kotlin.system.exitProcess
@@ -22,6 +22,8 @@ import kotlin.system.exitProcess
 data class SurfaceExtra(
     val sceneSurface: SceneSurface,
     val border: SceneRect,
+    val commitListener: Listener,
+    val destroyListener: Listener,
 )
 
 
@@ -38,7 +40,11 @@ object SceneGraph {
     lateinit var scene: Scene
     lateinit var sceneOutput: SceneOutput
 
-    val surfaceExtras = mutableMapOf<MemorySegment, SurfaceExtra>()
+    val surfaceExtras = mutableMapOf<Surface, SurfaceExtra>()
+
+    lateinit var backendNewOutputListener: Listener
+    lateinit var compositorNewSurfaceListener: Listener
+    lateinit var outputFrameListener: Listener
 
 
     fun main(args: Array<String>) {
@@ -57,8 +63,8 @@ object SceneGraph {
 
         XdgShell.create(display, 2)
 
-        backend.events.newOutput.add(::newOutputHandler)
-        compositor.events.newSurface.add(::newSurfaceHandler)
+        backendNewOutputListener = backend.events.newOutput.add(::newOutputHandler)
+        compositorNewSurfaceListener = compositor.events.newSurface.add(::newSurfaceHandler)
 
         val socket = display.addSocketAuto() ?: error {
             display.destroy()
@@ -85,13 +91,18 @@ object SceneGraph {
         display.run()
 
         display.destroyClients()
+
+        compositorNewSurfaceListener.remove()
+        backendNewOutputListener.remove()
+        outputFrameListener.remove()
+
         display.destroy()
     }
 
 
     fun newOutputHandler(output: Output) {
         output.initRender(allocator, renderer)
-        output.events.frame.add(::outputFrameHandler)
+        outputFrameListener = output.events.frame.add(::outputFrameHandler)
         sceneOutput = SceneOutput.create(scene, output)
 
         OutputState.allocateConfined { state ->
@@ -114,8 +125,8 @@ object SceneGraph {
 
 
     fun newSurfaceHandler(surface: Surface) {
-        surface.events.commit.add(::surfaceCommitHandler)
-        surface.events.destroy.add(::surfaceDestroyHandler)
+        val commitListener = surface.events.commit.add(::surfaceCommitHandler)
+        val destroyListener = surface.events.destroy.add(::surfaceDestroyHandler)
 
         val surfaceBorder = SceneRect.create(scene.tree(), 0, 0, floatArrayOf(0.8f, 0.2f, 0.2f, 1.0f))
         surfaceBorder.node().setPosition(surfaceOffset, surfaceOffset)
@@ -123,14 +134,14 @@ object SceneGraph {
         val sceneSurface = SceneSurface.create(scene.tree(), surface)
         sceneSurface.buffer().node().setPosition(surfaceOffset + borderWidth, surfaceOffset + borderWidth)
 
-        surfaceExtras.put(surface.surfacePtr, SurfaceExtra(sceneSurface, surfaceBorder))
+        surfaceExtras[surface] = SurfaceExtra(sceneSurface, surfaceBorder, commitListener, destroyListener)
         surfaceOffset += 50
     }
 
 
     // wlr_surface.events.commit
     fun surfaceCommitHandler(surface: Surface) {
-        val surfaceBorder = surfaceExtras[surface.surfacePtr]!!.border
+        val surfaceBorder = surfaceExtras[surface]!!.border
 
         surfaceBorder.setSize(surface.current().width() + 2 * borderWidth, surface.current().height() + 2 * borderWidth)
 
@@ -143,8 +154,11 @@ object SceneGraph {
 
     // wlr_surface.events.destroy
     fun surfaceDestroyHandler(surface: Surface) {
-        val sceneSurface = surfaceExtras[surface.surfacePtr]!!.sceneSurface
-        val surfaceBorder = surfaceExtras[surface.surfacePtr]!!.border
+        val sceneSurface = surfaceExtras[surface]!!.sceneSurface
+        val surfaceBorder = surfaceExtras[surface]!!.border
+
+        surfaceExtras[surface]!!.commitListener.remove()
+        surfaceExtras[surface]!!.destroyListener.remove()
 
         sceneSurface.buffer().node().destroy()
         surfaceBorder.node().destroy()

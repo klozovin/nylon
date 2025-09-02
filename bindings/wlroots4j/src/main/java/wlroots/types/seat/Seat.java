@@ -217,11 +217,13 @@ public class Seat {
         /// Raised when a client provides a cursor image.
         public final Signal1<PointerRequestSetCursorEvent> requestSetCursor;
         public final Signal1<RequestSetSelectionEvent>     requestSetSelection;
+        public final Signal1<Seat>                         destroy;
 
 
         public Events(MemorySegment ptr) {
             requestSetCursor    = Signal.of(wlr_seat.events.request_set_cursor(ptr), PointerRequestSetCursorEvent::new);
             requestSetSelection = Signal.of(wlr_seat.events.request_set_selection(ptr), RequestSetSelectionEvent::new);
+            destroy             = Signal.of(wlr_seat.events.destroy(ptr), Seat::new);
         }
     }
 }

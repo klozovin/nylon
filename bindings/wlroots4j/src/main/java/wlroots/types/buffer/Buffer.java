@@ -33,9 +33,7 @@ public class Buffer {
 
 
     public void finish() {
-        // TODO: This function appears wlroots 0.19 (finish v. drop?)
-//        wlr_buffer_finish(bufferPtr)
-        System.out.println("!!! WARNING !!! wlr_buffer.finish() not implemented in wlroots 0.18 !!!");
+        wlr_buffer_finish(bufferPtr);
     }
 
 

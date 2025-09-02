@@ -40,9 +40,11 @@ object Pointer {
 
     val display = Display.create()
 
+    val backendNewInputListener: Listener
+    val backendNewOutputListener: Listener
     val backend = Backend.autocreate(display.eventLoop, null)?.apply {
-        events.newInput.add(::onNewInput)
-        events.newOutput.add(::onNewOutput)
+        backendNewInputListener = events.newInput.add(::onNewInput)
+        backendNewOutputListener = events.newOutput.add(::onNewOutput)
     } ?: error("Failed to create wlr_backend")
 
     val renderer = Renderer.autocreate(backend) ?: error("Failed to create wlr_renderer")
@@ -59,19 +61,28 @@ object Pointer {
     lateinit var inputDeviceDestroyListener: Listener
 
 
+    val cursorMotionListener: Listener
+    val cursorMotionAbsoluteListener: Listener
+    val cursorButtonListener: Listener
+    val cursorAxisListener: Listener
+    val cursorTouchUpListener: Listener
+    val cursorTouchDownListener: Listener
+    val cursorTouchMotionListener: Listener
+    val cursorTouchCancelListener: Listener
+    val cursorTabletToolAxisListener: Listener
     val cursor = Cursor.create().apply {
         with(events) {
-            motion.add(::cursorMotionHandler)
-            motionAbsolute.add(::onCursorMotionAbsolute)
-            button.add(::onCursorButton)
-            axis.add(::onCursorAxis)
+            cursorMotionListener = motion.add(::cursorMotionHandler)
+            cursorMotionAbsoluteListener = motionAbsolute.add(::onCursorMotionAbsolute)
+            cursorButtonListener = button.add(::onCursorButton)
+            cursorAxisListener = axis.add(::onCursorAxis)
 
-            touchUp.add(::cursorTouchUpHandler)
-            touchDown.add(::cursorTouchDownHandler)
-            touchMotion.add(::cursorTouchMotionHandler)
-            touchCancel.add(::cursorTouchCancelHandler)
+            cursorTouchUpListener = touchUp.add(::cursorTouchUpHandler)
+            cursorTouchDownListener = touchDown.add(::cursorTouchDownHandler)
+            cursorTouchMotionListener = touchMotion.add(::cursorTouchMotionHandler)
+            cursorTouchCancelListener = touchCancel.add(::cursorTouchCancelHandler)
 
-            tabletToolAxis.add(::cursorTabletToolAxisHandler)
+            cursorTabletToolAxisListener = tabletToolAxis.add(::cursorTabletToolAxisHandler)
         }
 
         setXcursor(xcursorManager, "default")
@@ -86,6 +97,20 @@ object Pointer {
             exitProcess(1)
         }
         display.run()
+
+        // Listeners cleanup
+        backendNewInputListener.remove()
+        backendNewOutputListener.remove()
+        cursorMotionListener.remove()
+        cursorMotionAbsoluteListener.remove()
+        cursorButtonListener.remove()
+        cursorAxisListener.remove()
+        cursorTouchUpListener.remove()
+        cursorTouchDownListener.remove()
+        cursorTouchMotionListener.remove()
+        cursorTouchCancelListener.remove()
+        cursorTabletToolAxisListener.remove()
+
         display.destroy()
         xcursorManager.destroy()
         cursor.destroy()
@@ -99,8 +124,8 @@ object Pointer {
         Pointer.output = output
         output.initRender(allocator, renderer)
 
-        output.events.frame.add(::onOutputFrame)
-        output.events.destroy.add(::onOutputDestroy)
+        outputFrameListener = output.events.frame.add(::onOutputFrame)
+        outputDestroyListener = output.events.destroy.add(::onOutputDestroy)
 
         outputLayout.addAuto(output) ?: error("Can't add wlr_output to wlr_output_layout")
 
@@ -120,7 +145,7 @@ object Pointer {
         Arena.ofConfined().use { arena ->
             val state = OutputState.allocate(arena)
             state.init()
-            val pass = output.beginRenderPass(state, null, null) ?: error("Failed to create wlr_render_pass")
+            val pass = output.beginRenderPass(state, null) ?: error("Failed to create wlr_render_pass")
             pass.addRect(RectOptions.allocate(arena).apply {
                 box.setWidth(output.width())
                 box.setHeight(output.height())

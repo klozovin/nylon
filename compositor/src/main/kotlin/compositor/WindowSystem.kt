@@ -11,6 +11,7 @@ import wlroots.types.xdgshell.XdgPopup
 import wlroots.types.xdgshell.XdgShell
 import wlroots.types.xdgshell.XdgSurface
 import wlroots.types.xdgshell.XdgToplevel
+import wlroots.util.Box
 import java.util.*
 
 
@@ -115,20 +116,20 @@ class WindowSystem(val compositor: Compositor) {
             CursorMode.Resize -> {
                 require(edges != null)
 
-                val geometryBox = toplevel.base().getGeometry()
+                val geometryBox = toplevel.base().geometry()
 
                 val borderX =
-                    (sceneNode.x() + geometryBox.x()) + if (Edge.RIGHT in edges) geometryBox.width() else 0
+                    (sceneNode.x() + geometryBox.x) + if (Edge.RIGHT in edges) geometryBox.width else 0
                 val borderY =
-                    (sceneNode.y() + geometryBox.y()) + if (Edge.BOTTOM in edges) geometryBox.height() else 0
+                    (sceneNode.y() + geometryBox.y) + if (Edge.BOTTOM in edges) geometryBox.height else 0
 
                 compositor.grabX = compositor.inputSystem.cursor.x() - borderX
                 compositor.grabY = compositor.inputSystem.cursor.y() - borderY
 
-                compositor.grabGeobox = geometryBox
+                compositor.grabGeobox = Box.allocateCopy(geometryBox)
                 with(compositor.grabGeobox) {
-                    x(x() + sceneNode.x())
-                    y(y() + sceneNode.y())
+                    x += sceneNode.x()
+                    y += sceneNode.y()
                 }
 
                 compositor.resizeEdges = edges

@@ -78,11 +78,11 @@ class InputSystem(val compositor: Compositor) {
         val borderX = cursor.x() - compositor.grabX
         val borderY = cursor.y() - compositor.grabY
 
-        var newLeft = compositor.grabGeobox.x()
-        var newRight = compositor.grabGeobox.x() + compositor.grabGeobox.width()
+        var newLeft = compositor.grabGeobox.x
+        var newRight = compositor.grabGeobox.x + compositor.grabGeobox.width
 
-        var newTop = compositor.grabGeobox.y()
-        var newBottom = compositor.grabGeobox.y() + compositor.grabGeobox.height()
+        var newTop = compositor.grabGeobox.y
+        var newBottom = compositor.grabGeobox.y + compositor.grabGeobox.height
 
         if (Edge.TOP in compositor.resizeEdges) {
             newTop = borderY.toInt()
@@ -104,8 +104,8 @@ class InputSystem(val compositor: Compositor) {
                 newRight = newLeft + 1
         }
 
-        val geoBox = grabbedToplevel.base().getGeometry()
-        grabbedSceneTree.node().setPosition(newLeft - geoBox.x(), newTop - geoBox.y())
+        val geoBox = grabbedToplevel.base().geometry()
+        grabbedSceneTree.node().setPosition(newLeft - geoBox.x, newTop - geoBox.y)
         grabbedToplevel.setSize(newRight - newLeft, newBottom - newTop)
     }
 

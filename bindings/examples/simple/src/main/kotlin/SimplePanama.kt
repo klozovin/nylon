@@ -126,7 +126,7 @@ object SimplePanama {
         backend_h.wlr_output_state_init(state)
 
         // struct wlr_render_pass *pass = wlr_output_begin_render_pass(wlr_output, &state, NULL);
-        val pass = backend_h.wlr_output_begin_render_pass(Output.output, state, MemorySegment.NULL, MemorySegment.NULL)
+        val pass = backend_h.wlr_output_begin_render_pass(Output.output, state, MemorySegment.NULL)
 
         // wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
         //     .box = { .width = wlr_output->width, .height = wlr_output->height },

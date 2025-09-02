@@ -146,6 +146,7 @@ public final class List<T extends List.Element<@NonNull T>> {
             return wl_list.prev(getLinkMemberPtr());
         }
 
+        /// Remove this element from the list.
         default void remove() {
             // TODO: Check if element previously removed
             wl_list_remove(getLinkMemberPtr());

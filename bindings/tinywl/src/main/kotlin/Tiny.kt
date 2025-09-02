@@ -78,11 +78,24 @@ class TyPopup(val xdgPopup: XdgPopup, val sceneTree: SceneTree) {
 
 object Tiny {
     lateinit var display: Display
+
+    // Backend
     lateinit var backend: Backend
+    lateinit var backendNewOutputListener: Listener
+    lateinit var backendNewInputListener: Listener
+    lateinit var backendDestroyListener: Listener
+
     lateinit var renderer: Renderer
     lateinit var allocator: Allocator
 
+    // Cursor
     lateinit var cursor: Cursor
+    lateinit var cursorMotionListener: Listener
+    lateinit var cursorMotionAbsoluteListener: Listener
+    lateinit var cursorButtonListener: Listener
+    lateinit var cursorAxisListener: Listener
+    lateinit var cursorFrameListener: Listener
+
     lateinit var xcursorManager: XcursorManager
     lateinit var cursorMode: CursorMode
 
@@ -90,8 +103,17 @@ object Tiny {
     lateinit var outputLayout: OutputLayout
     lateinit var sceneOutputLayout: SceneOutputLayout
 
+    // XdgShell
     lateinit var xdgShell: XdgShell
+    lateinit var xdgShellNewToplevelListener: Listener
+    lateinit var xdgShellNewPopupListener: Listener
+    lateinit var xdgShellDestroyListener: Listener
+
+    // Seat
     lateinit var seat: Seat
+    lateinit var seatRequestSetCursorListener: Listener
+    lateinit var seatRequestSetSelectionListener: Listener
+    lateinit var seatDestroyListener: Listener
 
 
     // Moving and resizing toplevel windows
@@ -121,8 +143,9 @@ object Tiny {
 
         allocator = Allocator.autocreate(backend, renderer) ?: error("Failed to create wlr_allocator")
 
-        backend.events.newOutput.add(::onNewOutput)
-        backend.events.newInput.add(::onNewInput)
+        backendNewOutputListener = backend.events.newOutput.add(::onNewOutput)
+        backendNewInputListener = backend.events.newInput.add(::onNewInput)
+        backendDestroyListener = backend.events.destroy.add(::onBackendDestroy)
 
         Compositor.create(display, 5, renderer)
         Subcompositor.create(display)
@@ -134,23 +157,25 @@ object Tiny {
         sceneOutputLayout = scene.attachOutputLayout(outputLayout)
 
         xdgShell = XdgShell.create(display, 3)
-        xdgShell.events.newToplevel.add(::onNewXdgToplevel)
-        xdgShell.events.newPopup.add(::onNewXdgPopup)
+        xdgShellNewToplevelListener = xdgShell.events.newToplevel.add(::onNewXdgToplevel)
+        xdgShellNewPopupListener = xdgShell.events.newPopup.add(::onNewXdgPopup)
+        xdgShellDestroyListener = xdgShell.events.destroy.add(::onXdgShellDestroy)
 
         cursor = Cursor.create().apply {
             attachOutputLayout(outputLayout)
-            events.motion.add(::onCursorMotion)
-            events.motionAbsolute.add(::onCursorMotionAbsolute)
-            events.button.add(::onCursorButton)
-            events.axis.add(::onCursorAxis)
-            events.frame.add(::onCursorFrame)
+            cursorMotionListener = events.motion.add(::onCursorMotion)
+            cursorMotionAbsoluteListener = events.motionAbsolute.add(::onCursorMotionAbsolute)
+            cursorButtonListener = events.button.add(::onCursorButton)
+            cursorAxisListener = events.axis.add(::onCursorAxis)
+            cursorFrameListener = events.frame.add(::onCursorFrame)
         }
         xcursorManager = XcursorManager.create(null, 24) ?: error("Failed to create wlr_xcursor_manager")
         cursorMode = CursorMode.Passthrough
 
         seat = Seat.create(display, "seat0")
-        seat.events.requestSetCursor.add(::onSeatRequestSetCursor)
-        seat.events.requestSetSelection.add(::onSeatRequestSetSelection)
+        seatRequestSetCursorListener = seat.events.requestSetCursor.add(::onSeatRequestSetCursor)
+        seatRequestSetSelectionListener = seat.events.requestSetSelection.add(::onSeatRequestSetSelection)
+        seatDestroyListener = seat.events.destroy.add(::onSeatDestroy)
 
         val socket = display.addSocketAuto() ?: error {
             backend.destroy()
@@ -182,7 +207,15 @@ object Tiny {
         display.destroyClients()
         scene.tree().node().destroy()
         xcursorManager.destroy()
+
+        cursorMotionListener.remove()
+        cursorMotionAbsoluteListener.remove()
+        cursorButtonListener.remove()
+        cursorAxisListener.remove()
+        cursorFrameListener.remove()
         cursor.destroy()
+
+
         allocator.destroy()
         renderer.destroy()
         backend.destroy()
@@ -195,11 +228,12 @@ object Tiny {
     fun focusToplevel(toplevel: TyToplevel) {
         val xdgToplevel = toplevel.xdgToplevel
         val previouslyFocusedSurface = seat.keyboardState().focusedSurface()
+        val surface = xdgToplevel.base().surface()
 
         focusedToplevel = TOPLEVELS.indexOfFirst { it.xdgToplevel == toplevel.xdgToplevel }
 
         // Don't refocus already focused surface
-        if (previouslyFocusedSurface == xdgToplevel.base().surface()) {
+        if (previouslyFocusedSurface == surface) {
             return
         }
 
@@ -216,7 +250,7 @@ object Tiny {
 
         seat.getKeyboard()?.let { keyboard ->
             seat.keyboardNotifyEnter(
-                xdgToplevel.base().surface(),
+                surface,
                 keyboard.keycodesPtr(),
                 keyboard.keycodesNum(),
                 keyboard.modifiers()
@@ -299,6 +333,13 @@ object Tiny {
             destroyListener.remove()
         }
         OUTPUTS.removeAt(idx)
+    }
+
+
+    fun onBackendDestroy(backend: Backend) {
+        backendNewOutputListener.remove()
+        backendNewInputListener.remove()
+        backendDestroyListener.remove()
     }
 
 
@@ -503,18 +544,18 @@ object Tiny {
 
             CursorMode.Resize -> {
                 require(edges != null)
-                val geoBox = tytoplevel.xdgToplevel.base().getGeometry()
+                val geoBox = tytoplevel.xdgToplevel.base().geometry()
 
-                val borderX = (sceneNode.x() + geoBox.x()) + if (Edge.RIGHT in edges) geoBox.width() else 0
-                val borderY = (sceneNode.y() + geoBox.y()) + if (Edge.BOTTOM in edges) geoBox.height() else 0
+                val borderX = (sceneNode.x() + geoBox.x) + if (Edge.RIGHT in edges) geoBox.getWidth() else 0
+                val borderY = (sceneNode.y() + geoBox.y) + if (Edge.BOTTOM in edges) geoBox.getHeight() else 0
 
                 grabX = cursor.x() - borderX
                 grabY = cursor.y() - borderY
 
-                grabGeobox = geoBox
+                grabGeobox = Box.allocateCopy(geoBox)
                 with(grabGeobox) {
-                    x(x() + sceneNode.x())
-                    y(y() + sceneNode.y())
+                    x += sceneNode.x()
+                    y += sceneNode.y()
                 }
 
                 resizeEdges = edges
@@ -541,11 +582,11 @@ object Tiny {
         val borderX = cursor.x() - grabX
         val borderY = cursor.y() - grabY
 
-        var newLeft = grabGeobox.x()
-        var newRight = grabGeobox.x() + grabGeobox.width()
+        var newLeft = grabGeobox.x
+        var newRight = grabGeobox.x + grabGeobox.width
 
-        var newTop = grabGeobox.y()
-        var newBottom = grabGeobox.y() + grabGeobox.height()
+        var newTop = grabGeobox.y
+        var newBottom = grabGeobox.y + grabGeobox.height
 
 
         if (Edge.TOP in resizeEdges) {
@@ -568,17 +609,23 @@ object Tiny {
                 newRight = newLeft + 1
         }
 
-        val geoBox = grabbedXdgToplevel.base().getGeometry()
-        grabbedSceneTree.node().setPosition(newLeft - geoBox.x(), newTop - geoBox.y())
+        val geoBox = grabbedXdgToplevel.base().geometry()
+        grabbedSceneTree.node().setPosition(newLeft - geoBox.x, newTop - geoBox.y)
         grabbedXdgToplevel.setSize(newRight - newLeft, newBottom - newTop)
-
-
     }
 
 
     fun resetCursorMode() {
         cursorMode = CursorMode.Passthrough
         grabbedToplevel = null
+    }
+
+    // *** XDG Shell ************************************************************************************** //
+
+    fun onXdgShellDestroy(xdgShell: XdgShell) {
+        xdgShellNewToplevelListener.remove()
+        xdgShellNewPopupListener.remove()
+        xdgShellDestroyListener.remove()
     }
 
 
@@ -743,6 +790,13 @@ object Tiny {
 
     fun onSeatRequestSetSelection(event: RequestSetSelectionEvent) {
         seat.setSelection(event.source, event.serial)
+    }
+
+
+    fun onSeatDestroy(seat: Seat) {
+        seatRequestSetCursorListener.remove()
+        seatRequestSetSelectionListener.remove()
+        seatDestroyListener.remove()
     }
 
 
