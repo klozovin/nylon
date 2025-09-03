@@ -170,7 +170,7 @@ object Pointer {
     //
 
     fun onNewInput(device: InputDevice) {
-        when (device.type()) {
+        when (device.type) {
             POINTER, TOUCH, TABLET -> cursor.attachInputDevice(device)
             KEYBOARD -> {
 //                keyboard = device.keyboardFromInputDevice()

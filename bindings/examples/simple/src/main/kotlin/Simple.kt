@@ -81,7 +81,7 @@ fun newOutputNotify(output: Output) {
  * ```
  */
 fun newInputNotify(inputDevice: InputDevice) {
-    if (inputDevice.type() == InputDevice.Type.KEYBOARD) {
+    if (inputDevice.type == InputDevice.Type.KEYBOARD) {
         State.keyboard = Keyboard.fromInputDevice(inputDevice)
         State.keyboardKeyListener = State.keyboard.events.key.add(::keyboardKeyNotify)
         State.keyboardDestroyListener = inputDevice.events.destroy.add(::keyboardDestroyNotify)

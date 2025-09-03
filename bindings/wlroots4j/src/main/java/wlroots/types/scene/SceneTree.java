@@ -52,10 +52,10 @@ public final class SceneTree {
     }
 
 
-    // *** Fields ***************************************************************************************** //
+    // *** Getters and setters **************************************************************************** //
 
 
-    public SceneNode node() {
+    public SceneNode getNode() {
         return new SceneNode(wlr_scene_tree.node(sceneTreePtr));
     }
 

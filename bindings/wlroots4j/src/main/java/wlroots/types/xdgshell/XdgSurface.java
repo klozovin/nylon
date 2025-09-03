@@ -8,7 +8,6 @@ import wayland.server.Signal.Signal0;
 import wlroots.types.compositor.Surface;
 import wlroots.util.Box;
 
-import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
@@ -82,7 +81,7 @@ public class XdgSurface {
 
 
     ///  Surface geometry
-    public Box geometry() {
+    public Box getGeometry() {
         return new Box(wlr_xdg_surface.geometry(xdgSurfacePtr));
     }
 

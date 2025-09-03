@@ -205,7 +205,7 @@ object Tiny {
 
         // Cleanup after the wl_display_run() returns
         display.destroyClients()
-        scene.tree().node().destroy()
+        scene.tree().node.destroy()
         xcursorManager.destroy()
 
         cursorMotionListener.remove()
@@ -245,7 +245,7 @@ object Tiny {
             }
         }
 
-        toplevel.sceneTree.node().raiseToTop()
+        toplevel.sceneTree.node.raiseToTop()
         toplevel.xdgToplevel.setActivated(true)
 
         seat.getKeyboard()?.let { keyboard ->
@@ -268,9 +268,9 @@ object Tiny {
 
 
     fun desktopToplevelAt(targetX: Double, targetY: Double): UnderCursor? {
-        val (sceneNode, nx, ny) = scene.tree().node().nodeAt(targetX, targetY) ?: return null
+        val (sceneNode, nx, ny) = scene.tree().node.nodeAt(targetX, targetY) ?: return null
 
-        if (sceneNode.type() != SceneNode.Type.BUFFER)
+        if (sceneNode.type != SceneNode.Type.BUFFER)
             return null
 
         val sceneBuffer = SceneBuffer.fromNode(sceneNode)
@@ -349,7 +349,7 @@ object Tiny {
     fun onNewInput(inputDevice: InputDevice) {
         val seatCapabilities = seat.capabilities()
 
-        when (inputDevice.type()) {
+        when (inputDevice.type) {
             InputDevice.Type.KEYBOARD -> {
                 val keyboard = Keyboard.fromInputDevice(inputDevice)
 
@@ -388,7 +388,7 @@ object Tiny {
                 seatCapabilities.add(SeatCapability.POINTER)
             }
 
-            else -> Log.logDebug("Unknown device type: ${inputDevice.type()}")
+            else -> Log.logDebug("Unknown device type: ${inputDevice.type}")
         }
 
         seat.setCapabilities(seatCapabilities)
@@ -470,7 +470,7 @@ object Tiny {
 
         when (event.state) {
             PointerButtonState.PRESSED ->
-                desktopToplevelAt(cursor.x(), cursor.y())?.let { (tytoplevel, _, _, _) ->
+                desktopToplevelAt(cursor.x, cursor.y)?.let { (tytoplevel, _, _, _) ->
                     focusToplevel(tytoplevel)
                 }
 
@@ -506,7 +506,7 @@ object Tiny {
             CursorMode.Resize -> processCursorResize(timeMsec)
 
             CursorMode.Passthrough ->
-                when (val underCursor = desktopToplevelAt(cursor.x(), cursor.y())) {
+                when (val underCursor = desktopToplevelAt(cursor.x, cursor.y)) {
                     // Find the toplevel under the pointer and send the cursor events along.
                     is UnderCursor -> {
                         val (_, surface, nx, ny) = underCursor
@@ -535,27 +535,27 @@ object Tiny {
         grabbedToplevel = tytoplevel
         cursorMode = mode
 
-        val sceneNode = tytoplevel.sceneTree.node()
+        val sceneNode = tytoplevel.sceneTree.node
         when (mode) {
             CursorMode.Move -> {
-                grabX = cursor.x() - sceneNode.x()
-                grabY = cursor.y() - sceneNode.y()
+                grabX = cursor.x - sceneNode.x
+                grabY = cursor.y - sceneNode.y
             }
 
             CursorMode.Resize -> {
                 require(edges != null)
-                val geoBox = tytoplevel.xdgToplevel.base().geometry()
+                val geoBox = tytoplevel.xdgToplevel.base().geometry
 
-                val borderX = (sceneNode.x() + geoBox.x) + if (Edge.RIGHT in edges) geoBox.getWidth() else 0
-                val borderY = (sceneNode.y() + geoBox.y) + if (Edge.BOTTOM in edges) geoBox.getHeight() else 0
+                val borderX = (sceneNode.x + geoBox.x) + if (Edge.RIGHT in edges) geoBox.getWidth() else 0
+                val borderY = (sceneNode.y + geoBox.y) + if (Edge.BOTTOM in edges) geoBox.getHeight() else 0
 
-                grabX = cursor.x() - borderX
-                grabY = cursor.y() - borderY
+                grabX = cursor.x - borderX
+                grabY = cursor.y - borderY
 
                 grabGeobox = Box.allocateCopy(geoBox)
                 with(grabGeobox) {
-                    x += sceneNode.x()
-                    y += sceneNode.y()
+                    x += sceneNode.x
+                    y += sceneNode.y
                 }
 
                 resizeEdges = edges
@@ -568,9 +568,9 @@ object Tiny {
 
     // Move the grabbed toplevel to new position
     private fun processCursorMove(timeMsec: Int) {
-        grabbedToplevel!!.sceneTree.node().setPosition(
-            (cursor.x() - grabX).toInt(),
-            (cursor.y() - grabY).toInt()
+        grabbedToplevel!!.sceneTree.node.setPosition(
+            (cursor.x - grabX).toInt(),
+            (cursor.y - grabY).toInt()
         )
     }
 
@@ -579,8 +579,8 @@ object Tiny {
         val grabbedXdgToplevel = grabbedToplevel!!.xdgToplevel
         val grabbedSceneTree = grabbedToplevel!!.sceneTree
 
-        val borderX = cursor.x() - grabX
-        val borderY = cursor.y() - grabY
+        val borderX = cursor.x - grabX
+        val borderY = cursor.y - grabY
 
         var newLeft = grabGeobox.x
         var newRight = grabGeobox.x + grabGeobox.width
@@ -609,8 +609,8 @@ object Tiny {
                 newRight = newLeft + 1
         }
 
-        val geoBox = grabbedXdgToplevel.base().geometry()
-        grabbedSceneTree.node().setPosition(newLeft - geoBox.x, newTop - geoBox.y)
+        val geoBox = grabbedXdgToplevel.base().geometry
+        grabbedSceneTree.node.setPosition(newLeft - geoBox.x, newTop - geoBox.y)
         grabbedXdgToplevel.setSize(newRight - newLeft, newBottom - newTop)
     }
 

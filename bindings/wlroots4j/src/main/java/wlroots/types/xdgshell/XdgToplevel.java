@@ -89,6 +89,7 @@ public class XdgToplevel {
         return !appIdPtr.equals(NULL) ? appIdPtr.getString(0) : "";
     }
 
+
     // *** Methods **************************************************************************************** //
 
 

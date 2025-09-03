@@ -9,7 +9,6 @@ import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wlroots.types.wlr_input_device_h.*;
-import static jextract.wlroots.types.wlr_keyboard_h.wlr_keyboard_from_input_device;
 
 
 @NullMarked
@@ -25,10 +24,10 @@ public final class InputDevice {
     }
 
 
-    // *** Fields ***************************************************************************************** //
+    // *** Getters and setters **************************************************************************** //
 
 
-    public Type type() {
+    public Type getType() {
         return Type.of(wlr_input_device.type(inputDevicePtr));
     }
 
@@ -66,7 +65,7 @@ public final class InputDevice {
 
 
     public final static class Events {
-        public final  Signal1<InputDevice> destroy;
+        public final Signal1<InputDevice> destroy;
 
 
         public Events(MemorySegment eventsPtr) {

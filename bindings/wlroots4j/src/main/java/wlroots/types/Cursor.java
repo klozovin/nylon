@@ -42,12 +42,12 @@ public class Cursor {
     // *** Fields ***************************************************************************************** //
 
 
-    public double x() {
+    public double getX() {
         return wlr_cursor.x(cursorPtr);
     }
 
 
-    public double y() {
+    public double getY() {
         return wlr_cursor.y(cursorPtr);
     }
 

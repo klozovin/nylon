@@ -37,14 +37,14 @@ class InputSystem(val compositor: Compositor) {
 
     fun processCursorMotion(timeMsec: Int) {
         when (compositor.cursorMode) {
-            CursorMode.Move -> processCursorMoveWindow(timeMsec)
+            CursorMode.Move -> processCursorMoveWindow()
 
-            CursorMode.Resize -> processCursorResizeWindow(timeMsec)
+            CursorMode.Resize -> processCursorResizeWindow()
 
             CursorMode.Passthrough ->
                 when (val tpl = compositor.windowSystem.toplevelAtCoordinates(
-                    cursor.x(),
-                    cursor.y()
+                    cursor.getX(),
+                    cursor.getY()
                 )) {
                     // Find the XdgToplevel under the pointer and forward the cursor events.
                     is UnderCursor -> {
@@ -62,21 +62,21 @@ class InputSystem(val compositor: Compositor) {
     }
 
 
-    fun processCursorMoveWindow(timeMsec: Int) {
+    fun processCursorMoveWindow() {
         // TODO: Moving a window should be a method on the WindowSystem
-        compositor.windowSystem.toplevelSceneTree[compositor.grabbedToplevel!!]!!.node().setPosition(
-            (cursor.x() - compositor.grabX).toInt(),
-            (cursor.y() - compositor.grabY).toInt()
+        compositor.windowSystem.toplevelSceneTree[compositor.grabbedToplevel!!]!!.getNode().setPosition(
+            (cursor.getX() - compositor.grabX).toInt(),
+            (cursor.getY() - compositor.grabY).toInt()
         )
     }
 
 
-    fun processCursorResizeWindow(timeMsec: Int) {
+    fun processCursorResizeWindow() {
         val grabbedToplevel = compositor.grabbedToplevel!!
         val grabbedSceneTree = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!
 
-        val borderX = cursor.x() - compositor.grabX
-        val borderY = cursor.y() - compositor.grabY
+        val borderX = cursor.getX() - compositor.grabX
+        val borderY = cursor.getY() - compositor.grabY
 
         var newLeft = compositor.grabGeobox.x
         var newRight = compositor.grabGeobox.x + compositor.grabGeobox.width
@@ -104,22 +104,22 @@ class InputSystem(val compositor: Compositor) {
                 newRight = newLeft + 1
         }
 
-        val geoBox = grabbedToplevel.base().geometry()
-        grabbedSceneTree.node().setPosition(newLeft - geoBox.x, newTop - geoBox.y)
+        val geoBox = grabbedToplevel.base().getGeometry()
+        grabbedSceneTree.getNode().setPosition(newLeft - geoBox.x, newTop - geoBox.y)
         grabbedToplevel.setSize(newRight - newLeft, newBottom - newTop)
     }
 
 
     // **************************************************************************************************** //
-    // Listeners: Create and destroy input devices as they come and go                                      //
+    // Listeners: Input device lifecycle                                                                    //
     // **************************************************************************************************** //
 
 
     fun onNewInput(device: InputDevice) {
-        when (val deviceType = device.type()) {
+        when (device.type) {
             InputDevice.Type.KEYBOARD -> onNewKeyboard(Keyboard.fromInputDevice(device))
             InputDevice.Type.POINTER -> onNewPointer(Pointer.fromInputDevice(device))
-            else -> error("Unsupported wlr_input_device_type: $deviceType")
+            else -> error("Unsupported wlr_input_device_type: ${device.type}")
         }
     }
 
@@ -171,9 +171,9 @@ class InputSystem(val compositor: Compositor) {
     }
 
 
-    //
-    // Listeners: Keyboard input: key press/release, modifiers
-    //
+    // **************************************************************************************************** //
+    // *** Listeners: Keyboard input: key press/release, modifiers                                      *** //
+    // **************************************************************************************************** //
 
     fun onKeyboardKey(listener: Listener, event: KeyboardKeyEvent) {
         val keyboard = keyboards[listener]!!
@@ -227,7 +227,7 @@ class InputSystem(val compositor: Compositor) {
 
 
     // **************************************************************************************************** //
-    // Listeners: Mouse input: button clicks, scrolling, moving the cursor                                  //
+    // *** Listeners: MOUSE input: button clicks, scrolling, moving the cursor                          *** //
     // **************************************************************************************************** //
 
 
@@ -249,8 +249,8 @@ class InputSystem(val compositor: Compositor) {
 
         when (event.state) {
             PointerButtonState.PRESSED -> {
-                val x = cursor.x()
-                val y = cursor.y()
+                val x = cursor.getX()
+                val y = cursor.getY()
                 compositor.windowSystem.toplevelAtCoordinates(x, y)?.let {
                     compositor.windowSystem.focusToplevel(it.toplevel)
                 }
@@ -274,4 +274,11 @@ class InputSystem(val compositor: Compositor) {
     fun onCursorFrame(cursor: Cursor) {
         compositor.seat.pointerNotifyFrame()
     }
+}
+
+
+enum class CursorMode {
+    Move,
+    Resize,
+    Passthrough
 }

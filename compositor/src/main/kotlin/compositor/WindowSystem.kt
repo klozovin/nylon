@@ -54,7 +54,7 @@ class WindowSystem(val compositor: Compositor) {
             prevToplevelFromSurface?.setActivated(false)
         }
 
-        toplevelSceneTree[toplevel]!!.node().raiseToTop()
+        toplevelSceneTree[toplevel]!!.node.raiseToTop()
         toplevel.setActivated(true)
 
         compositor.seat.getKeyboard()?.let { keyboard ->
@@ -77,10 +77,10 @@ class WindowSystem(val compositor: Compositor) {
 
 
     fun toplevelAtCoordinates(x: Double, y: Double): UnderCursor? {
-        val (sceneNode, nx, ny) = compositor.scene.tree().node().nodeAt(x, y)
+        val (sceneNode, nx, ny) = compositor.scene.tree().node.nodeAt(x, y)
             ?: return null
 
-        if (sceneNode.type() != SceneNode.Type.BUFFER)
+        if (sceneNode.type != SceneNode.Type.BUFFER)
             return null
 
         val sceneBuffer = SceneBuffer.fromNode(sceneNode)
@@ -106,30 +106,30 @@ class WindowSystem(val compositor: Compositor) {
         compositor.grabbedToplevel = toplevel
         compositor.cursorMode = mode
 
-        val sceneNode = toplevelSceneTree[toplevel]!!.node()
+        val sceneNode = toplevelSceneTree[toplevel]!!.node
         when (mode) {
             CursorMode.Move -> {
-                compositor.grabX = compositor.inputSystem.cursor.x() - sceneNode.x()
-                compositor.grabY = compositor.inputSystem.cursor.y() - sceneNode.y()
+                compositor.grabX = compositor.inputSystem.cursor.getX() - sceneNode.x
+                compositor.grabY = compositor.inputSystem.cursor.getY() - sceneNode.y
             }
 
             CursorMode.Resize -> {
                 require(edges != null)
 
-                val geometryBox = toplevel.base().geometry()
+                val geometryBox = toplevel.base().getGeometry()
 
                 val borderX =
-                    (sceneNode.x() + geometryBox.x) + if (Edge.RIGHT in edges) geometryBox.width else 0
+                    (sceneNode.x + geometryBox.x) + if (Edge.RIGHT in edges) geometryBox.width else 0
                 val borderY =
-                    (sceneNode.y() + geometryBox.y) + if (Edge.BOTTOM in edges) geometryBox.height else 0
+                    (sceneNode.y + geometryBox.y) + if (Edge.BOTTOM in edges) geometryBox.height else 0
 
-                compositor.grabX = compositor.inputSystem.cursor.x() - borderX
-                compositor.grabY = compositor.inputSystem.cursor.y() - borderY
+                compositor.grabX = compositor.inputSystem.cursor.getX() - borderX
+                compositor.grabY = compositor.inputSystem.cursor.getY() - borderY
 
                 compositor.grabGeobox = Box.allocateCopy(geometryBox)
                 with(compositor.grabGeobox) {
-                    x += sceneNode.x()
-                    y += sceneNode.y()
+                    x += sceneNode.x
+                    y += sceneNode.y
                 }
 
                 compositor.resizeEdges = edges
@@ -342,9 +342,9 @@ class WindowSystem(val compositor: Compositor) {
     /**
      * Check whether the pointer grab for move or resize operation is valid.
      *
-     * Fixes bad behaviour for clients built with Rust's "winit" library: they try to initiate the move/resize
-     * after the mouse button has already been released, leading to state where the window is "stuck" to the
-     * cursor even though no mouse button are being held down.
+     * Also fixes bad behaviour for clients built with Rust's "winit" library: they try to initiate the
+     * move/resize after the mouse button has already been released, leading to state where the window is
+     * "stuck" to the cursor even though no mouse buttons are held down.
      */
     private fun isPointerGrabValid(serial: Int): Boolean =
         compositor.seat.validatePointerGrabSerial(compositor.seat.pointerState().focusedSurface(), serial)

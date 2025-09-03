@@ -32,7 +32,7 @@ public class SceneNode {
     // *** Getters and setters **************************************************************************** //
 
 
-    public Type type() {
+    public Type getType() {
         return Type.of(wlr_scene_node.type(sceneNodePtr));
     }
 
@@ -44,13 +44,13 @@ public class SceneNode {
 
 
     /// Relative to parent.
-    public int x() {
+    public int getX() {
         return wlr_scene_node.x(sceneNodePtr);
     }
 
 
     /// Relative to parent.
-    public int y() {
+    public int getY() {
         return wlr_scene_node.y(sceneNodePtr);
     }
 
@@ -60,6 +60,12 @@ public class SceneNode {
     /// Set the position of the node relative to its parent.
     public void setPosition(int x, int y) {
         wlr_scene_node_set_position(sceneNodePtr, x, y);
+    }
+
+
+    /// Set the position of the node relative to its parent.
+    public void setPosition(double x, double y) {
+        wlr_scene_node_set_position(sceneNodePtr, (int) x, (int) y);
     }
 
 
@@ -117,7 +123,7 @@ public class SceneNode {
         public SceneTree next() {
             var next = node.parent();
             assert next != null;
-            node = next.node();
+            node = next.getNode();
             return next;
         }
     }

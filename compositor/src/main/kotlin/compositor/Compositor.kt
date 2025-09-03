@@ -5,7 +5,6 @@ import wayland.util.Edge
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
-import wlroots.types.Cursor
 import wlroots.types.DataDeviceManager
 import wlroots.types.XcursorManager
 import wlroots.types.compositor.Subcompositor
@@ -15,7 +14,6 @@ import wlroots.types.scene.SceneOutputLayout
 import wlroots.types.seat.PointerRequestSetCursorEvent
 import wlroots.types.seat.RequestSetSelectionEvent
 import wlroots.types.seat.Seat
-import wlroots.types.xdgshell.XdgShell
 import wlroots.types.xdgshell.XdgToplevel
 import wlroots.util.Box
 import wlroots.util.Log
@@ -117,7 +115,7 @@ class Compositor(val terminalPath: String? = null) {
     fun cleanup() {
         // Cleanup resources, must run after the wl_display_run() returns
         display.destroyClients()
-        scene.tree().node().destroy()
+        scene.tree().node.destroy()
         xcursorManager.destroy()
         inputSystem.cursor.destroy()
         allocator.destroy()
@@ -153,15 +151,11 @@ class Compositor(val terminalPath: String? = null) {
 }
 
 
-enum class CursorMode {
-    Move,
-    Resize,
-    Passthrough
-}
-
+lateinit var COMPOSITOR: Compositor
 
 
 fun main(args: Array<String>) {
     Log.init(Log.Importance.DEBUG)
-    Compositor(terminalPath = "/usr/bin/foot").start()
+    COMPOSITOR = Compositor(terminalPath = "/usr/bin/foot")
+    COMPOSITOR.start()
 }
