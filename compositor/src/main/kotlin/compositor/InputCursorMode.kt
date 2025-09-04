@@ -67,8 +67,13 @@ class InputCursorMode(val compositor: Compositor) {
     }
 
 
-    fun isMoveOrResize(): Boolean =
-        state is CursorState.WindowMove || state is CursorState.WindowResize
+    fun isToplevelGrabbed(toplevel: XdgToplevel): Boolean {
+        return when(val state = state) {
+            is CursorState.Passthrough -> false
+            is CursorState.WindowMove -> state.grabbedToplevel == toplevel
+            is CursorState.WindowResize -> state.grabbedToplevel == toplevel
+        }
+    }
 }
 
 
@@ -140,6 +145,10 @@ sealed class CursorState {
 
 
         fun processCursorMotion() {
+            // HACK: this kind of a check should be automatic and centralised somewhere
+            check(compositor.windowSystem.toplevels.containsValue(grabbedToplevel)) {
+                "BUG: Trying to move a non existent window"
+            }
             grabbedSceneNode.setPosition((cursor.x - grabX), (cursor.y - grabY))
         }
 

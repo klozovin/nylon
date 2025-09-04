@@ -22,14 +22,13 @@ import static jextract.wlroots.types.wlr_xdg_shell_h.*;
 @NullMarked
 public class XdgToplevel {
     public final MemorySegment xdgToplevelPtr;
-    public final Events        events;
+    public final Events events;
 
 
     public XdgToplevel(MemorySegment ptr) {
         assert !ptr.equals(NULL);
-
         xdgToplevelPtr = ptr;
-        events         = new Events(wlr_xdg_toplevel.events(ptr));
+        events = new Events(wlr_xdg_toplevel.events(ptr));
     }
 
 

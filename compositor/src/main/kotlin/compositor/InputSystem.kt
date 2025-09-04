@@ -1,11 +1,8 @@
 package compositor
 
-import compositor.WindowSystem.UnderCursor
 import wayland.KeyboardKeyState
-import wayland.PointerButtonState
 import wayland.SeatCapability
 import wayland.server.Listener
-import wayland.util.Edge
 import wlroots.types.Cursor
 import wlroots.types.input.*
 import xkbcommon.Keymap
@@ -14,6 +11,7 @@ import xkbcommon.XkbKey
 
 
 class InputSystem(val compositor: Compositor) {
+
     val cursor: Cursor
     val keyboards: MutableMap<Listener, Keyboard> = HashMap()
     val pointers: MutableMap<Listener, Pointer> = HashMap()
@@ -99,6 +97,7 @@ class InputSystem(val compositor: Compositor) {
     // *** Listeners: Keyboard input: key press/release, modifiers                                      *** //
     // **************************************************************************************************** //
 
+
     fun onKeyboardKey(listener: Listener, event: KeyboardKeyEvent) {
         val keyboard = keyboards[listener]!!
         val keycode = event.keycode + 8
@@ -180,11 +179,4 @@ class InputSystem(val compositor: Compositor) {
     fun onCursorFrame(cursor: Cursor) {
         compositor.seat.pointerNotifyFrame()
     }
-}
-
-// TODO: Delete
-enum class CursorMode {
-    Move,
-    Resize,
-    Passthrough
 }

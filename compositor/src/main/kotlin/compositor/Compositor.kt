@@ -1,7 +1,6 @@
 package compositor
 
 import wayland.server.Display
-import wayland.util.Edge
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
@@ -14,10 +13,7 @@ import wlroots.types.scene.SceneOutputLayout
 import wlroots.types.seat.PointerRequestSetCursorEvent
 import wlroots.types.seat.RequestSetSelectionEvent
 import wlroots.types.seat.Seat
-import wlroots.types.xdgshell.XdgToplevel
-import wlroots.util.Box
 import wlroots.util.Log
-import java.util.EnumSet
 import kotlin.system.exitProcess
 import wlroots.types.compositor.Compositor as WlrCompositor
 
@@ -33,7 +29,6 @@ class Compositor(val terminalPath: String? = null) {
     val sceneOutputLayout: SceneOutputLayout
 
     val xcursorManager: XcursorManager
-    var cursorMode: CursorMode
 
     // TODO: Move to inputSystem
     val seat: Seat
@@ -44,16 +39,8 @@ class Compositor(val terminalPath: String? = null) {
 
     lateinit var socket: String
 
-    // TODO: Move to separate state machine
     // TODO: Move to inputSystem
-    // Grab mode: move, resize
     val captureMode: InputCursorMode
-
-    var grabbedToplevel: XdgToplevel? = null
-    lateinit var grabGeobox: Box
-    lateinit var resizeEdges: EnumSet<Edge>
-    var grabX: Double = 0.0
-    var grabY: Double = 0.0
 
 
     init {
@@ -85,7 +72,6 @@ class Compositor(val terminalPath: String? = null) {
         }
 
         captureMode = InputCursorMode(this)
-        cursorMode = CursorMode.Passthrough
     }
 
 

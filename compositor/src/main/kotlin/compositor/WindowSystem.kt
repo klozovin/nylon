@@ -164,8 +164,10 @@ class WindowSystem(val compositor: Compositor) {
 
 
     fun onToplevelUnmap(listener: Listener) {
-        // Reset the cursor mode if we have to unmap (hide) the grabbed toplevel
-        if (compositor.grabbedToplevel == toplevels[listener]!!)
+        // Reset the cursor mode if we have to unmap (hide) the grabbed toplevel, otherwise the compositor
+        // crashes when trying to move/resize a non-existing window.
+        val unmappedToplevel = toplevels[listener]!!
+        if (compositor.captureMode.isToplevelGrabbed(unmappedToplevel))
             compositor.captureMode.transitionToPassthrough()
     }
 
