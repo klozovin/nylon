@@ -40,15 +40,15 @@ public class XdgPopup {
     }
 
 
-    // *** Fields ***************************************************************************************** //
+    // *** Getters and setters **************************************************************************** //
 
 
-    public XdgSurface base() {
+    public XdgSurface getBase() {
         return new XdgSurface(wlr_xdg_popup.base(xdgPopupPtr));
     }
 
 
-    public Surface parent() {
+    public Surface getParent() {
         return new Surface(wlr_xdg_popup.parent(xdgPopupPtr));
     }
 

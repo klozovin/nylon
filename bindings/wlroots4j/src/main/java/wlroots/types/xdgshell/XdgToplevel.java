@@ -66,12 +66,12 @@ public class XdgToplevel {
     // *** Getters and setters **************************************************************************** //
 
 
-    public XdgSurface base() {
+    public XdgSurface getBase() {
         return new XdgSurface(wlr_xdg_toplevel.base(xdgToplevelPtr));
     }
 
 
-    public @Nullable XdgToplevel parent() {
+    public @Nullable XdgToplevel getParent() {
         return XdgToplevel.ofPtrOrNull(wlr_xdg_toplevel.parent(xdgToplevelPtr));
     }
 

@@ -34,82 +34,6 @@ class InputSystem(val compositor: Compositor) {
         }
     }
 
-
-    fun processCursorMotion(timeMsec: Int) {
-        when (compositor.cursorMode) {
-            CursorMode.Move -> processCursorMoveWindow()
-
-            CursorMode.Resize -> processCursorResizeWindow()
-
-            CursorMode.Passthrough ->
-                when (val tpl = compositor.windowSystem.toplevelAtCoordinates(
-                    cursor.getX(),
-                    cursor.getY()
-                )) {
-                    // Find the XdgToplevel under the pointer and forward the cursor events.
-                    is UnderCursor -> {
-                        compositor.seat.pointerNotifyEnter(tpl.surface, tpl.nx, tpl.ny)
-                        compositor.seat.pointerNotifyMotion(timeMsec, tpl.nx, tpl.ny)
-                    }
-                    // Clear pointer focus so the future button events are not sent to the last client to
-                    // have cursor over it.
-                    null -> {
-                        compositor.seat.pointerClearFocus()
-                        cursor.setXcursor(compositor.xcursorManager, "default")
-                    }
-                }
-        }
-    }
-
-
-    fun processCursorMoveWindow() {
-        // TODO: Moving a window should be a method on the WindowSystem
-        compositor.windowSystem.toplevelSceneTree[compositor.grabbedToplevel!!]!!.getNode().setPosition(
-            (cursor.getX() - compositor.grabX).toInt(),
-            (cursor.getY() - compositor.grabY).toInt()
-        )
-    }
-
-
-    fun processCursorResizeWindow() {
-        val grabbedToplevel = compositor.grabbedToplevel!!
-        val grabbedSceneTree = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!
-
-        val borderX = cursor.getX() - compositor.grabX
-        val borderY = cursor.getY() - compositor.grabY
-
-        var newLeft = compositor.grabGeobox.x
-        var newRight = compositor.grabGeobox.x + compositor.grabGeobox.width
-
-        var newTop = compositor.grabGeobox.y
-        var newBottom = compositor.grabGeobox.y + compositor.grabGeobox.height
-
-        if (Edge.TOP in compositor.resizeEdges) {
-            newTop = borderY.toInt()
-            if (newTop >= newBottom)
-                newTop = newBottom - 1
-        } else if (Edge.BOTTOM in compositor.resizeEdges) {
-            newBottom = borderY.toInt()
-            if (newBottom <= newTop)
-                newBottom = newTop + 1
-        }
-
-        if (Edge.LEFT in compositor.resizeEdges) {
-            newLeft = borderX.toInt()
-            if (newLeft >= newRight)
-                newLeft = newRight - 1
-        } else if (Edge.RIGHT in compositor.resizeEdges) {
-            newRight = borderX.toInt()
-            if (newRight <= newLeft)
-                newRight = newLeft + 1
-        }
-
-        val geoBox = grabbedToplevel.base().getGeometry()
-        grabbedSceneTree.getNode().setPosition(newLeft - geoBox.x, newTop - geoBox.y)
-        grabbedToplevel.setSize(newRight - newLeft, newBottom - newTop)
-    }
-
-
     // **************************************************************************************************** //
     // Listeners: Input device lifecycle                                                                    //
     // **************************************************************************************************** //
@@ -233,36 +157,18 @@ class InputSystem(val compositor: Compositor) {
 
     fun onCursorMotion(event: PointerMotionEvent) {
         cursor.move(event.pointer.base(), event.deltaX, event.deltaY)
-        processCursorMotion(event.timeMsec)
+        compositor.captureMode.onCursorMotion(event.timeMsec)
     }
 
 
     fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
         cursor.warpAbsolute(event.pointer.base(), event.x, event.y)
-        processCursorMotion(event.timeMsec)
+        compositor.captureMode.onCursorMotion(event.timeMsec)
     }
 
 
     fun onCursorButton(event: PointerButtonEvent) {
-        // Notify the client with the "pointer focus" that there's been a button press
-        compositor.seat.pointerNotifyButton(event.timeMsec, event.button, event.state)
-
-        when (event.state) {
-            PointerButtonState.PRESSED -> {
-                val x = cursor.getX()
-                val y = cursor.getY()
-                compositor.windowSystem.toplevelAtCoordinates(x, y)?.let {
-                    compositor.windowSystem.focusToplevel(it.toplevel)
-                }
-            }
-
-            PointerButtonState.RELEASED -> {
-                val isMove = compositor.cursorMode == CursorMode.Move
-                val isResize = compositor.cursorMode == CursorMode.Resize
-                if (isMove || isResize)
-                    compositor.windowSystem.resetCursorMode()
-            }
-        }
+        compositor.captureMode.onCursorButton(event)
     }
 
 
@@ -276,7 +182,7 @@ class InputSystem(val compositor: Compositor) {
     }
 }
 
-
+// TODO: Delete
 enum class CursorMode {
     Move,
     Resize,

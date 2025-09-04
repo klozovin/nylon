@@ -35,6 +35,7 @@ class Compositor(val terminalPath: String? = null) {
     val xcursorManager: XcursorManager
     var cursorMode: CursorMode
 
+    // TODO: Move to inputSystem
     val seat: Seat
 
     val outputSystem: OutputSystem
@@ -44,7 +45,10 @@ class Compositor(val terminalPath: String? = null) {
     lateinit var socket: String
 
     // TODO: Move to separate state machine
+    // TODO: Move to inputSystem
     // Grab mode: move, resize
+    val captureMode: InputCursorMode
+
     var grabbedToplevel: XdgToplevel? = null
     lateinit var grabGeobox: Box
     lateinit var resizeEdges: EnumSet<Edge>
@@ -80,6 +84,7 @@ class Compositor(val terminalPath: String? = null) {
             events.requestSetSelection.add(::onSeatRequestSetSelection)
         }
 
+        captureMode = InputCursorMode(this)
         cursorMode = CursorMode.Passthrough
     }
 
@@ -138,7 +143,7 @@ class Compositor(val terminalPath: String? = null) {
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
         // TODO: Move to input system?
-        if (seat.pointerState().focusedClient() == event.seatClient)
+        if (seat.getPointerState().getFocusedClient() == event.seatClient)
             inputSystem.cursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
     }
 

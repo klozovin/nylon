@@ -1,7 +1,6 @@
 package compositor
 
 import wayland.server.Listener
-import wayland.util.Edge
 import wlroots.types.compositor.Surface
 import wlroots.types.scene.SceneBuffer
 import wlroots.types.scene.SceneNode
@@ -11,7 +10,6 @@ import wlroots.types.xdgshell.XdgPopup
 import wlroots.types.xdgshell.XdgShell
 import wlroots.types.xdgshell.XdgSurface
 import wlroots.types.xdgshell.XdgToplevel
-import wlroots.util.Box
 import java.util.*
 
 
@@ -36,13 +34,13 @@ class WindowSystem(val compositor: Compositor) {
 
 
     fun focusToplevel(toplevel: XdgToplevel) {
-        val prevFocusedSurface = compositor.seat.keyboardState().focusedSurface()
+        val prevFocusedSurface = compositor.seat.keyboardState.getFocusedSurface()
         val prevFocusedToplevel = focusedToplevel
 
         focusedToplevel = toplevel
 
         // Don't focus what's already focused
-        if (prevFocusedSurface == toplevel.base().surface())
+        if (prevFocusedSurface == toplevel.base.surface)
             return
 
         // Deactivate the previously focused surface, let the client know it lost focus so it can repaint
@@ -59,7 +57,7 @@ class WindowSystem(val compositor: Compositor) {
 
         compositor.seat.getKeyboard()?.let { keyboard ->
             compositor.seat.keyboardNotifyEnter(
-                toplevel.base().surface(),
+                toplevel.getBase().getSurface(),
                 keyboard.keycodesPtr(),
                 keyboard.keycodesNum(),
                 keyboard.modifiers()
@@ -91,61 +89,7 @@ class WindowSystem(val compositor: Compositor) {
             for ((toplevel, toplevelSceneTree) in toplevelSceneTree)
                 if (sceneTree == toplevelSceneTree)
                     return UnderCursor(toplevel, sceneSurface.surface(), nx, ny)
-
         unreachable()
-    }
-
-
-    fun beginInteractive(toplevel: XdgToplevel, mode: CursorMode, edges: EnumSet<Edge>?) {
-        // TODO: Is this the way to do it? Why is not wlroots validation (validate pointer) we do upstream
-        //       enough?
-        // Deny move/resize requests from unfocused clients
-        if (toplevel.base().surface() != compositor.seat.pointerState().focusedSurface().rootSurface)
-            return
-
-        compositor.grabbedToplevel = toplevel
-        compositor.cursorMode = mode
-
-        val sceneNode = toplevelSceneTree[toplevel]!!.node
-        when (mode) {
-            CursorMode.Move -> {
-                compositor.grabX = compositor.inputSystem.cursor.getX() - sceneNode.x
-                compositor.grabY = compositor.inputSystem.cursor.getY() - sceneNode.y
-            }
-
-            CursorMode.Resize -> {
-                require(edges != null)
-
-                val geometryBox = toplevel.base().getGeometry()
-
-                val borderX =
-                    (sceneNode.x + geometryBox.x) + if (Edge.RIGHT in edges) geometryBox.width else 0
-                val borderY =
-                    (sceneNode.y + geometryBox.y) + if (Edge.BOTTOM in edges) geometryBox.height else 0
-
-                compositor.grabX = compositor.inputSystem.cursor.getX() - borderX
-                compositor.grabY = compositor.inputSystem.cursor.getY() - borderY
-
-                compositor.grabGeobox = Box.allocateCopy(geometryBox)
-                with(compositor.grabGeobox) {
-                    x += sceneNode.x
-                    y += sceneNode.y
-                }
-
-                compositor.resizeEdges = edges
-            }
-
-            CursorMode.Passthrough -> {
-                unreachable()
-            }
-        }
-    }
-
-
-    // TODO: Shouldn't this go to input system? - No, it goes into the grab mode. Reset the state machine to base state
-    fun resetCursorMode() {
-        compositor.cursorMode = CursorMode.Passthrough
-        compositor.grabbedToplevel = null
     }
 
 
@@ -156,9 +100,9 @@ class WindowSystem(val compositor: Compositor) {
 
     fun onNewToplevel(toplevel: XdgToplevel) {
         // Create the SceneTree for this XdgToplevel and add all signal handlers we have to deal with.
-        toplevelSceneTree[toplevel] = compositor.scene.tree().xdgSurfaceCreate(toplevel.base())
+        toplevelSceneTree[toplevel] = compositor.scene.tree().xdgSurfaceCreate(toplevel.getBase())
         arrayOf(
-            *with(toplevel.base().surface().events) {
+            *with(toplevel.base.surface.events) {
                 // Listeners for the base surface
                 arrayOf(
                     map.add(::onToplevelMap),
@@ -208,7 +152,7 @@ class WindowSystem(val compositor: Compositor) {
 
     fun onToplevelCommit(listener: Listener, surface: Surface) {
         toplevels[listener]!!.apply {
-            if (base().initialCommit())
+            if (base.initialCommit)
                 setSize(0, 0)
         }
     }
@@ -222,30 +166,29 @@ class WindowSystem(val compositor: Compositor) {
     fun onToplevelUnmap(listener: Listener) {
         // Reset the cursor mode if we have to unmap (hide) the grabbed toplevel
         if (compositor.grabbedToplevel == toplevels[listener]!!)
-            resetCursorMode()
+            compositor.captureMode.transitionToPassthrough()
     }
 
 
     fun onToplevelRequestMove(event: XdgToplevel.MoveEvent) {
         if (!isPointerGrabValid(event.serial))
             return
-        // TODO: Cleaner API, without having to pass null for edges
-        beginInteractive(event.toplevel, CursorMode.Move, null)
+        compositor.captureMode.transitionToMove(event.toplevel)
     }
 
 
     fun onToplevelRequestResize(event: XdgToplevel.ResizeEvent) {
         if (!isPointerGrabValid(event.serial))
             return
-        beginInteractive(event.toplevel, CursorMode.Resize, event.edges)
+        compositor.captureMode.transitionToResize(event.toplevel, event.edges)
     }
 
 
     fun onToplevelRequestMaximize(listener: Listener) {
         // Maximize request not supported, but protocol demands we send a configure back to client.
         toplevels[listener]!!.apply {
-            if (base().initialized())
-                base().scheduleConfigure()
+            if (base.initialized)
+                base.scheduleConfigure()
         }
     }
 
@@ -253,8 +196,8 @@ class WindowSystem(val compositor: Compositor) {
     fun onToplevelRequestFullscreen(listener: Listener) {
         // Fullscreen request not supported, behave the same as maximize request.
         toplevels[listener]!!.apply {
-            if (base().initialized())
-                base().scheduleConfigure()
+            if (base.initialized)
+                base.scheduleConfigure()
         }
     }
 
@@ -265,25 +208,25 @@ class WindowSystem(val compositor: Compositor) {
 
 
     fun onNewPopup(popup: XdgPopup) {
-        val parentSurface = XdgSurface.tryFromSurface(popup.parent())
+        val parentSurface = XdgSurface.tryFromSurface(popup.parent)
             ?: error("Popup's parent can't be null")
 
         // Search for the parent of this new popup: first among toplevels, then other popups (they are nestable)
         val parentSceneTree =
-            toplevelSceneTree.asSequence().find { (toplevel, _) -> toplevel.base() == parentSurface }?.value
-                ?: popupSceneTree.asSequence().find { (popup, _) -> popup.base() == parentSurface }?.value
+            toplevelSceneTree.asSequence().find { (toplevel, _) -> toplevel.base == parentSurface }?.value
+                ?: popupSceneTree.asSequence().find { (popup, _) -> popup.base == parentSurface }?.value
                 ?: error("BUG: Can't have a XdgPopup without a parent")
 
-        popupSceneTree[popup] = parentSceneTree.xdgSurfaceCreate(popup.base())
-        popups[popup.base().surface().events.commit.add(::onPopupCommit)] = popup
+        popupSceneTree[popup] = parentSceneTree.xdgSurfaceCreate(popup.base)
+        popups[popup.base.surface.events.commit.add(::onPopupCommit)] = popup
         popups[popup.events.destroy.add(::onPopupDestroy)] = popup
     }
 
 
     fun onPopupCommit(listener: Listener, surface: Surface) {
         popups[listener]!!.apply {
-            if (base().initialCommit())
-                base().scheduleConfigure()
+            if (base.initialCommit)
+                base.scheduleConfigure()
         }
     }
 
@@ -328,7 +271,7 @@ class WindowSystem(val compositor: Compositor) {
      * Get the number of registered listeners for all the signals of the XdgPopup object
      */
     private fun XdgPopup.numOfListeners(): Int {
-        val surfaceNum = this.base().surface().events.allSignals().sumOf { it.listenerList.length() }
+        val surfaceNum = this.base.surface.events.allSignals().sumOf { it.listenerList.length() }
         val popupNum = this.events.allSignals().sumOf { it.listenerList.length() }
         return surfaceNum + popupNum
     }
@@ -346,8 +289,11 @@ class WindowSystem(val compositor: Compositor) {
      * move/resize after the mouse button has already been released, leading to state where the window is
      * "stuck" to the cursor even though no mouse buttons are held down.
      */
-    private fun isPointerGrabValid(serial: Int): Boolean =
-        compositor.seat.validatePointerGrabSerial(compositor.seat.pointerState().focusedSurface(), serial)
+    private fun isPointerGrabValid(serial: Int): Boolean {
+        // TODO: Add some kind of logging when this fails
+        val focusedSurface = compositor.seat.pointerState.focusedSurface ?: error("No surface focused")
+        return compositor.seat.validatePointerGrabSerial(focusedSurface, serial)
+    }
 
 
     //
@@ -365,7 +311,7 @@ class WindowSystem(val compositor: Compositor) {
 // TODO: Move to extension function and enumerate signals in bindings code
 private fun _countSignalHandlers(toplevel: XdgToplevel): Int =
     arrayOf(
-        with(toplevel.base().surface().events) {
+        with(toplevel.getBase().getSurface().events) {
             arrayOf(map, unmap, commit)
         },
         with(toplevel.events) {

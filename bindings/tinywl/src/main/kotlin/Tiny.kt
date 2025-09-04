@@ -227,8 +227,8 @@ object Tiny {
 
     fun focusToplevel(toplevel: TyToplevel) {
         val xdgToplevel = toplevel.xdgToplevel
-        val previouslyFocusedSurface = seat.keyboardState().focusedSurface()
-        val surface = xdgToplevel.base().surface()
+        val previouslyFocusedSurface = seat.getKeyboardState().getFocusedSurface()
+        val surface = xdgToplevel.base.surface
 
         focusedToplevel = TOPLEVELS.indexOfFirst { it.xdgToplevel == toplevel.xdgToplevel }
 
@@ -526,9 +526,9 @@ object Tiny {
 
 
     fun beginInteractive(tytoplevel: TyToplevel, mode: CursorMode, edges: EnumSet<Edge>?) {
-        val focusedSurface = seat.pointerState().focusedSurface()
+        val focusedSurface = seat.pointerState.focusedSurface
 
-        if (tytoplevel.xdgToplevel.base().surface() != focusedSurface.rootSurface) {
+        if (tytoplevel.xdgToplevel.base.surface != focusedSurface?.rootSurface) {
             return
         }
 
@@ -544,7 +544,7 @@ object Tiny {
 
             CursorMode.Resize -> {
                 require(edges != null)
-                val geoBox = tytoplevel.xdgToplevel.base().geometry
+                val geoBox = tytoplevel.xdgToplevel.base.geometry
 
                 val borderX = (sceneNode.x + geoBox.x) + if (Edge.RIGHT in edges) geoBox.getWidth() else 0
                 val borderY = (sceneNode.y + geoBox.y) + if (Edge.BOTTOM in edges) geoBox.getHeight() else 0
@@ -609,7 +609,7 @@ object Tiny {
                 newRight = newLeft + 1
         }
 
-        val geoBox = grabbedXdgToplevel.base().geometry
+        val geoBox = grabbedXdgToplevel.base.geometry
         grabbedSceneTree.node.setPosition(newLeft - geoBox.x, newTop - geoBox.y)
         grabbedXdgToplevel.setSize(newRight - newLeft, newBottom - newTop)
     }
@@ -633,11 +633,11 @@ object Tiny {
 
 
     fun onNewXdgToplevel(toplevel: XdgToplevel) {
-        val sceneTree = scene.tree().xdgSurfaceCreate(toplevel.base())
+        val sceneTree = scene.tree().xdgSurfaceCreate(toplevel.base)
         val tytop = TyToplevel(toplevel, sceneTree)
 
         // Event handlers for the base Surface
-        with(toplevel.base().surface().events) {
+        with(toplevel.base.surface.events) {
             tytop.onMapListener = map.add(::onXdgToplevelMap)
             tytop.onUnmapListener = unmap.add(::onXdgToplevelUnmap)
             tytop.onCommitListener = commit.add(::onXdgToplevelCommit)
@@ -661,7 +661,7 @@ object Tiny {
         // When an xdg_surface performs an initial commit, the compositor must reply with a configure so the
         // client can map the surface. tinywl configures the xdg_toplevel with 0,0 size to let the client pick
         // the dimensions itself.
-        if (xdgToplevel.base().initialCommit())
+        if (xdgToplevel.base.getInitialCommit())
             xdgToplevel.setSize(0, 0)
     }
 
@@ -700,7 +700,7 @@ object Tiny {
 
     fun onXdgToplevelRequestMove(event: XdgToplevel.MoveEvent) {
         // Fix: Clients (using winit Rust library) trying to initiate drag after mouse button has been released
-        if (!seat.validatePointerGrabSerial(seat.pointerState().focusedSurface(), event.serial))
+        if (!seat.validatePointerGrabSerial(seat.pointerState.focusedSurface!!, event.serial))
             return
         beginInteractive(
             TOPLEVELS.find { it.xdgToplevel == event.toplevel }!!,
@@ -711,7 +711,7 @@ object Tiny {
 
 
     fun onXdgToplevelRequestResize(event: XdgToplevel.ResizeEvent) {
-        if (!seat.validatePointerGrabSerial(seat.pointerState().focusedSurface(), event.serial))
+        if (!seat.validatePointerGrabSerial(seat.pointerState.focusedSurface!!, event.serial))
             return
 
         beginInteractive(
@@ -725,8 +725,8 @@ object Tiny {
     // Client wants to fullscreen itself, but we don't support that.
     fun onXdgToplevelRequestFullscreen(listener: Listener) {
         TOPLEVELS.find { it.onRequestFullscreenListener == listener }?.let {
-            if (it.xdgToplevel.base().initialized())
-                it.xdgToplevel.base().scheduleConfigure()
+            if (it.xdgToplevel.base.getInitialized())
+                it.xdgToplevel.base.scheduleConfigure()
         }
     }
 
@@ -735,8 +735,8 @@ object Tiny {
     // specification.
     fun onXdgToplevelRequestMaximize(listener: Listener) {
         val xdgToplevel = TOPLEVELS.find { it.onRequestMaximizeListener == listener }!!.xdgToplevel
-        if (xdgToplevel.base().initialized())
-            xdgToplevel.base().scheduleConfigure()
+        if (xdgToplevel.base.getInitialized())
+            xdgToplevel.base.scheduleConfigure()
     }
 
 
@@ -744,17 +744,17 @@ object Tiny {
 
 
     fun onNewXdgPopup(popup: XdgPopup) {
-        val parent = XdgSurface.tryFromSurface(popup.parent()) ?: error("Popup's parent can't be null")
+        val parent = XdgSurface.tryFromSurface(popup.parent) ?: error("Popup's parent can't be null")
 
         // Have to search both TOPLEVELS and POPUPS, because there can be nested popups (ie. popup whose parent is a popup itself.
-        val parentSceneTree = TOPLEVELS.find { it.xdgToplevel.base() == parent }?.sceneTree
-            ?: POPUPS.find { it.xdgPopup.base() == parent }!!.sceneTree
+        val parentSceneTree = TOPLEVELS.find { it.xdgToplevel.base == parent }?.sceneTree
+            ?: POPUPS.find { it.xdgPopup.base == parent }!!.sceneTree
 
-        val popupSceneTree = parentSceneTree.xdgSurfaceCreate(popup.base())
+        val popupSceneTree = parentSceneTree.xdgSurfaceCreate(popup.base)
 
         POPUPS.add(
             TyPopup(popup, popupSceneTree).apply {
-                onCommitListener = popup.base().surface().events.commit.add(::onXdgPopupCommit)
+                onCommitListener = popup.base.surface.events.commit.add(::onXdgPopupCommit)
                 onDestroyListener = popup.events.destroy.add(::onXdgPopupDestroy)
             })
     }
@@ -763,8 +763,8 @@ object Tiny {
     fun onXdgPopupCommit(listener: Listener, surface: Surface) {
         val popup = POPUPS.find { it.onCommitListener == listener }?.xdgPopup
             ?: error("Cant proceed without popup")
-        if (popup.base().initialCommit())
-            popup.base().scheduleConfigure()
+        if (popup.base.getInitialCommit())
+            popup.base.scheduleConfigure()
     }
 
 
@@ -782,7 +782,7 @@ object Tiny {
 
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
-        val focusedClient = seat.pointerState().focusedClient()
+        val focusedClient = seat.pointerState.focusedClient
         if (focusedClient == event.seatClient)
             cursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
     }

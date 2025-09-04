@@ -41,15 +41,16 @@ public class XdgSurface {
     public boolean equals(Object obj) {
         return switch (obj) {
             case XdgSurface s -> xdgSurfacePtr.equals(s.xdgSurfacePtr);
-            default -> false;
+            case null -> false;
+            default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }
 
 
-    // *** Fields ***************************************************************************************** //
+    // *** Getters and setters **************************************************************************** //
 
 
-    public Surface surface() {
+    public Surface getSurface() {
         return new Surface(wlr_xdg_surface.surface(xdgSurfacePtr));
     }
 
@@ -69,13 +70,13 @@ public class XdgSurface {
     }
 
 
-    public boolean initialized() {
+    public boolean getInitialized() {
         return wlr_xdg_surface.initialized(xdgSurfacePtr);
     }
 
 
     /// Whether the latest commit is an initial commit.
-    public boolean initialCommit() {
+    public boolean getInitialCommit() {
         return wlr_xdg_surface.initial_commit(xdgSurfacePtr);
     }
 

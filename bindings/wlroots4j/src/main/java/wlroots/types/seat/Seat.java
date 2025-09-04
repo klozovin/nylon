@@ -42,7 +42,7 @@ public class Seat {
         }
     }
 
-    // *** Fields ***************************************************************************************** //
+    // *** Getters and setters **************************************************************************** //
 
 
     public EnumSet<SeatCapability> capabilities() {
@@ -50,12 +50,12 @@ public class Seat {
     }
 
 
-    public PointerState pointerState() {
+    public PointerState getPointerState() {
         return new PointerState(wlr_seat.pointer_state(seatPtr));
     }
 
 
-    public KeyboardState keyboardState() {
+    public KeyboardState getKeyboardState() {
         return new KeyboardState(wlr_seat.keyboard_state(seatPtr));
     }
 

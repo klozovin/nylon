@@ -28,7 +28,7 @@ data class SurfaceExtra(
 
 
 object SceneGraph {
-    val borderWidth = 4
+    const val borderWidth = 4
     var surfaceOffset = 20
 
     lateinit var display: Display
@@ -146,7 +146,7 @@ object SceneGraph {
         surfaceBorder.setSize(surface.current().width() + 2 * borderWidth, surface.current().height() + 2 * borderWidth)
 
         XdgToplevel.tryFromSurface(surface)?.let { topLevel ->
-            if (topLevel.base().initialCommit())
+            if (topLevel.base.getInitialCommit())
                 topLevel.setSize(0, 0)
         }
     }

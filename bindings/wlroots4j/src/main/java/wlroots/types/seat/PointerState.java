@@ -21,14 +21,17 @@ public class PointerState {
     }
 
 
-    public @Nullable SeatClient focusedClient() {
+    // *** Getters and setters **************************************************************************** //
+
+
+    public @Nullable SeatClient getFocusedClient() {
         var ptr = wlr_seat_pointer_state.focused_client(pointerStatePtr);
         return !ptr.equals(NULL) ? new SeatClient(ptr) : null;
     }
 
 
     // TODO: Is this nullable?
-    public Surface focusedSurface() {
-        return new Surface(wlr_seat_pointer_state.focused_surface(pointerStatePtr));
+    public @Nullable Surface getFocusedSurface() {
+        return Surface.ofPtrOrNull(wlr_seat_pointer_state.focused_surface(pointerStatePtr));
     }
 }

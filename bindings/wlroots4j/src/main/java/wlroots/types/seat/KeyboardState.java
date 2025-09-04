@@ -1,6 +1,5 @@
 package wlroots.types.seat;
 
-
 import jextract.wlroots.types.wlr_seat_keyboard_state;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -22,8 +21,10 @@ public class KeyboardState {
     }
 
 
-    public @Nullable Surface focusedSurface() {
-        var surfacePtr = wlr_seat_keyboard_state.focused_surface(keyboardStatePtr);
-        return !surfacePtr.equals(NULL) ? new Surface(surfacePtr) : null;
+    // *** Getters and setters **************************************************************************** //
+
+
+    public @Nullable Surface getFocusedSurface() {
+        return Surface.ofPtrOrNull(wlr_seat_keyboard_state.focused_surface(keyboardStatePtr));
     }
 }
