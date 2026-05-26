@@ -182,7 +182,9 @@ public final class Seat {
     }
 
 
-    // *** Other ****************************************************************************************** //
+    //
+    // *** Other ***
+    //
 
 
     public void setCapabilities(EnumSet<SeatCapability> capabilities) {
@@ -216,7 +218,7 @@ public final class Seat {
     // *** Events ***
     //
 
-    static class Events {
+    public static class Events {
         /// Raised when a client provides a cursor image.
         public final Signal1<PointerRequestSetCursorEvent> requestSetCursor;
         public final Signal1<RequestSetSelectionEvent>     requestSetSelection;

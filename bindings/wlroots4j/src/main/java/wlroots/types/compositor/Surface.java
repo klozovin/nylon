@@ -88,7 +88,7 @@ public class Surface {
     // *** Events ***************************************************************************************** //
 
 
-    static class Events {
+    public static class Events {
         /// Raised when the client has sent a wl_surface.commit request. The state to committed can be
         /// accessed in {@link Surface#pending()}.
         ///
@@ -113,7 +113,7 @@ public class Surface {
         public final Signal1<Surface> destroy;
 
 
-        public Events(MemorySegment ptr) {
+        Events(MemorySegment ptr) {
             clientCommit = Signal.of(wlr_surface.events.client_commit(ptr));
             commit       = Signal.of(wlr_surface.events.commit(ptr), Surface::new);
             map          = Signal.of(wlr_surface.events.map(ptr));

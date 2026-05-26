@@ -132,7 +132,7 @@ public class Cursor {
     // *** Events ***
     //
 
-    static class Events {
+    public static class Events {
         /// Raised by the {@link Pointer} forwarding its relative (delta) pointer motion event
         public final Signal1<PointerMotionEvent> motion;
         public final Signal1<PointerMotionAbsoluteEvent> motionAbsolute;

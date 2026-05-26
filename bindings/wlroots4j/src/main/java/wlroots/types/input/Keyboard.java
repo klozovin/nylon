@@ -156,7 +156,7 @@ public class Keyboard {
     // *** Events ***
     //
 
-    static class Events {
+    public static class Events {
         /// Raised when a key has been pressed or released on the keyboard. Emitted before the xkb state of
         /// the keyboard has been updated (including modifiers).
         public final Signal1<KeyboardKeyEvent> key;

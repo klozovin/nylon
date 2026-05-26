@@ -140,7 +140,7 @@ public final class Output {
     // *** Events ***
     //
 
-    static class Events {
+    public static class Events {
         /// Raised every time an output is ready to display a frame, generally at the output's refresh rate
         public final Signal1<Output> frame;
 

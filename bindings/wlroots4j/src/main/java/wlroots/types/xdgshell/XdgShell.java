@@ -33,7 +33,7 @@ public class XdgShell {
     }
 
 
-    static class Events {
+    public static class Events {
         private final MemorySegment eventsPtr;
 
         ///  Raised when a new toplevel window is created
@@ -46,7 +46,7 @@ public class XdgShell {
         public final Signal1<XdgShell> destroy;
 
 
-        public Events(MemorySegment eventsPtr) {
+        Events(MemorySegment eventsPtr) {
             this.eventsPtr   = eventsPtr;
             this.newToplevel = Signal.of(wlr_xdg_shell.events.new_toplevel(eventsPtr), XdgToplevel::new);
             this.newPopup    = Signal.of(wlr_xdg_shell.events.new_popup(eventsPtr),    XdgPopup::new);

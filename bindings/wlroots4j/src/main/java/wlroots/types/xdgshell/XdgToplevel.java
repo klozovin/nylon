@@ -112,7 +112,7 @@ public class XdgToplevel {
     // *** Events ***
     //
 
-    static class Events {
+    public static class Events {
         public final Signal0 destroy;
         public final Signal1<MoveEvent> requestMove;
         public final Signal1<ResizeEvent> requestResize;
@@ -120,7 +120,7 @@ public class XdgToplevel {
         public final Signal0 requestFullscreen;
 
 
-        public Events(MemorySegment eventsPtr) {
+        Events(MemorySegment eventsPtr) {
             this.destroy           = Signal.of(wlr_xdg_toplevel.events.destroy(eventsPtr));
             this.requestMove       = Signal.of(wlr_xdg_toplevel.events.request_move(eventsPtr), MoveEvent::new);
             this.requestResize     = Signal.of(wlr_xdg_toplevel.events.request_resize(eventsPtr), ResizeEvent::new);

@@ -60,11 +60,11 @@ public class XdgPopup {
     // *** Events ***
     //
 
-    static class Events {
+    public static class Events {
         public final Signal0 destroy;
 
 
-        public Events(MemorySegment ptr) {
+        Events(MemorySegment ptr) {
             destroy = Signal.of(wlr_xdg_popup.events.destroy(ptr));
         }
 

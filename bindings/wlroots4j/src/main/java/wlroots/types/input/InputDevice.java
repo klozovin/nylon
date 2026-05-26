@@ -66,7 +66,7 @@ public final class InputDevice {
     // *** Events ***
     //
 
-    static class Events {
+    public static class Events {
         public final Signal1<InputDevice> destroy;
 
 
