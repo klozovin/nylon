@@ -9,7 +9,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_scene_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 /// A viewport for an output in the scene-graph.

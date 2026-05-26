@@ -5,7 +5,7 @@ import wayland.server.Display;
 
 import java.lang.foreign.MemorySegment;
 
-import static jextract.wlroots.types.wlr_data_device_h.wlr_data_device_manager_create;
+import static jextract.wlroots.wlr.wlr_data_device_manager_create;
 
 
 @NullMarked

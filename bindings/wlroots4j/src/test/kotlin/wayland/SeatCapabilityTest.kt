@@ -13,9 +13,11 @@ class SeatCapabilityTest : FunSpec({
         test("POINTER") {
             SeatCapability.setToBitfield(EnumSet.of(POINTER)) shouldBeEqual 1
         }
+
         test("KEYBOARD") {
             SeatCapability.setToBitfield(EnumSet.of(KEYBOARD)) shouldBeEqual 2
         }
+
         test("TOUCH") {
             SeatCapability.setToBitfield(EnumSet.of(TOUCH)) shouldBeEqual 4
         }
@@ -23,6 +25,7 @@ class SeatCapabilityTest : FunSpec({
         test("POINTER | KEYBOARD") {
             SeatCapability.setToBitfield(EnumSet.of(POINTER, KEYBOARD)) shouldBeEqual 3
         }
+
         test("POINTER | TOUCH") {
             SeatCapability.setToBitfield(EnumSet.of(POINTER, TOUCH)) shouldBeEqual 5
         }

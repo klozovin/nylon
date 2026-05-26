@@ -1,13 +1,12 @@
 package wayland;
 
-import static jextract.wayland.server.server_h.WL_POINTER_AXIS_RELATIVE_DIRECTION_IDENTICAL;
-import static jextract.wayland.server.server_h.WL_POINTER_AXIS_RELATIVE_DIRECTION_INVERTED;
+import static jextract.wayland.wl.WL_POINTER_AXIS_RELATIVE_DIRECTION_IDENTICAL;
+import static jextract.wayland.wl.WL_POINTER_AXIS_RELATIVE_DIRECTION_INVERTED;
 
 
 public enum PointerAxisRelativeDirection {
     IDENTICAL(WL_POINTER_AXIS_RELATIVE_DIRECTION_IDENTICAL()),
     INVERTED(WL_POINTER_AXIS_RELATIVE_DIRECTION_INVERTED());
-
 
     public final int value;
 
@@ -19,9 +18,8 @@ public enum PointerAxisRelativeDirection {
 
     public static PointerAxisRelativeDirection of(int value) {
         if (value == WL_POINTER_AXIS_RELATIVE_DIRECTION_IDENTICAL()) return IDENTICAL;
-        if (value == WL_POINTER_AXIS_RELATIVE_DIRECTION_INVERTED())  return INVERTED;
+        if (value == WL_POINTER_AXIS_RELATIVE_DIRECTION_INVERTED()) return INVERTED;
 
         throw new RuntimeException("Invalid enum value from C code for wl_pointer_axis_relative_direction");
     }
-
 }

@@ -1,6 +1,6 @@
 package wlroots.types.compositor;
 
-import jextract.wlroots.types.wlr_surface;
+import jextract.wlroots.wlr_surface;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
@@ -10,7 +10,7 @@ import wayland.server.Signal.Signal1;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_compositor_h.wlr_surface_get_root_surface;
+import static jextract.wlroots.wlr.wlr_surface_get_root_surface;
 
 
 /// `struct wlr_surface {}`
@@ -88,7 +88,7 @@ public class Surface {
     // *** Events ***************************************************************************************** //
 
 
-    public static class Events {
+    static class Events {
         /// Raised when the client has sent a wl_surface.commit request. The state to committed can be
         /// accessed in {@link Surface#pending()}.
         ///

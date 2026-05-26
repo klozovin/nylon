@@ -1,6 +1,6 @@
 package wlroots.types.input;
 
-import jextract.wlroots.types.wlr_pointer_button_event;
+import jextract.wlroots.wlr_pointer_button_event;
 import org.jspecify.annotations.NullMarked;
 import wayland.PointerButtonState;
 

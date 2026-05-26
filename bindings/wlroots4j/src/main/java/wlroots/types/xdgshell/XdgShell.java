@@ -1,6 +1,6 @@
 package wlroots.types.xdgshell;
 
-import jextract.wlroots.types.wlr_xdg_shell;
+import jextract.wlroots.wlr_xdg_shell;
 import org.jspecify.annotations.NullMarked;
 import wayland.server.Display;
 import wayland.server.Signal;
@@ -9,7 +9,7 @@ import wayland.server.Signal.Signal1;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_xdg_shell_h.wlr_xdg_shell_create;
+import static jextract.wlroots.wlr.wlr_xdg_shell_create;
 
 
 /// `struct wlr_xdg_shell {}`
@@ -33,7 +33,7 @@ public class XdgShell {
     }
 
 
-    public static class Events {
+    static class Events {
         private final MemorySegment eventsPtr;
 
         ///  Raised when a new toplevel window is created
@@ -50,7 +50,7 @@ public class XdgShell {
             this.eventsPtr   = eventsPtr;
             this.newToplevel = Signal.of(wlr_xdg_shell.events.new_toplevel(eventsPtr), XdgToplevel::new);
             this.newPopup    = Signal.of(wlr_xdg_shell.events.new_popup(eventsPtr),    XdgPopup::new);
-            this.destroy     = Signal.of(wlr_xdg_shell.events.destroy(eventsPtr),    XdgShell::new);
+            this.destroy     = Signal.of(wlr_xdg_shell.events.destroy(eventsPtr),      XdgShell::new);
         }
     }
 }

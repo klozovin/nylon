@@ -1,13 +1,13 @@
 package wlroots.types.input;
 
-import jextract.wlroots.types.wlr_pointer;
+import jextract.wlroots.wlr_pointer;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_pointer_h.wlr_pointer_from_input_device;
+import static jextract.wlroots.wlr.wlr_pointer_from_input_device;
 
 
 @NullMarked
@@ -37,12 +37,11 @@ public class Pointer {
     }
 
 
-    // *** Getters and setters **************************************************************************** //
+    //
+    // *** Getters and setters ***
+    //
 
-
-    /**
-     * @return wlr_pointer.base
-     */
+    /// @return wlr_pointer.base
     public InputDevice getBase() {
         return new InputDevice(wlr_pointer.base(pointerPtr));
     }

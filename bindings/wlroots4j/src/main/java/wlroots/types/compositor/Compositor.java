@@ -1,6 +1,6 @@
 package wlroots.types.compositor;
 
-import jextract.wlroots.types.wlr_compositor;
+import jextract.wlroots.wlr_compositor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Display;
@@ -12,11 +12,11 @@ import wlroots.render.Renderer;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_compositor_h.wlr_compositor_create;
+import static jextract.wlroots.wlr.wlr_compositor_create;
 
 
-///  Bridge between wlroots and libwayland's "wl_compositor". Provides surfaces for the clients to
-///  render onto.
+/// Bridge between wlroots and libwayland's "wl_compositor". Provides surfaces for the clients to render
+/// onto.
 @NullMarked
 public class Compositor {
     public final MemorySegment compositorPtr;
@@ -30,11 +30,10 @@ public class Compositor {
     }
 
 
-    /// Create the wl_compositor global, which can be used by clients to create surfaces and
-    /// regions.
+    /// Create the wl_compositor global, which can be used by clients to create surfaces and regions.
     ///
-    /// If a renderer is supplied, the compositor will create struct wlr_texture objects from
-    /// client buffers on surface commit.
+    /// If a renderer is supplied, the compositor will create struct wlr_texture objects from client buffers
+    /// on surface commit.
     ///
     /// @param version Maximum supported version to pass to wl_compositor, to advertise to clients
     public static Compositor create(Display display, int version, @Nullable Renderer renderer) {

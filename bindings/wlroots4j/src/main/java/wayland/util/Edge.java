@@ -2,7 +2,7 @@ package wayland.util;
 
 import java.util.EnumSet;
 
-import static jextract.wlroots.util.edges_h.*;
+import static jextract.wlroots.wlr.*;
 
 /// `enum wlr_edges`
 public enum Edge {

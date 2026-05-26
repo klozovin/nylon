@@ -1,6 +1,6 @@
 package wlroots.types.scene;
 
-import jextract.wlroots.types.wlr_scene_node;
+import jextract.wlroots.wlr_scene_node;
 import nylon.Tuple;
 import nylon.Tuple.Tuple3;
 import org.jspecify.annotations.NullMarked;
@@ -12,7 +12,7 @@ import java.lang.foreign.ValueLayout;
 import java.util.Iterator;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_scene_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 @NullMarked
@@ -29,8 +29,9 @@ public class SceneNode {
     }
 
 
-    // *** Getters and setters **************************************************************************** //
-
+    //
+    // *** Getters and setters ***
+    //
 
     public Type getType() {
         return Type.of(wlr_scene_node.type(sceneNodePtr));
@@ -54,8 +55,9 @@ public class SceneNode {
         return wlr_scene_node.y(sceneNodePtr);
     }
 
-    // *** Methods **************************************************************************************** //
-
+    //
+    // *** Methods ***
+    //
 
     /// Set the position of the node relative to its parent.
     public void setPosition(int x, int y) {
@@ -143,8 +145,8 @@ public class SceneNode {
 
 
         public static Type of(int value) {
-            if (value == WLR_SCENE_NODE_TREE())   return TREE;
-            if (value == WLR_SCENE_NODE_RECT())   return RECT;
+            if (value == WLR_SCENE_NODE_TREE()) return TREE;
+            if (value == WLR_SCENE_NODE_RECT()) return RECT;
             if (value == WLR_SCENE_NODE_BUFFER()) return BUFFER;
 
             throw new RuntimeException("Invalid enum value from C code for wlr_scene_node_type");

@@ -1,6 +1,6 @@
 package wlroots.types;
 
-import jextract.wlroots.types.wlr_cursor;
+import jextract.wlroots.wlr_cursor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
@@ -13,7 +13,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_cursor_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 /// Used by wlroots for tracking the cursor image shown on screen.
@@ -127,10 +127,12 @@ public class Cursor {
         wlr_cursor_destroy(cursorPtr);
     }
 
-    // *** Events ***************************************************************************************** //
 
+    //
+    // *** Events ***
+    //
 
-    public static class Events {
+    static class Events {
         /// Raised by the {@link Pointer} forwarding its relative (delta) pointer motion event
         public final Signal1<PointerMotionEvent> motion;
         public final Signal1<PointerMotionAbsoluteEvent> motionAbsolute;

@@ -4,7 +4,7 @@ import wlroots.types.output.OutputLayoutOutput;
 
 import java.lang.foreign.MemorySegment;
 
-import static jextract.wlroots.types.wlr_scene_h.wlr_scene_output_layout_add_output;
+import static jextract.wlroots.wlr.wlr_scene_output_layout_add_output;
 
 
 /// `struct wlr_scene_output_layout {}`

@@ -7,8 +7,8 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_xcursor_manager_h.wlr_xcursor_manager_create;
-import static jextract.wlroots.types.wlr_xcursor_manager_h.wlr_xcursor_manager_destroy;
+import static jextract.wlroots.wlr.wlr_xcursor_manager_create;
+import static jextract.wlroots.wlr.wlr_xcursor_manager_destroy;
 
 
 /// Loads Xcursor themes to source cursor images, makes sure that cursor images are available at all scale

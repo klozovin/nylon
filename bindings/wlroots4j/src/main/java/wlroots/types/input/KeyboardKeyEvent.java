@@ -1,6 +1,6 @@
 package wlroots.types.input;
 
-import jextract.wlroots.types.wlr_keyboard_key_event;
+import jextract.wlroots.wlr_keyboard_key_event;
 import org.jspecify.annotations.NullMarked;
 import wayland.KeyboardKeyState;
 

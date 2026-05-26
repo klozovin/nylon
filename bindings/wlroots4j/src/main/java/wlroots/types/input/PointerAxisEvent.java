@@ -1,6 +1,6 @@
 package wlroots.types.input;
 
-import jextract.wlroots.types.wlr_pointer_axis_event;
+import jextract.wlroots.wlr_pointer_axis_event;
 import org.jspecify.annotations.NullMarked;
 import wayland.PointerAxis;
 import wayland.PointerAxisRelativeDirection;

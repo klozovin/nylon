@@ -1,6 +1,6 @@
 package wlroots.types.scene;
 
-import jextract.wlroots.types.wlr_scene_rect;
+import jextract.wlroots.wlr_scene_rect;
 import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.Arena;
@@ -8,7 +8,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_scene_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 /// A scene-graph node displaying a solid-colored rectangle.
@@ -42,16 +42,18 @@ public final class SceneRect {
     }
 
 
-    // *** Getters and setters **************************************************************************** //
-
+    //
+    // *** Getters and setters ***
+    //
 
     public SceneNode node() {
         return new SceneNode(wlr_scene_rect.node(sceneRectPtr));
     }
 
 
-    // *** Methods **************************************************************************************** //
-
+    //
+    // *** Methods ***
+    //
 
     /// Change the width and height of an existing rectangle node.
     public void setSize(int width, int height) {

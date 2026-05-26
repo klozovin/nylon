@@ -1,7 +1,7 @@
 package wlroots.types.seat;
 
-import jextract.wlroots.types.wlr_seat_pointer_button;
-import jextract.wlroots.types.wlr_seat_pointer_state;
+import jextract.wlroots.wlr_seat_pointer_button;
+import jextract.wlroots.wlr_seat_pointer_state;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wlroots.types.compositor.Surface;
@@ -9,7 +9,7 @@ import wlroots.types.compositor.Surface;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_pointer_h.WLR_POINTER_BUTTONS_CAP;
+import static jextract.wlroots.wlr.WLR_POINTER_BUTTONS_CAP;
 
 
 @NullMarked

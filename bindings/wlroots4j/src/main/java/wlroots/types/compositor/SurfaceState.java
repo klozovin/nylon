@@ -1,6 +1,6 @@
 package wlroots.types.compositor;
 
-import jextract.wlroots.types.wlr_surface_state;
+import jextract.wlroots.wlr_surface_state;
 import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.MemorySegment;

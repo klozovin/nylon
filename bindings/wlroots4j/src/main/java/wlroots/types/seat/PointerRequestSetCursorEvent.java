@@ -1,6 +1,6 @@
 package wlroots.types.seat;
 
-import jextract.wlroots.types.wlr_seat_pointer_request_set_cursor_event;
+import jextract.wlroots.wlr_seat_pointer_request_set_cursor_event;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wlroots.types.compositor.Surface;

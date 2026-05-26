@@ -1,6 +1,6 @@
 package wlroots.types.scene;
 
-import jextract.wlroots.types.wlr_scene;
+import jextract.wlroots.wlr_scene;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wlroots.types.output.Output;
@@ -9,7 +9,7 @@ import wlroots.types.output.OutputLayout;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_scene_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 /// The root scene-graph node.
@@ -32,7 +32,9 @@ public final class Scene {
     }
 
 
-    // *** Getters and setters **************************************************************************** //
+    //
+    // *** Getters and setters **
+    //
 
 
     public SceneTree tree() {
@@ -40,7 +42,9 @@ public final class Scene {
     }
 
 
-    // *** Methods **************************************************************************************** //
+    //
+    // *** Methods ***
+    //
 
 
     public SceneOutputLayout attachOutputLayout(OutputLayout outputLayout) {

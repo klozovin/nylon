@@ -1,11 +1,11 @@
 package wlroots.util;
 
-import jextract.wlroots.util.log_h;
+import jextract.wlroots.wlr;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
-import static jextract.wlroots.util.log_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 public final class Log {
@@ -15,8 +15,8 @@ public final class Log {
     /// wlr_log_init(
     ///     enum wlr_log_importance verbosity,
     ///     wlr_log_func_t callback
-    ///)
-    ///```
+    /// )
+    /// ```
     public static void init(Importance verbosity) {
         wlr_log_init(verbosity.idx, MemorySegment.NULL);
     }
@@ -26,7 +26,7 @@ public final class Log {
         try (Arena arena = Arena.ofConfined()) {
             // NOTE: Only specify makeInvoker() arguments when actually using the varargs, here
             //       we just use the first two regular parameters!
-            var invoker = log_h._wlr_log.makeInvoker();
+            var invoker = wlr._wlr_log.makeInvoker();
             invoker.apply(verbosity.idx, arena.allocateFrom(message));
         }
     }

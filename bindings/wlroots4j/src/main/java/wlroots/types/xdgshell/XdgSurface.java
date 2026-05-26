@@ -1,6 +1,6 @@
 package wlroots.types.xdgshell;
 
-import jextract.wlroots.types.wlr_xdg_surface;
+import jextract.wlroots.wlr_xdg_surface;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
@@ -11,7 +11,7 @@ import wlroots.util.Box;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_xdg_shell_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 /// An xdg-surface is a user interface element requiring management by the compositor. An xdg-surface alone
@@ -38,17 +38,18 @@ public class XdgSurface {
 
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(@Nullable Object obj) {
         return switch (obj) {
-            case XdgSurface s -> xdgSurfacePtr.equals(s.xdgSurfacePtr);
             case null -> false;
+            case XdgSurface s -> xdgSurfacePtr.equals(s.xdgSurfacePtr);
             default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }
 
 
-    // *** Getters and setters **************************************************************************** //
-
+    //
+    // *** Getters and setters ***
+    //
 
     public Surface getSurface() {
         return new Surface(wlr_xdg_surface.surface(xdgSurfacePtr));
@@ -87,8 +88,9 @@ public class XdgSurface {
     }
 
 
-    // *** Methods **************************************************************************************** //
-
+    //
+    // *** Methods ***
+    //
 
     /// Schedule a surface configuration. This should only be called by protocols extending the shell.
     public int scheduleConfigure() {
@@ -96,8 +98,9 @@ public class XdgSurface {
     }
 
 
-    // *** Associated *** //
-
+    //
+    // *** Associated ***
+    //
 
     public enum SurfaceRole {
         NONE(WLR_XDG_SURFACE_ROLE_NONE()),
@@ -122,10 +125,11 @@ public class XdgSurface {
     }
 
 
-    // *** Events ***************************************************************************************** //
+    //
+    // *** Events ***
+    //
 
-
-    public static class Events {
+    static class Events {
         public final Signal0 destroy;
 
 

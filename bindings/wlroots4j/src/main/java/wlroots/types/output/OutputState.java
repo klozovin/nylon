@@ -1,6 +1,6 @@
 package wlroots.types.output;
 
-import jextract.wlroots.types.wlr_output_state;
+import jextract.wlroots.wlr_output_state;
 import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.Arena;
@@ -8,7 +8,7 @@ import java.lang.foreign.MemorySegment;
 import java.util.function.Consumer;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_output_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 /// Represent the changes (staging area) to be applied to an {@link Output} when committed.

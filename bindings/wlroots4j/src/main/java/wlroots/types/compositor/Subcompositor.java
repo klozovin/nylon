@@ -6,7 +6,7 @@ import wayland.server.Display;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_subcompositor_h.wlr_subcompositor_create;
+import static jextract.wlroots.wlr.wlr_subcompositor_create;
 
 
 @NullMarked

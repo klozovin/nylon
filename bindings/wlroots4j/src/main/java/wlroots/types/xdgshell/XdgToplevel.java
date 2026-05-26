@@ -1,8 +1,8 @@
 package wlroots.types.xdgshell;
 
-import jextract.wlroots.types.wlr_xdg_toplevel;
-import jextract.wlroots.types.wlr_xdg_toplevel_move_event;
-import jextract.wlroots.types.wlr_xdg_toplevel_resize_event;
+import jextract.wlroots.wlr_xdg_toplevel;
+import jextract.wlroots.wlr_xdg_toplevel_move_event;
+import jextract.wlroots.wlr_xdg_toplevel_resize_event;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
@@ -16,7 +16,7 @@ import java.lang.foreign.MemorySegment;
 import java.util.EnumSet;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_xdg_shell_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 @NullMarked
@@ -33,10 +33,10 @@ public class XdgToplevel {
 
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(@Nullable Object other) {
         return switch (other) {
-            case XdgToplevel otherToplevel -> xdgToplevelPtr.equals(otherToplevel.xdgToplevelPtr);
             case null -> false;
+            case XdgToplevel otherToplevel -> xdgToplevelPtr.equals(otherToplevel.xdgToplevelPtr);
             default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }
@@ -62,8 +62,10 @@ public class XdgToplevel {
         return !xdgToplevelPtr.equals(NULL) ? new XdgToplevel(xdgToplevelPtr) : null;
     }
 
-    // *** Getters and setters **************************************************************************** //
 
+    //
+    // *** Getters and setters ***
+    //
 
     public XdgSurface getBase() {
         return new XdgSurface(wlr_xdg_toplevel.base(xdgToplevelPtr));
@@ -89,8 +91,9 @@ public class XdgToplevel {
     }
 
 
-    // *** Methods **************************************************************************************** //
-
+    //
+    // *** Methods ***
+    //
 
     public int setSize(int width, int height) {
         return wlr_xdg_toplevel_set_size(xdgToplevelPtr, width, height);
@@ -105,10 +108,11 @@ public class XdgToplevel {
     }
 
 
-    // *** Events ***************************************************************************************** //
+    //
+    // *** Events ***
+    //
 
-
-    public static class Events {
+    static class Events {
         public final Signal0 destroy;
         public final Signal1<MoveEvent> requestMove;
         public final Signal1<ResizeEvent> requestResize;

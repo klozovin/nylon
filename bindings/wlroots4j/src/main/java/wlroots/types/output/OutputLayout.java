@@ -7,7 +7,7 @@ import wayland.server.Display;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_output_layout_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 /// Helper to arrange outputs in a 2D coordinate space. The output effective resolution is used, see

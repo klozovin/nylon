@@ -6,8 +6,8 @@ import wlroots.backend.Backend;
 
 import java.lang.foreign.MemorySegment;
 
-import static jextract.wlroots.render.allocator_h.wlr_allocator_autocreate;
-import static jextract.wlroots.render.allocator_h.wlr_allocator_destroy;
+import static jextract.wlroots.wlr.wlr_allocator_autocreate;
+import static jextract.wlroots.wlr.wlr_allocator_destroy;
 
 
 /// An allocator is responsible for allocating memory for pixel buffers.

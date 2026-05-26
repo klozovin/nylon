@@ -8,7 +8,7 @@ import wlroots.backend.Backend;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.backend_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 /// A renderer for basic 2D operations.

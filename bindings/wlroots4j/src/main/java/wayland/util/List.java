@@ -1,6 +1,6 @@
 package wayland.util;
 
-import jextract.wayland.util.wl_list;
+import jextract.wayland.wl_list;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -9,7 +9,7 @@ import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.reflect.InvocationTargetException;
 
-import static jextract.wayland.util.util_h.*;
+import static jextract.wayland.wl.*;
 import static wayland.util.Utils.containerOf;
 
 

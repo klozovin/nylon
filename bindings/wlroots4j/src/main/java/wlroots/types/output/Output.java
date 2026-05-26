@@ -1,6 +1,6 @@
 package wlroots.types.output;
 
-import jextract.wlroots.types.wlr_output;
+import jextract.wlroots.wlr_output;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Display;
@@ -11,12 +11,10 @@ import wlroots.render.BufferPassOptions;
 import wlroots.render.RenderPass;
 import wlroots.render.Renderer;
 
-import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static java.lang.foreign.ValueLayout.JAVA_INT;
-import static jextract.wlroots.types.wlr_output_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 /// A compositor output region. This typically corresponds to a monitor that displays part of the compositor
@@ -40,10 +38,10 @@ public final class Output {
 
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(@Nullable Object other) {
         return switch (other) {
-            case Output otherOutput -> outputPtr.equals(otherOutput.outputPtr);
             case null -> false;
+            case Output otherOutput -> outputPtr.equals(otherOutput.outputPtr);
             default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }
@@ -55,8 +53,9 @@ public final class Output {
     }
 
 
-    // *** Fields ***************************************************************************************** //
-
+    //
+    // *** Fields ***
+    //
 
     public int width() {
         return wlr_output.width(outputPtr);
@@ -68,8 +67,9 @@ public final class Output {
     }
 
 
-    // *** Methods *** //
-
+    //
+    // *** Methods ***
+    //
 
     /// Returns the preferred mode for this output. If the output doesn't support modes, returns NULL.
     public @Nullable OutputMode preferredMode() {
@@ -97,11 +97,11 @@ public final class Output {
     ///     struct wlr_output_state *state,
     ///     int *buffer_age,
     ///     struct wlr_buffer_pass_options *render_options
-    ///)
-    ///```
+    /// )
+    /// ```
     ///
-    /// @param state     describes the output changes the rendered frame will be committed with. A NULL state
-    ///                  indicates no change.
+    /// @param state describes the output changes the rendered frame will be committed with. A NULL state
+    /// indicates no change.
     /// @return On error, NULL is returned. Creating a render pass on a disabled output is an error.
     public @Nullable RenderPass beginRenderPass(OutputState state, @Nullable BufferPassOptions renderOptions) {
         // TODO: overload with renderoptions=null for cleaner API
@@ -136,10 +136,11 @@ public final class Output {
     }
 
 
-    // *** Events ***************************************************************************************** //
+    //
+    // *** Events ***
+    //
 
-
-    public final static class Events {
+    static class Events {
         /// Raised every time an output is ready to display a frame, generally at the output's refresh rate
         public final Signal1<Output> frame;
 

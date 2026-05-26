@@ -1,6 +1,6 @@
 package wlroots.types.input;
 
-import jextract.wlroots.types.wlr_keyboard;
+import jextract.wlroots.wlr_keyboard;
 import org.jspecify.annotations.NullMarked;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
@@ -12,7 +12,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_keyboard_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 @NullMarked
@@ -52,8 +52,9 @@ public class Keyboard {
     }
 
 
-    // *** Fields ***************************************************************************************** //
-
+    //
+    // *** Fields ***
+    //
 
     public XkbState xkbState() {
         return new XkbState(wlr_keyboard.xkb_state(keyboardPtr));
@@ -87,8 +88,9 @@ public class Keyboard {
     }
 
 
-    // *** Methods **************************************************************************************** //
-
+    //
+    // *** Methods ***
+    //
 
     public boolean setKeymap(Keymap keymap) {
         return wlr_keyboard_set_keymap(keyboardPtr, keymap.keymapPtr);
@@ -110,8 +112,9 @@ public class Keyboard {
     }
 
 
-    // *** Modifiers *** //
-
+    //
+    // *** Modifiers ***
+    //
 
     // TODO: Move to enum, and enumset (benchmark), move out from Keyboard class
     public final static class Modifiers {
@@ -149,10 +152,11 @@ public class Keyboard {
     }
 
 
-    // *** Events ***************************************************************************************** //
+    //
+    // *** Events ***
+    //
 
-
-    public final static class Events {
+    static class Events {
         /// Raised when a key has been pressed or released on the keyboard. Emitted before the xkb state of
         /// the keyboard has been updated (including modifiers).
         public final Signal1<KeyboardKeyEvent> key;

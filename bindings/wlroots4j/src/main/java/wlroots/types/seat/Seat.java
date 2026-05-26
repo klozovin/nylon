@@ -1,6 +1,6 @@
 package wlroots.types.seat;
 
-import jextract.wlroots.types.wlr_seat;
+import jextract.wlroots.wlr_seat;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.*;
@@ -18,12 +18,12 @@ import java.lang.foreign.MemorySegment;
 import java.util.EnumSet;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_data_device_h.wlr_seat_set_selection;
-import static jextract.wlroots.types.wlr_xdg_shell_h.*;
+import static jextract.wlroots.wlr.wlr_seat_set_selection;
+import static jextract.wlroots.wlr.*;
 
 
 @NullMarked
-public class Seat {
+public final class Seat {
     public final MemorySegment seatPtr;
     public final Events events;
 
@@ -42,8 +42,9 @@ public class Seat {
         }
     }
 
-    // *** Getters and setters **************************************************************************** //
-
+    //
+    // *** Getters and setters ***
+    //
 
     public EnumSet<SeatCapability> capabilities() {
         return SeatCapability.fromBitset(wlr_seat.capabilities(seatPtr));
@@ -60,8 +61,9 @@ public class Seat {
     }
 
 
-    // *** Keyboard methods ******************************************************************************* //
-
+    //
+    // *** Keyboard methods ***
+    //
 
     /// Set this keyboard as the active keyboard for the seat.
     public void setKeyboard(Keyboard keyboard) {
@@ -210,10 +212,11 @@ public class Seat {
     }
 
 
-    // *** Events ***************************************************************************************** //
+    //
+    // *** Events ***
+    //
 
-
-    public static class Events {
+    static class Events {
         /// Raised when a client provides a cursor image.
         public final Signal1<PointerRequestSetCursorEvent> requestSetCursor;
         public final Signal1<RequestSetSelectionEvent>     requestSetSelection;

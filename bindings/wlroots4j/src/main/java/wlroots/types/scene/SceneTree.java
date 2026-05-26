@@ -1,6 +1,6 @@
 package wlroots.types.scene;
 
-import jextract.wlroots.types.wlr_scene_tree;
+import jextract.wlroots.wlr_scene_tree;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wlroots.types.xdgshell.XdgSurface;
@@ -8,8 +8,8 @@ import wlroots.types.xdgshell.XdgSurface;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_scene_h.wlr_scene_tree_from_node;
-import static jextract.wlroots.types.wlr_scene_h.wlr_scene_xdg_surface_create;
+import static jextract.wlroots.wlr.wlr_scene_tree_from_node;
+import static jextract.wlroots.wlr.wlr_scene_xdg_surface_create;
 
 
 /// Node representing a subtree in the scene-graph.

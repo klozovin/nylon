@@ -1,6 +1,6 @@
 package wayland;
 
-import static jextract.wayland.server.server_h.*;
+import static jextract.wayland.wl.*;
 
 
 public enum PointerAxisSource {
@@ -8,7 +8,6 @@ public enum PointerAxisSource {
     FINGER(WL_POINTER_AXIS_SOURCE_FINGER()),
     CONTINUOUS(WL_POINTER_AXIS_SOURCE_CONTINUOUS()),
     WHEEL_TILT(WL_POINTER_AXIS_SOURCE_WHEEL_TILT());
-
 
     public final int value;
 

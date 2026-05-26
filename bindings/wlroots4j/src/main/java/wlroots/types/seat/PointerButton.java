@@ -1,6 +1,6 @@
 package wlroots.types.seat;
 
-import jextract.wlroots.types.wlr_seat_pointer_button;
+import jextract.wlroots.wlr_seat_pointer_button;
 import org.jspecify.annotations.NullMarked;
 
 import java.lang.foreign.MemorySegment;

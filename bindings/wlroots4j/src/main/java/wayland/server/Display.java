@@ -6,7 +6,7 @@ import org.jspecify.annotations.Nullable;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wayland.server.server_h.*;
+import static jextract.wayland.wl.*;
 
 
 /// Represents a connection to the compositor and acts as a proxy to the wl_display singleton object.

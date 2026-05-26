@@ -12,7 +12,7 @@ import wlroots.types.output.Output;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.backend_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 /// A backend provides a set of input and output devices.
@@ -57,8 +57,9 @@ public final class Backend {
         return !backendPtr.equals(NULL) ? new Backend(backendPtr) : null;
     }
 
-    // *** Methods **************************************************************************************** //
-
+    //
+    // *** Methods ***
+    //
 
     public boolean start() {
         return wlr_backend_start(backendPtr);
@@ -70,8 +71,9 @@ public final class Backend {
     }
 
 
-    // *** Events ***************************************************************************************** //
-
+    //
+    // *** Events ***
+    //
 
     public final static class Events {
         /// Raised when a new output (display, monitor, VR) becomes available

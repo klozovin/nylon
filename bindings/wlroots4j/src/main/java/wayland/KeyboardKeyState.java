@@ -1,7 +1,7 @@
 package wayland;
 
-import static jextract.wayland.server.server_h.WL_KEYBOARD_KEY_STATE_PRESSED;
-import static jextract.wayland.server.server_h.WL_KEYBOARD_KEY_STATE_RELEASED;
+import static jextract.wayland.wl.WL_KEYBOARD_KEY_STATE_RELEASED;
+import static jextract.wayland.wl.WL_KEYBOARD_KEY_STATE_PRESSED;
 
 
 public enum KeyboardKeyState {

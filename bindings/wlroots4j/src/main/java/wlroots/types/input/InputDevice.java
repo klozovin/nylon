@@ -1,6 +1,6 @@
 package wlroots.types.input;
 
-import jextract.wlroots.types.wlr_input_device;
+import jextract.wlroots.wlr_input_device;
 import org.jspecify.annotations.NullMarked;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
@@ -8,7 +8,7 @@ import wayland.server.Signal.Signal1;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_input_device_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 @NullMarked
@@ -24,8 +24,9 @@ public final class InputDevice {
     }
 
 
-    // *** Getters and setters **************************************************************************** //
-
+    //
+    // *** Getters and setters ***
+    //
 
     public Type getType() {
         return Type.of(wlr_input_device.type(inputDevicePtr));
@@ -61,10 +62,11 @@ public final class InputDevice {
     }
 
 
-    // *** Events ***************************************************************************************** //
+    //
+    // *** Events ***
+    //
 
-
-    public final static class Events {
+    static class Events {
         public final Signal1<InputDevice> destroy;
 
 

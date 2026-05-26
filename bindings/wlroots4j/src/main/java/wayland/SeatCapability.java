@@ -2,14 +2,13 @@ package wayland;
 
 import java.util.EnumSet;
 
-import static jextract.wayland.server.server_h.*;
+import static jextract.wayland.wl.*;
 
 
 public enum SeatCapability {
     POINTER(WL_SEAT_CAPABILITY_POINTER()),
     KEYBOARD(WL_SEAT_CAPABILITY_KEYBOARD()),
     TOUCH(WL_SEAT_CAPABILITY_TOUCH());
-
 
     public final int value;
 

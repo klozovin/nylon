@@ -1,6 +1,6 @@
 package wlroots.types.scene;
 
-import jextract.wlroots.types.wlr_scene_surface;
+import jextract.wlroots.wlr_scene_surface;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wlroots.types.compositor.Surface;
@@ -8,8 +8,8 @@ import wlroots.types.compositor.Surface;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_scene_h.wlr_scene_surface_create;
-import static jextract.wlroots.types.wlr_scene_h.wlr_scene_surface_try_from_buffer;
+import static jextract.wlroots.wlr.wlr_scene_surface_create;
+import static jextract.wlroots.wlr.wlr_scene_surface_try_from_buffer;
 
 
 /// A scene-graph node displaying a single surface.
@@ -43,7 +43,9 @@ public class SceneSurface {
     }
 
 
-    // *** Methods **************************************************************************************** //
+    //
+    // *** Methods ***
+    //
 
 
     public SceneBuffer buffer() {

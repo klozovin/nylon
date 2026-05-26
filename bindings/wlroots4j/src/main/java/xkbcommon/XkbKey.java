@@ -1,6 +1,6 @@
 package xkbcommon;
 
-import static jextract.xkbcommon.xkbcommon_h.*;
+import static jextract.xkbcommon.xkb.*;
 
 
 public final class XkbKey {

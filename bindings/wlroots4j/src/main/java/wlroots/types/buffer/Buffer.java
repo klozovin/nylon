@@ -1,6 +1,6 @@
 package wlroots.types.buffer;
 
-import jextract.wlroots.types.wlr_buffer_impl;
+import jextract.wlroots.wlr_buffer_impl;
 import jextract.wlroots.wlr_buffer;
 import org.jspecify.annotations.NullMarked;
 import wlroots.render.DmabufAttributes;
@@ -10,7 +10,7 @@ import java.lang.foreign.MemorySegment;
 import java.util.EnumSet;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_buffer_h.*;
+import static jextract.wlroots.wlr.*;
 
 
 /// A buffer containing pixel data.

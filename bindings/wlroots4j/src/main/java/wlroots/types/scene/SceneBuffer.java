@@ -1,16 +1,17 @@
 package wlroots.types.scene;
 
-import jextract.wlroots.types.wlr_scene_buffer;
+import jextract.wlroots.wlr_scene_buffer;
 import org.jspecify.annotations.NullMarked;
 import wlroots.types.buffer.Buffer;
 
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.types.wlr_scene_h.*;
+import static jextract.wlroots.wlr.wlr_scene_buffer_create;
+import static jextract.wlroots.wlr.wlr_scene_buffer_from_node;
 
 
-///  A scene-graph node displaying a buffer
+/// A scene-graph node displaying a buffer
 ///
 /// `struct wlr_scene_buffer {};`
 @NullMarked

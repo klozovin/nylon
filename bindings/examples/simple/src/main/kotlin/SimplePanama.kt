@@ -1,19 +1,14 @@
-import jextract.wayland.server.server_h.wl_display_create
-import jextract.wayland.server.server_h.wl_display_get_event_loop
-import jextract.wayland.server.wl_listener
-import jextract.wayland.server.wl_notify_func_t
-import jextract.wayland.server.wl_signal
-import jextract.wayland.util.util_h.wl_list_insert
-import jextract.wayland.util.util_h.wl_list_remove
-import jextract.wayland.util.wl_list
-import jextract.wlroots.backend_h
-import jextract.wlroots.render.allocator_h
-import jextract.wlroots.types.*
-import jextract.wlroots.util.log_h
-import jextract.wlroots.wlr_backend
-import jextract.wlroots.wlr_output
-import jextract.wlroots.wlr_output_state
-import jextract.xkbcommon.xkbcommon_h
+import jextract.wayland.wl.wl_display_create
+import jextract.wayland.wl.wl_display_get_event_loop
+import jextract.wayland.wl.wl_list_insert
+import jextract.wayland.wl.wl_list_remove
+import jextract.wayland.wl_list
+import jextract.wayland.wl_listener
+import jextract.wayland.wl_notify_func_t
+import jextract.wayland.wl_signal
+import jextract.wlroots.*
+import jextract.wlroots.wlr.*
+import jextract.xkbcommon.xkb
 import wlroots.util.Log
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
@@ -123,10 +118,10 @@ object SimplePanama {
         // struct wlr_output_state state;
         // wlr_output_state_init(&state);
         val state = wlr_output_state.allocate(arena)
-        backend_h.wlr_output_state_init(state)
+        wlr_output_state_init(state)
 
         // struct wlr_render_pass *pass = wlr_output_begin_render_pass(wlr_output, &state, NULL);
-        val pass = backend_h.wlr_output_begin_render_pass(Output.output, state, MemorySegment.NULL)
+        val pass = wlr_output_begin_render_pass(Output.output, state, MemorySegment.NULL)
 
         // wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
         //     .box = { .width = wlr_output->width, .height = wlr_output->height },
@@ -137,7 +132,7 @@ object SimplePanama {
         //          .a = sample->color[3],
         //      },
         // });
-        backend_h.wlr_render_pass_add_rect(pass, wlr_render_rect_options.allocate(arena).also { rectPtr ->
+        wlr_render_pass_add_rect(pass, wlr_render_rect_options.allocate(arena).also { rectPtr ->
             wlr_render_rect_options.box(rectPtr).let { boxPtr ->
                 wlr_box.width(boxPtr, wlr_output.width(Output.output))
                 wlr_box.height(boxPtr, wlr_output.height(Output.output))
@@ -151,13 +146,13 @@ object SimplePanama {
         })
 
         // wlr_render_pass_submit(pass);
-        backend_h.wlr_render_pass_submit(pass)
+        wlr_render_pass_submit(pass)
 
         // wlr_output_commit_state(wlr_output, &state);
-        backend_h.wlr_output_commit_state(Output.output, state)
+        wlr_output_commit_state(Output.output, state)
 
         // wlr_output_state_finish(&state);
-        backend_h.wlr_output_state_finish(state)
+        wlr_output_state_finish(state)
 
         // sample->last_frame = now;
         State.lastFrame = now
@@ -193,7 +188,7 @@ object SimplePanama {
         // struct sample_state *sample = wl_container_of(listener, sample, new_output);
 
         // wlr_output_init_render(output, sample->allocator, sample->renderer);
-        backend_h.wlr_output_init_render(outputPtr, State.allocator, State.renderer)
+        wlr_output_init_render(outputPtr, State.allocator, State.renderer)
 
         // struct sample_output *sample_output = calloc(1, sizeof(*sample_output));
         // sample_output->output = output;
@@ -216,21 +211,21 @@ object SimplePanama {
         // wlr_output_state_init(&state);
         // wlr_output_state_set_enabled(&state, true);
         val statePtr = wlr_output_state.allocate(arena)
-        backend_h.wlr_output_state_init(statePtr)
-        backend_h.wlr_output_state_set_enabled(statePtr, true)
+        wlr_output_state_init(statePtr)
+        wlr_output_state_set_enabled(statePtr, true)
 
         // struct wlr_output_mode *mode = wlr_output_preferred_mode(output);
-        val modePtr = backend_h.wlr_output_preferred_mode(outputPtr)
+        val modePtr = wlr_output_preferred_mode(outputPtr)
 
         // if (mode != NULL)
         //     wlr_output_state_set_mode(&state, mode);
         if (modePtr != MemorySegment.NULL)
-            backend_h.wlr_output_state_set_mode(statePtr, modePtr)
+            wlr_output_state_set_mode(statePtr, modePtr)
 
         // wlr_output_commit_state(output, &state);
         // wlr_output_state_finish(&state);
-        backend_h.wlr_output_commit_state(outputPtr, statePtr)
-        backend_h.wlr_output_state_finish(statePtr)
+        wlr_output_state_finish(statePtr)
+        wlr_output_commit_state(outputPtr, statePtr)
     }
 
 
@@ -243,10 +238,10 @@ object SimplePanama {
         val keycode = wlr_keyboard_key_event.keycode(keyboardKeyEventPtr) + 8
 
         // const xkb_keysym_t *syms;
-        val symsPtr = arena.allocate(xkbcommon_h.C_POINTER)
+        val symsPtr = arena.allocate(xkb.C_POINTER)
 
         // int nsyms = xkb_state_key_get_syms(keyboard->wlr_keyboard->xkb_state, keycode, &syms);
-        val nsyms = xkbcommon_h.xkb_state_key_get_syms(wlr_keyboard.xkb_state(Keyboard.keyboard), keycode, symsPtr)
+        val nsyms = xkb_state_key_get_syms(wlr_keyboard.xkb_state(Keyboard.keyboard), keycode, symsPtr)
 
         // for (int i = 0; i < nsyms; i++) {
         //     xkb_keysym_t sym = syms[i];
@@ -255,9 +250,9 @@ object SimplePanama {
         //     }
         // }
         for (i in 0..<nsyms) {
-            val sym = symsPtr.get(xkbcommon_h.C_POINTER, i.toLong()).get(xkbcommon_h.xkb_keysym_t, 0)
-            if (sym == xkbcommon_h.XKB_KEY_Escape()) {
-                backend_h.wl_display_terminate(State.display)
+            val sym = symsPtr.get(xkb.C_POINTER, i.toLong()).get(xkb.xkb_keysym_t, 0)
+            if (sym == xkb.XKB_KEY_Escape()) {
+                wl_display_terminate(State.display)
             }
         }
     }
@@ -286,11 +281,11 @@ object SimplePanama {
 
         // switch (device->type) {
         // case WLR_INPUT_DEVICE_KEYBOARD:;
-        if (wlr_input_device.type(inputDevicePtr) == wlr_input_device_h.WLR_INPUT_DEVICE_KEYBOARD()) {
+        if (wlr_input_device.type(inputDevicePtr) == WLR_INPUT_DEVICE_KEYBOARD()) {
             // struct sample_keyboard *keyboard = calloc(1, sizeof(*keyboard));
 
             // keyboard->wlr_keyboard = wlr_keyboard_from_input_device(device);
-            Keyboard.keyboard = wlr_keyboard_h.wlr_keyboard_from_input_device(inputDevicePtr)
+            Keyboard.keyboard = wlr_keyboard_from_input_device(inputDevicePtr)
 
             // keyboard->sample = sample;
 
@@ -298,7 +293,10 @@ object SimplePanama {
             // keyboard->destroy.notify = keyboard_destroy_notify;
             Keyboard.destroy = wl_listener.allocate(arena)
             wl_listener.notify(Keyboard.destroy, wl_notify_func_t.allocate(::keyboardDestroyNotify, arena))
-            wl_signal_add(wlr_input_device.events.destroy(wlr_input_device.events(inputDevicePtr)), Keyboard.destroy)
+            wl_signal_add(
+                wlr_input_device.events.destroy(wlr_input_device.events(inputDevicePtr)),
+                Keyboard.destroy
+            )
 
             // wl_signal_add(&keyboard->wlr_keyboard->events.key, &keyboard->key);
             // keyboard->key.notify = keyboard_key_notify;
@@ -311,7 +309,7 @@ object SimplePanama {
             //      wlr_log(WLR_ERROR, "Failed to create XKB context");
             //      exit(1);
             // }
-            val xkbContextPtr = xkbcommon_h.xkb_context_new(xkbcommon_h.XKB_CONTEXT_NO_FLAGS())
+            val xkbContextPtr = xkb.xkb_context_new(xkb.XKB_CONTEXT_NO_FLAGS())
             if (xkbContextPtr == MemorySegment.NULL) {
                 Log.logError("Failed to create XKB context")
                 exitProcess(1)
@@ -322,10 +320,10 @@ object SimplePanama {
             //     wlr_log(WLR_ERROR, "Failed to create XKB keymap");
             //     exit(1);
             // }
-            val xkbKeymapPtr = xkbcommon_h.xkb_keymap_new_from_names(
+            val xkbKeymapPtr = xkb_keymap_new_from_names(
                 xkbContextPtr,
                 MemorySegment.NULL,
-                xkbcommon_h.XKB_KEYMAP_COMPILE_NO_FLAGS()
+                XKB_KEYMAP_COMPILE_NO_FLAGS()
             )
             if (xkbKeymapPtr == MemorySegment.NULL) {
                 Log.logError("Failed to create XKB keymap")
@@ -333,18 +331,18 @@ object SimplePanama {
             }
 
             // wlr_keyboard_set_keymap(keyboard->wlr_keyboard, keymap);
-            wlr_keyboard_h.wlr_keyboard_set_keymap(Keyboard.keyboard, xkbKeymapPtr)
+            wlr_keyboard_set_keymap(Keyboard.keyboard, xkbKeymapPtr)
 
             // xkb_keymap_unref(keymap);
             // xkb_context_unref(context);
-            xkbcommon_h.xkb_keymap_unref(xkbKeymapPtr)
-            xkbcommon_h.xkb_context_unref(xkbContextPtr)
+            xkb_keymap_unref(xkbKeymapPtr)
+            xkb_context_unref(xkbContextPtr)
         }
     }
 
     fun main() {
         // wlr_log_init(WLR_DEBUG, NULL);
-        log_h.wlr_log_init(log_h.WLR_DEBUG(), MemorySegment.NULL)
+        wlr_log_init(WLR_DEBUG(), MemorySegment.NULL)
 
         // struct wl_display *display = wl_display_create();
         val displayPtr = wl_display_create()
@@ -354,15 +352,14 @@ object SimplePanama {
         //  if (!backend) {
         //      exit(1);
         //  }
-        val backendPtr =
-            backend_h.wlr_backend_autocreate(wl_display_get_event_loop(displayPtr), MemorySegment.NULL)
+        val backendPtr = wlr_backend_autocreate(wl_display_get_event_loop(displayPtr), MemorySegment.NULL)
         if (backendPtr == MemorySegment.NULL)
             exitProcess(1)
 
         // state.renderer = wlr_renderer_autocreate(backend);
         // state.allocator = wlr_allocator_autocreate(backend, state.renderer);
-        State.renderer = backend_h.wlr_renderer_autocreate(backendPtr)
-        State.allocator = allocator_h.wlr_allocator_autocreate(backendPtr, State.renderer)
+        State.renderer = wlr_renderer_autocreate(backendPtr)
+        State.allocator = wlr_allocator_autocreate(backendPtr, State.renderer)
 
         // wl_signal_add(&backend->events.new_output, &state.new_output);
         // state.new_output.notify = new_output_notify;
@@ -384,17 +381,17 @@ object SimplePanama {
         //     wlr_backend_destroy(backend);
         //     exit(1);
         // }
-        if (!backend_h.wlr_backend_start(backendPtr)) {
+        if (!wlr_backend_start(backendPtr)) {
             Log.logError("Failed to start backend")
-            backend_h.wlr_backend_destroy(backendPtr)
+            wlr_backend_destroy(backendPtr)
             exitProcess(1)
         }
 
         // wl_display_run(display);
-        backend_h.wl_display_run(displayPtr)
+        wl_display_run(displayPtr)
 
         // wl_display_destroy(display);
-        backend_h.wl_display_destroy(displayPtr)
+        wl_display_destroy(displayPtr)
     }
 }
 

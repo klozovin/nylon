@@ -1,7 +1,7 @@
 package wayland;
 
-import static jextract.wayland.server.server_h.WL_POINTER_AXIS_HORIZONTAL_SCROLL;
-import static jextract.wayland.server.server_h.WL_POINTER_AXIS_VERTICAL_SCROLL;
+import static jextract.wayland.wl.WL_POINTER_AXIS_HORIZONTAL_SCROLL;
+import static jextract.wayland.wl.WL_POINTER_AXIS_VERTICAL_SCROLL;
 
 
 public enum PointerAxis {

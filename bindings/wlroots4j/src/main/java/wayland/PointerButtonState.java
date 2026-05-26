@@ -1,7 +1,7 @@
 package wayland;
 
-import static jextract.wayland.server.server_h.WL_POINTER_BUTTON_STATE_PRESSED;
-import static jextract.wayland.server.server_h.WL_POINTER_BUTTON_STATE_RELEASED;
+import static jextract.wayland.wl.WL_POINTER_BUTTON_STATE_PRESSED;
+import static jextract.wayland.wl.WL_POINTER_BUTTON_STATE_RELEASED;
 
 
 public enum PointerButtonState {

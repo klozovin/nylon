@@ -1,6 +1,6 @@
 package wayland.server;
 
-import jextract.wayland.server.wl_signal;
+import jextract.wayland.wl_signal;
 import org.jspecify.annotations.NullMarked;
 import wayland.util.List;
 
