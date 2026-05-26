@@ -88,7 +88,7 @@ class InputSystem(val compositor: Compositor) {
 
 
     fun onNewPointer(pointer: Pointer) {
-        cursor.attachInputDevice(pointer.base())
+        cursor.attachInputDevice(pointer.base)
         compositor.seat.addCapability(SeatCapability.POINTER)
     }
 
@@ -155,13 +155,13 @@ class InputSystem(val compositor: Compositor) {
 
 
     fun onCursorMotion(event: PointerMotionEvent) {
-        cursor.move(event.pointer.base(), event.deltaX, event.deltaY)
+        cursor.move(event.pointer.base, event.deltaX, event.deltaY)
         compositor.captureMode.onCursorMotion(event.timeMsec)
     }
 
 
     fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
-        cursor.warpAbsolute(event.pointer.base(), event.x, event.y)
+        cursor.warpAbsolute(event.pointer.base, event.x, event.y)
         compositor.captureMode.onCursorMotion(event.timeMsec)
     }
 

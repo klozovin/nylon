@@ -1,5 +1,6 @@
 package compositor
 
+import compositor.inspector.Inspector
 import wayland.server.Display
 import wlroots.backend.Backend
 import wlroots.render.Allocator
@@ -16,6 +17,9 @@ import wlroots.types.seat.Seat
 import wlroots.util.Log
 import kotlin.system.exitProcess
 import wlroots.types.compositor.Compositor as WlrCompositor
+
+// nocheckin
+import org.gnome.gtk.*
 
 
 class Compositor(val terminalPath: String? = null) {
@@ -90,6 +94,10 @@ class Compositor(val terminalPath: String? = null) {
 
         // TODO: Delete, take from command line
         startProcess("/usr/bin/foot")
+
+        // Run the dummy shell thingy
+        val dummy = Inspector(socket)
+        dummy.run()
 
         Log.logInfo("Running Wayland compositor on WAYLAND_DISPLAY=$socket")
         display.run()

@@ -1,6 +1,8 @@
 /gir-files
 /java-gi
 
+.profileconfig.json
+
 .idea
 .gradle
 .kotlin

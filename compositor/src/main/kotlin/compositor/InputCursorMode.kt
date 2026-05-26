@@ -18,8 +18,14 @@ typealias Edges = EnumSet<Edge>
 
 class InputCursorMode(val compositor: Compositor) {
 
+    val inputSystem = compositor.inputSystem
     var state: CursorState = CursorState.Passthrough()
+    var pointerPressedButtons = mutableSetOf<Int>()
 
+
+    //
+    // State machine transitions
+    //
 
     fun transitionToPassthrough() {
         require(state is CursorState.WindowMove || state is CursorState.WindowResize)
@@ -29,7 +35,21 @@ class InputCursorMode(val compositor: Compositor) {
 
     fun transitionToMove(toplevel: XdgToplevel) {
         require(state is CursorState.Passthrough)
-        state = CursorState.WindowMove(compositor, toplevel)
+
+        println("____")
+        println("Currently held down buttons: $pointerPressedButtons")
+        println("Currently number of held buttons: ${COMPOSITOR.seat.pointerState.buttonCount}")
+        println("Buttons:")
+        for (button in COMPOSITOR.seat.pointerState.buttons) {
+            println("\t*) Button: btnid: ${button.button}, npressed: ${button.nPressed}")
+        }
+
+        // TODO: Use button_count for this
+        val pressedButtons = COMPOSITOR.seat.pointerState.buttons.filter { it.button != 0 }.map { it.button }
+
+
+
+        state = CursorState.WindowMove(compositor, toplevel, pressedButtons)
     }
 
 
@@ -38,6 +58,9 @@ class InputCursorMode(val compositor: Compositor) {
         state = CursorState.WindowResize(compositor, toplevel, edges)
     }
 
+    //
+    // Event handling
+    //
 
     fun onCursorMotion(timeMsec: Int) {
         when (val state = this@InputCursorMode.state) {
@@ -57,6 +80,13 @@ class InputCursorMode(val compositor: Compositor) {
 
 
     fun onCursorButton(event: PointerButtonEvent) {
+        // Remember pointer button held down (used for canceling the move/resize request)
+        when(event.state) {
+            PointerButtonState.PRESSED -> pointerPressedButtons.add(event.button)
+            PointerButtonState.RELEASED -> pointerPressedButtons.remove(event.button)
+        }
+
+
         // We only do two things in the compositor on mouse button clicks: focus the window under the cursor,
         // or exit the move/resize mode when appropriate
         when(val state = state) {
@@ -66,6 +96,9 @@ class InputCursorMode(val compositor: Compositor) {
         }
     }
 
+    //
+    // Helpers
+    //
 
     fun isToplevelGrabbed(toplevel: XdgToplevel): Boolean {
         return when(val state = state) {
@@ -134,7 +167,7 @@ sealed class CursorState {
      * Client window is being moved by the user, usually dragged by the title-bar while the LMB is being
      * pressed.
      */
-    class WindowMove(val compositor: Compositor, val grabbedToplevel: XdgToplevel) : CursorState() {
+    class WindowMove(val compositor: Compositor, val grabbedToplevel: XdgToplevel, val pressedButtons: List<Int>) : CursorState() {
 
         // TODO: pass this as param, no need to know where is the toplevel kept and how
         val grabbedSceneNode = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!.node
@@ -142,6 +175,10 @@ sealed class CursorState {
         val cursor = COMPOSITOR.inputSystem.cursor
         val grabX = compositor.inputSystem.cursor.x - grabbedSceneNode.x
         val grabY = compositor.inputSystem.cursor.y - grabbedSceneNode.y
+
+        init {
+            println("WindowMove: ${pressedButtons}")
+        }
 
 
         fun processCursorMotion() {
@@ -154,7 +191,9 @@ sealed class CursorState {
 
 
         fun processCursorButton(event: PointerButtonEvent) {
-            if (event.state == PointerButtonState.RELEASED)
+            // Exit the move mode only when the released button is the one that started the move request
+            // (kind of).
+            if (event.state == PointerButtonState.RELEASED && event.button in pressedButtons)
                 COMPOSITOR.captureMode.transitionToPassthrough()
         }
     }

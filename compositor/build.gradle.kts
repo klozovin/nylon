@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 plugins {
     java
     application
-    kotlin("jvm") version "2.2.10"
+    kotlin("jvm") version "2.3.21"
 }
 
 repositories {
@@ -13,17 +13,20 @@ repositories {
 
 dependencies {
     implementation("com.sklogw.nylon", "wlroots4j", "0.1")
+
+    implementation("org.java-gi", "gtk", "0.14.1")
+
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_24
-    targetCompatibility = JavaVersion.VERSION_24
-    toolchain.languageVersion = JavaLanguageVersion.of(24)
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 }
 
 kotlin.compilerOptions {
-    jvmTarget = JvmTarget.JVM_24
+    jvmTarget = JvmTarget.JVM_25
     apiVersion = KotlinVersion.KOTLIN_2_2
     languageVersion = KotlinVersion.KOTLIN_2_2
 }
