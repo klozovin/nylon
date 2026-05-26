@@ -222,14 +222,14 @@ object Pointer {
     //
 
     fun cursorMotionHandler(event: PointerMotionEvent) {
-        cursor.move(event.pointer.base(), event.deltaX, event.deltaY)
+        cursor.move(event.pointer.base, event.deltaX, event.deltaY)
     }
 
 
     fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
         currentX = event.x
         currentY = event.y
-        cursor.warpAbsolute(event.pointer.base(), currentX, currentY)
+        cursor.warpAbsolute(event.pointer.base, currentX, currentY)
     }
 
 

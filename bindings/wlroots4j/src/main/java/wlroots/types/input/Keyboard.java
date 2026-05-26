@@ -163,7 +163,7 @@ public class Keyboard {
         public final Signal1<Keyboard> modifiers;
 
 
-        public Events(MemorySegment ptr) {
+        Events(MemorySegment ptr) {
             assert !ptr.equals(NULL);
             key       = Signal.of(wlr_keyboard.events.key(ptr), KeyboardKeyEvent::new);
             modifiers = Signal.of(wlr_keyboard.events.modifiers(ptr), Keyboard::new);

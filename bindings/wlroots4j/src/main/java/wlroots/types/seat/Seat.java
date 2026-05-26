@@ -125,7 +125,7 @@ public class Seat {
 
     /// Notify the seat of an axis event. Defers to any grab of the pointer.
     ///
-    /// Convenience function, not present in C code
+    /// Convenience overloaded function, not present in C code
     public void pointerNotifyAxis(PointerAxisEvent event) {
         pointerNotifyAxis(
             event.timeMsec,
