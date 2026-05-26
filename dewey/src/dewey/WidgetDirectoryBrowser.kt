@@ -1,7 +1,7 @@
 package dewey
 
 import dewey.fsnav.*
-import io.github.jwharm.javagi.gio.ListIndexModel
+import org.javagi.gio.ListIndexModel
 import org.gnome.gdk.Gdk
 import org.gnome.gdk.ModifierType
 import org.gnome.gobject.GObject

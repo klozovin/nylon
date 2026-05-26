@@ -10,8 +10,9 @@ import org.gnome.gtk.Orientation
 import java.nio.file.attribute.PosixFilePermissions
 import kotlin.io.path.readSymbolicLink
 
+
 class WidgetDetails : Box(Orientation.HORIZONTAL, 8) {
-    private val prefix = Label("✕").apply { addCssClass("prefix") }
+    private val prefix = Label("✕").apply { /*addCssClass("prefix")*/ }
     private val permissions = Label("✕").apply { addCssClass("permissions") }
     private val owner = Label("✕").apply { addCssClass("owner") }
     private val group = Label("✕").apply { addCssClass("group") }

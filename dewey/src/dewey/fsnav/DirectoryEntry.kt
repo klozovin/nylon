@@ -12,6 +12,7 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.isSymbolicLink
 import kotlin.reflect.KClass
 
+
 sealed interface BaseDirectoryEntry {
 
     data class RestrictedEntry(

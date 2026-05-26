@@ -4,8 +4,8 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 plugins {
     java
     application
-    kotlin("jvm") version "2.1.20"
-    id("org.jetbrains.kotlinx.benchmark") version "0.4.13"
+    kotlin("jvm") version "2.3.21"
+    id("org.jetbrains.kotlinx.benchmark") version "0.4.16"
 }
 
 repositories {
@@ -13,10 +13,10 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin", "kotlin-reflect", "2.1.10")
-    implementation("org.jetbrains.kotlinx", "kotlinx-benchmark-runtime", "0.4.13")
-    implementation("io.github.jwharm.javagi", "gtk", "0.11.2")
-    implementation("io.reactivex.rxjava3", "rxjava", "3.1.10")
+    implementation("org.jetbrains.kotlin", "kotlin-reflect", "2.3.21")
+    implementation("org.jetbrains.kotlinx", "kotlinx-benchmark-runtime", "0.4.16")
+    implementation("org.java-gi", "gtk", "0.15.0")
+    implementation("io.reactivex.rxjava3", "rxjava", "3.1.12")
 }
 
 sourceSets.main {
@@ -27,14 +27,14 @@ sourceSets.main {
 benchmark.targets.register("main")
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_22
-    targetCompatibility = JavaVersion.VERSION_22
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 kotlin.compilerOptions {
-    languageVersion = KotlinVersion.KOTLIN_2_0
-    apiVersion = KotlinVersion.KOTLIN_2_0
-    jvmTarget = JvmTarget.JVM_22
+    languageVersion = KotlinVersion.KOTLIN_2_3
+    apiVersion = KotlinVersion.KOTLIN_2_3
+    jvmTarget = JvmTarget.JVM_25
 }
 
 application {
