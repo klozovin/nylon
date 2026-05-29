@@ -313,7 +313,7 @@ class WindowSystem(val compositor: Compositor) {
 // TODO: Move to extension function and enumerate signals in bindings code
 private fun _countSignalHandlers(toplevel: XdgToplevel): Int =
     arrayOf(
-        with(toplevel.getBase().getSurface().events) {
+        with(toplevel.base.surface.events) {
             arrayOf(map, unmap, commit)
         },
         with(toplevel.events) {

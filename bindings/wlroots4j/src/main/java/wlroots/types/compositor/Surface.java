@@ -28,10 +28,10 @@ public class Surface {
 
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(@Nullable Object other) {
         return switch (other) {
-            case Surface otherSurface -> surfacePtr.equals(otherSurface.surfacePtr);
             case null -> false;
+            case Surface otherSurface -> surfacePtr.equals(otherSurface.surfacePtr);
             default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }
@@ -43,13 +43,20 @@ public class Surface {
     }
 
 
+    public static Surface ofPtr(MemorySegment ptr) {
+        assert !ptr.equals(NULL);
+        return new Surface(ptr);
+    }
+
+
     public static @Nullable Surface ofPtrOrNull(MemorySegment ptr) {
         return !ptr.equals(NULL) ? new Surface(ptr) : null;
     }
 
 
-    // *** Fields ***************************************************************************************** //
-
+    //
+    // *** Field getters and setters ***
+    //
 
     /// Contains the current, committed surface state.
     public SurfaceState current() {

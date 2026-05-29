@@ -142,7 +142,7 @@ public class Buffer {
 
     /// In C, wlr_buffer_impl struct can actually implement three different interfaces (memory, shm, dmabuf). To pick
     /// an interface, implement those callbacks, leave others unassigned. To make it more idiomatic in Java, there are
-    /// separeate interfaces for those.
+    /// separate interfaces for those.
     public sealed interface DataSource {
 
         non-sealed interface Memory extends DataSource {

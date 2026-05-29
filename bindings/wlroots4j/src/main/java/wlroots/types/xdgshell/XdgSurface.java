@@ -48,7 +48,7 @@ public class XdgSurface {
 
 
     //
-    // *** Getters and setters ***
+    // *** Field getters and setters ***
     //
 
     public Surface getSurface() {
@@ -82,7 +82,8 @@ public class XdgSurface {
     }
 
 
-    ///  Surface geometry
+    /// Surface geometry
+    /// @return `wlr_xdg_surface.geometry` field
     public Box getGeometry() {
         return new Box(wlr_xdg_surface.geometry(xdgSurfacePtr));
     }

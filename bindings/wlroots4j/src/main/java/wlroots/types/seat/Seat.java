@@ -42,8 +42,9 @@ public final class Seat {
         }
     }
 
+
     //
-    // *** Getters and setters ***
+    // *** Field getters and setters ***
     //
 
     public EnumSet<SeatCapability> capabilities() {
@@ -221,11 +222,14 @@ public final class Seat {
     public static class Events {
         /// Raised when a client provides a cursor image.
         public final Signal1<PointerRequestSetCursorEvent> requestSetCursor;
+
+        /// Called when an application wants to set the selection (user copied some data).
         public final Signal1<RequestSetSelectionEvent>     requestSetSelection;
+        
         public final Signal1<Seat>                         destroy;
 
 
-        public Events(MemorySegment ptr) {
+        Events(MemorySegment ptr) {
             requestSetCursor    = Signal.of(wlr_seat.events.request_set_cursor(ptr), PointerRequestSetCursorEvent::new);
             requestSetSelection = Signal.of(wlr_seat.events.request_set_selection(ptr), RequestSetSelectionEvent::new);
             destroy             = Signal.of(wlr_seat.events.destroy(ptr), Seat::new);

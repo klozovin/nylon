@@ -1,7 +1,7 @@
 #!/bin/sh
 
-lib="wlroots-0.19"
-libDir="/usr/include/wlroots-0.19"
+lib="wlroots-0.20"
+libDir="/usr/include/wlroots-0.20"
 
 c_output="src/main/c"
 java_output="src/main/java"
@@ -45,7 +45,7 @@ jextract --library $lib --output $java_output \
     --include-dir $libDir                     \
     --include-dir "src/main/c"                \
     --include-dir "/usr/include/pixman-1/"    \
-    --header-class-name "wlr"             \
+    --header-class-name "wlr"                 \
                                               \
     "$libDir/wlr/render/allocator.h"          \
     "$libDir/wlr/render/pass.h"               \

@@ -12,10 +12,8 @@ repositories {
 }
 
 dependencies {
-    implementation("com.sklogw.nylon", "wlroots4j", "0.1")
-
-    implementation("org.java-gi", "gtk", "0.14.1")
-
+    implementation("com.sklogw.nylon:wlroots4j:0.1")
+    implementation("org.java-gi:gtk:0.15.0")
 }
 
 java {
@@ -27,8 +25,8 @@ java {
 
 kotlin.compilerOptions {
     jvmTarget = JvmTarget.JVM_25
-    apiVersion = KotlinVersion.KOTLIN_2_2
-    languageVersion = KotlinVersion.KOTLIN_2_2
+    apiVersion = KotlinVersion.KOTLIN_2_3
+    languageVersion = KotlinVersion.KOTLIN_2_3
 }
 
 application {

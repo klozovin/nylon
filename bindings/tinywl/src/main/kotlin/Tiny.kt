@@ -24,6 +24,7 @@ import wlroots.types.input.PointerButtonEvent
 import wlroots.types.input.PointerMotionAbsoluteEvent
 import wlroots.types.input.PointerMotionEvent
 import wlroots.types.scene.*
+import wlroots.types.seat.PointerFocusChangeEvent
 import wlroots.types.seat.PointerRequestSetCursorEvent
 import wlroots.types.seat.RequestSetSelectionEvent
 import wlroots.types.seat.Seat
@@ -112,6 +113,7 @@ object Tiny {
     // Seat
     lateinit var seat: Seat
     lateinit var seatRequestSetCursorListener: Listener
+    lateinit var seatPointerFocusChangeListener: Listener
     lateinit var seatRequestSetSelectionListener: Listener
     lateinit var seatDestroyListener: Listener
 
@@ -175,6 +177,7 @@ object Tiny {
         seat = Seat.create(display, "seat0")
         seatRequestSetCursorListener = seat.events.requestSetCursor.add(::onSeatRequestSetCursor)
         seatRequestSetSelectionListener = seat.events.requestSetSelection.add(::onSeatRequestSetSelection)
+        seatPointerFocusChangeListener = seat.pointerState.events.focusChange.add(::onSeatPointerFocusChange)
         seatDestroyListener = seat.events.destroy.add(::onSeatDestroy)
 
         val socket = display.addSocketAuto() ?: error {
@@ -793,9 +796,17 @@ object Tiny {
     }
 
 
+    fun onSeatPointerFocusChange(event: PointerFocusChangeEvent) {
+        if (event.newSurface() == null) {
+            cursor.setXcursor(xcursorManager, "default")
+        }
+    }
+
+
     fun onSeatDestroy(seat: Seat) {
         seatRequestSetCursorListener.remove()
         seatRequestSetSelectionListener.remove()
+        seatPointerFocusChangeListener.remove()
         seatDestroyListener.remove()
     }
 
