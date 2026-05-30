@@ -43,15 +43,16 @@ public class PointerState {
     }
 
 
+    /// @return `wlr_seat_pointer_state.buttons` field
     public PointerButton[] getButtons() {
-        var buttons = new PointerButton[WLR_POINTER_BUTTONS_CAP()];
-        var buttonsArrayPtr = wlr_seat_pointer_state.buttons(pointerStatePtr);
-        var buttonByteSize = wlr_seat_pointer_button.layout().byteSize();
-        for (var i = 0; i < buttons.length; i++) {
+        assert getButtonCount() <= WLR_POINTER_BUTTONS_CAP();
 
-            buttons[i] = new PointerButton(buttonsArrayPtr.asSlice(i * buttonByteSize));
-        }
-        return buttons;
+        // PERF: Maybe use regular for loop instead of streams
+        return wlr_seat_pointer_state.buttons(pointerStatePtr)
+            .elements(wlr_seat_pointer_button.layout())
+            .limit(getButtonCount())
+            .map(PointerButton::new)
+            .toArray(PointerButton[]::new);
     }
 
 

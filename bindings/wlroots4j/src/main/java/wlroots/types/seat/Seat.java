@@ -225,7 +225,7 @@ public final class Seat {
 
         /// Called when an application wants to set the selection (user copied some data).
         public final Signal1<RequestSetSelectionEvent>     requestSetSelection;
-        
+
         public final Signal1<Seat>                         destroy;
 
 

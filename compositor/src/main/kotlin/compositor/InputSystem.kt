@@ -94,7 +94,7 @@ class InputSystem(val compositor: Compositor) {
 
 
     // **************************************************************************************************** //
-    // *** Listeners: Keyboard input: key press/release, modifiers                                      *** //
+    // *** Listeners: Keyboard input: key press/release, modifiers                                   *** //
     // **************************************************************************************************** //
 
 
