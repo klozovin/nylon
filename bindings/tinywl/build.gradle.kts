@@ -4,4 +4,7 @@ dependencies {
 
 application {
     mainClass = "TinyKt"
+    applicationDefaultJvmArgs += listOf(
+        "-ea",
+    )
 }

@@ -72,18 +72,11 @@ public class Cursor {
     /// Move the cursor in the direction of the given x and y layout coordinates. If one coordinate is NAN, it
     /// will be ignored.
     ///
-    /// @param device May be passed to respect device mapping constraints. If NULL, device mapping constraints
+    /// @param inputDevice May be passed to respect device mapping constraints. If NULL, device mapping constraints
     ///               will be ignored.
-    public void move(@Nullable InputDevice device, double deltaX, double deltaY) {
-        wlr_cursor_move(
-            cursorPtr,
-            switch (device) {
-                case InputDevice d -> d.inputDevicePtr;
-                case null -> NULL;
-            },
-            deltaX,
-            deltaY
-        );
+    public void move(@Nullable InputDevice inputDevice, double deltaX, double deltaY) {
+        var device = inputDevice != null ? inputDevice.inputDevicePtr : NULL;
+        wlr_cursor_move(cursorPtr, device, deltaX, deltaY);
     }
 
 

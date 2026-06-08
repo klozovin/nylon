@@ -10,10 +10,10 @@ import java.lang.foreign.MemorySegment;
 
 @NullMarked
 public class PointerRequestSetCursorEvent {
-    public final SeatClient        seatClient;
+    public final SeatClient seatClient;
     public final @Nullable Surface surface;
-    public final int               hotspotX;
-    public final int               hotspotY;
+    public final int hotspotX;
+    public final int hotspotY;
 
 
     public PointerRequestSetCursorEvent(MemorySegment ptr) {

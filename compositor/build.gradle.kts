@@ -35,6 +35,7 @@ tasks.withType<JavaExec> {
 application {
     mainClass = "compositor.CompositorKt"
     applicationDefaultJvmArgs += listOf(
+        "-ea",
         "--enable-preview",
         "--enable-native-access=ALL-UNNAMED",
     )

@@ -5,4 +5,7 @@ dependencies {
 
 application {
     mainClass = "CairoBufferKt"
+    applicationDefaultJvmArgs += listOf(
+        "-ea",
+    )
 }
