@@ -10,6 +10,7 @@ import xkbcommon.XkbState;
 
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.util.EnumSet;
 
 import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wlroots.wlr.*;
@@ -56,21 +57,22 @@ public class Keyboard {
     // *** Fields ***
     //
 
-    public XkbState xkbState() {
+    public XkbState getXkbState() {
         return new XkbState(wlr_keyboard.xkb_state(keyboardPtr));
     }
 
 
-    public KeyboardModifiers modifiers() {
+    ///`wlr_keyboard.modifiers: wlr_keyboard_modifiers`
+    public KeyboardModifiers getModifiers() {
         return new KeyboardModifiers(wlr_keyboard.modifiers(keyboardPtr));
     }
 
 
-    public void keycodes() {
+    public void getKeycodes() {
         // TODO: Test this pointer shenanigans
-        var ptr = keycodesPtr();
+        var ptr = getKeycodesPtr();
         var keycodesElementLayout = wlr_keyboard.keycodes$layout().elementLayout();
-        var slice = ptr.asSlice(0, keycodesElementLayout.byteSize() * keycodesNum());
+        var slice = ptr.asSlice(0, keycodesElementLayout.byteSize() * getNumKeycodes());
 
         slice.getAtIndex(ValueLayout.JAVA_INT, 0);
 //        slice.getAtIndex(wlr_keyboard.keycodes$layout().elementLayout(), );
@@ -78,12 +80,13 @@ public class Keyboard {
     }
 
 
-    public MemorySegment keycodesPtr() {
+    public MemorySegment getKeycodesPtr() {
         return wlr_keyboard.keycodes(keyboardPtr);
     }
 
 
-    public long keycodesNum() {
+    /// `wlr_keyboard.num_keycodes: size_t`
+    public long getNumKeycodes() {
         return wlr_keyboard.num_keycodes(keyboardPtr);
     }
 
@@ -98,8 +101,10 @@ public class Keyboard {
 
 
     /// Get the set of currently depressed or latched modifiers.
-    public Modifiers getModifiers() {
-        return new Modifiers(wlr_keyboard_get_modifiers(keyboardPtr));
+    ///
+    /// `uint32_t wlr_keyboard_get_modifiers(struct wlr_keyboard *keyboard)`
+    public EnumSet<KeyboardModifier> getKeyboardModifiers() {
+        return KeyboardModifier.fromBitset(wlr_keyboard_get_modifiers(keyboardPtr));
     }
 
 
@@ -116,7 +121,6 @@ public class Keyboard {
     // *** Modifiers ***
     //
 
-    // TODO: Move to enum, and enumset (benchmark), move out from Keyboard class
     public final static class Modifiers {
         private final int modifiers;
 
@@ -126,29 +130,27 @@ public class Keyboard {
         }
 
 
+        public boolean containsCtrlAltShift() {
+            var mask = WLR_MODIFIER_CTRL() | WLR_MODIFIER_ALT() | WLR_MODIFIER_SHIFT();
+            return (modifiers & mask) != 0;
+        }
+
+
+        public boolean containsCtrl() {
+            return (modifiers & WLR_MODIFIER_CTRL()) != 0;
+        }
+
+
         public boolean containsAlt() {
             return (modifiers & WLR_MODIFIER_ALT()) != 0;
         }
 
 
-        public boolean containsMod2() {
-            return (modifiers & WLR_MODIFIER_MOD2()) != 0;
+        public boolean containsShift() {
+            return (modifiers & WLR_MODIFIER_SHIFT()) != 0;
         }
 
 
-        public boolean containsMod3() {
-            return (modifiers & WLR_MODIFIER_MOD3()) != 0;
-        }
-
-
-        public boolean containsLogo() {
-            return (modifiers & WLR_MODIFIER_LOGO()) != 0;
-        }
-
-
-        public boolean containsMod5() {
-            return (modifiers & WLR_MODIFIER_MOD5()) != 0;
-        }
     }
 
 

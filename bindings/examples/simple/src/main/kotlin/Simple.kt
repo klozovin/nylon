@@ -136,7 +136,7 @@ fun outputFrameNotify(output: Output) {
 
 fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
     val keycode = keyboardKeyEvent.keycode + 8
-    val keySym = State.keyboard.xkbState().keyGetOneSym(keycode)
+    val keySym = State.keyboard.xkbState.keyGetOneSym(keycode)
 
     check(keySym != XkbKey.NoSymbol)
     println("> keycode=$keycode, sym=$keySym")

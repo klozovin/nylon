@@ -57,10 +57,10 @@ class WindowSystem(val compositor: Compositor) {
 
         compositor.seat.getKeyboard()?.let { keyboard ->
             compositor.seat.keyboardNotifyEnter(
-                toplevel.getBase().getSurface(),
-                keyboard.keycodesPtr(),
-                keyboard.keycodesNum(),
-                keyboard.modifiers()
+                toplevel.base.surface,
+                keyboard.getKeycodesPtr(),
+                keyboard.getNumKeycodes(),
+                keyboard.modifiers
             )
         }
     }

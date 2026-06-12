@@ -199,7 +199,7 @@ object Pointer {
 
     fun onKeyboardKey(key: KeyboardKeyEvent) {
         val keycode = key.keycode + 8 // Convert from libinput/evdev raw hardware code to xkbcommon ones.
-        val keysym = keyboard.xkbState().keyGetOneSym(keycode)
+        val keysym = keyboard.xkbState.keyGetOneSym(keycode)
         check(keysym != XkbKey.NoSymbol)
 
         println(">> hwkeycode=${key.keycode} keycode=$keycode, keysym=$keysym, state=${key.state}")

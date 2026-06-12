@@ -1,28 +1,39 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
-
 group = "com.sklogw.nylon"
 version = "0.1"
 
 plugins {
-    id("org.jetbrains.kotlinx.benchmark") version "0.4.14"
+    kotlin("plugin.allopen") version "2.2.0"
+    id("org.jetbrains.kotlinx.benchmark") version "0.4.17"
 }
-
-//sourceSets.create("generated")
 
 sourceSets.create("benchmark") {
     compileClasspath += sourceSets.main.get().output
     runtimeClasspath += sourceSets.main.get().output
 
     dependencies {
-        implementation("org.jetbrains.kotlinx:kotlinx-benchmark-runtime:0.4.14")
+        implementation("org.jetbrains.kotlinx:kotlinx-benchmark-runtime:0.4.17")
     }
 
     configurations["benchmarkImplementation"].extendsFrom(configurations.implementation.get())
 
 }
 
-benchmark.targets.register("benchmark")
+
+benchmark {
+	targets.register("benchmark")
+
+	configurations {
+		register("targeted") {
+			include("KeyboardModifierBenchmark")
+		}
+	}
+}
+
+
+allOpen {
+    annotation("org.openjdk.jmh.annotations.State")
+}
+
 
 dependencies {
     implementation(project(":jextracted"))

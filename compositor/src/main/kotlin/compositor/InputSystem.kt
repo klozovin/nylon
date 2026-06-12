@@ -12,166 +12,194 @@ import xkbcommon.XkbKey
 
 class InputSystem(val compositor: Compositor) {
 
-  val cursor: Cursor
-  val keyboards: MutableMap<Listener, Keyboard> = HashMap()
-  val pointers: MutableMap<Listener, Pointer> = HashMap()
+    val cursor: Cursor
+    val nyKeyboards: MutableList<NyKeyboard> = mutableListOf()
+    val keyboards: MutableMap<Listener, Keyboard> = HashMap()
+    val pointers: MutableMap<Listener, Pointer> = HashMap()
 
 
-  init {
-	 compositor.backend.events.newInput.add(::onNewInput)
+    init {
+        compositor.backend.events.newInput.add(::onNewInput)
 
-	 cursor = Cursor.create().apply {
-		attachOutputLayout(compositor.outputLayout)
-		with(events) {
-		  motion.add(::onCursorMotion)
-		  motionAbsolute.add(::onCursorMotionAbsolute)
-		  button.add(::onCursorButton)
-		  axis.add(::onCursorAxis)
-		  frame.add(::onCursorFrame)
-		}
-	 }
-  }
-
-
-  //
-  // *** Listeners: Input device lifecycle
-  //
-
-  fun onNewInput(device: InputDevice) {
-	 when (device.type) {
-		InputDevice.Type.KEYBOARD -> onNewKeyboard(Keyboard.fromInputDevice(device))
-		InputDevice.Type.POINTER -> onNewPointer(Pointer.fromInputDevice(device))
-		else -> error("Unsupported wlr_input_device_type: ${device.type}")
-	 }
-  }
+        cursor = Cursor.create().apply {
+            attachOutputLayout(compositor.outputLayout)
+            with(events) {
+                motion.add(::onCursorMotion)
+                motionAbsolute.add(::onCursorMotionAbsolute)
+                button.add(::onCursorButton)
+                axis.add(::onCursorAxis)
+                frame.add(::onCursorFrame)
+            }
+        }
+    }
 
 
-  fun onNewKeyboard(keyboard: Keyboard) {
-	 val context = XkbContext.of(XkbContext.Flags.NO_FLAGS)
-		?: error("Failed to create XKB context")
-	 val keymap = context.keymapNewFromNames(null, Keymap.CompileFlags.NO_FLAGS)
-		?: error("Failed to create XKB keymap")
-	 keyboard.setKeymap(keymap)
-	 keyboard.setRepeatInfo(25, 200)
+    //
+    // *** Listeners: Input device lifecycle
+    //
 
-	 compositor.seat.setKeyboard(keyboard)
-
-	 with(keyboard) {
-		keyboards[events.key.add(::onKeyboardKey)] = keyboard
-		keyboards[events.modifiers.add(::onKeyboardModifiers)] = keyboard
-		keyboards[base.events.destroy.add(::onKeyboardDestroy)] = keyboard
-	 }
-
-	 keymap.unref()
-	 context.unref()
-
-	 compositor.seat.addCapability(SeatCapability.KEYBOARD)
-  }
+    fun onNewInput(device: InputDevice) {
+        when (device.type) {
+            InputDevice.Type.KEYBOARD -> onNewKeyboard(Keyboard.fromInputDevice(device))
+            InputDevice.Type.POINTER -> onNewPointer(Pointer.fromInputDevice(device))
+            else -> error("Unsupported wlr_input_device_type: ${device.type}")
+        }
+    }
 
 
-  fun onKeyboardDestroy(listener: Listener, device: InputDevice) {
-	 // For the given keyboard, find all of its listeners and destroy them
-	 val keyboard = keyboards[listener]!!
+    fun onNewKeyboard(keyboard: Keyboard) {
+//	 val context = XkbContext.of(XkbContext.Flags.NO_FLAGS)
+//		?: error("Failed to create XKB context")
+//	 val keymap = context.keymapNewFromNames(null, Keymap.CompileFlags.NO_FLAGS)
+//		?: error("Failed to create XKB keymap")
+//	 keyboard.setKeymap(keymap)
+//	 keyboard.setRepeatInfo(25, 200)
+        assert(nyKeyboards.none { it.wlrKeyboard == keyboard })
 
-	 // All listeners added to this keyboard
-	 val listeners = keyboards.entries.filter { it.value == keyboard }
+        val nyKeyboard = NyKeyboard(compositor, keyboard)
+        nyKeyboards.add(nyKeyboard)
 
-	 // Remove listeners from their signals
-	 listeners.forEach { (listener, _) -> listener.remove() }
+        compositor.seat.setKeyboard(keyboard)
 
-	 // Remove listener->keyboard entries from hash map
-	 keyboards.entries.removeAll(listeners)
+//	 with(keyboard) {
+//		keyboards[events.key.add(::onKeyboardKey)] = keyboard
+//		keyboards[events.modifiers.add(::onKeyboardModifiers)] = keyboard
+//		keyboards[base.events.destroy.add(::onKeyboardDestroy)] = keyboard
+//	 }
 
-	 require(listeners.size == 3) // TODO: Remove sanity check
-	 // TODO: Memory management: Close the confined arena here
-  }
+//	 keymap.unref()
+//	 context.unref()
+//
+        compositor.seat.addCapability(SeatCapability.KEYBOARD)
+    }
 
+    fun onNewKeyboardOld(keyboard: Keyboard) {
+        val context = XkbContext.of(XkbContext.Flags.NO_FLAGS)
+            ?: error("Failed to create XKB context")
+        val keymap = context.keymapNewFromNames(null, Keymap.CompileFlags.NO_FLAGS)
+            ?: error("Failed to create XKB keymap")
+        keyboard.setKeymap(keymap)
+        keyboard.setRepeatInfo(25, 200)
 
-  fun onNewPointer(pointer: Pointer) {
-	 cursor.attachInputDevice(pointer.base)
-	 compositor.seat.addCapability(SeatCapability.POINTER)
-  }
+        compositor.seat.setKeyboard(keyboard)
 
+        with(keyboard) {
+            keyboards[events.key.add(::onKeyboardKey)] = keyboard
+            keyboards[events.modifiers.add(::onKeyboardModifiers)] = keyboard
+            keyboards[base.events.destroy.add(::onKeyboardDestroy)] = keyboard
+        }
 
-  // **************************************************************************************************** //
-  // *** Listeners: Keyboard input: key press/release, modifiers                                   *** //
-  // **************************************************************************************************** //
+        keymap.unref()
+        context.unref()
 
-
-  fun onKeyboardKey(listener: Listener, event: KeyboardKeyEvent) {
-	 val keyboard = keyboards[listener]!!
-	 val keycode = event.keycode + 8
-	 val keysym = keyboard.xkbState().keyGetOneSym(keycode)
-
-	 // Propagate the key to the focused client? Only if the compositor doesn't handle that key combo.
-	 var propagateKey = false
-
-	 if (keyboard.modifiers.containsAlt() && event.state == KeyboardKeyState.PRESSED) {
-		when (keysym) {
-		  XkbKey.F1 -> compositor.windowSystem.focusNextToplevel()
-
-		  XkbKey.F2 -> {
-			 compositor.terminalPath?.let {
-				compositor.startProcess(it)
-			 }
-		  }
-
-		  XkbKey.Escape -> compositor.stop()
-
-		  else -> propagateKey = true
-
-		}
-	 }
-
-	 if (keyboard.modifiers.containsLogo() && event.state == KeyboardKeyState.PRESSED) {
-		when (keysym) {
-		  XkbKey.Insert -> println("Meta+Insert")
-
-		  else -> propagateKey = true
-		}
-	 }
-
-	 if (propagateKey) {
-		compositor.seat.setKeyboard(keyboard)
-		compositor.seat.keyboardNotifyKey(event.timeMsec, event.keycode, event.state)
-	 }
-  }
+        compositor.seat.addCapability(SeatCapability.KEYBOARD)
+    }
 
 
-  fun onKeyboardModifiers(keyboard: Keyboard) {
-	 compositor.seat.setKeyboard(keyboard)
-	 compositor.seat.keyboardNotifyModifiers(keyboard.modifiers())
-  }
+    fun onKeyboardDestroy(listener: Listener, device: InputDevice) {
+        // For the given keyboard, find all of its listeners and destroy them
+        val keyboard = keyboards[listener]!!
+
+        // All listeners added to this keyboard
+        val listeners = keyboards.entries.filter { it.value == keyboard }
+
+        // Remove listeners from their signals
+        listeners.forEach { (listener, _) -> listener.remove() }
+
+        // Remove listener->keyboard entries from hash map
+        keyboards.entries.removeAll(listeners)
+
+        require(listeners.size == 3) // TODO: Remove sanity check
+        // TODO: Memory management: Close the confined arena here
+    }
 
 
-  //
-  // *** Listeners: MOUSE input: button clicks, scrolling, moving the cursor
-  //
+    fun onNewPointer(pointer: Pointer) {
+        cursor.attachInputDevice(pointer.base)
+        compositor.seat.addCapability(SeatCapability.POINTER)
+    }
 
 
-  fun onCursorMotion(event: PointerMotionEvent) {
-	 cursor.move(event.pointer.base, event.deltaX, event.deltaY)
-	 compositor.captureMode.onCursorMotion(event.timeMsec)
-  }
+    // **************************************************************************************************** //
+    // *** Listeners: Keyboard input: key press/release, modifiers                                   *** //
+    // **************************************************************************************************** //
 
 
-  fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
-	 cursor.warpAbsolute(event.pointer.base, event.x, event.y)
-	 compositor.captureMode.onCursorMotion(event.timeMsec)
-  }
+    fun onKeyboardKey(listener: Listener, event: KeyboardKeyEvent) {
+        val keyboard = keyboards[listener]!!
+        val keycode = event.keycode + 8
+        val keysym = keyboard.getXkbState().keyGetOneSym(keycode)
+
+        // Propagate the key to the focused client? Only if the compositor doesn't handle that key combo.
+        var propagateKey = false
+        val keyboardModifiers = keyboard.getKeyboardModifiers()
+
+        if (keyboardModifiers.contains(KeyboardModifier.Alt) && event.state == KeyboardKeyState.PRESSED) {
+            when (keysym) {
+                XkbKey.F1 -> compositor.windowSystem.focusNextToplevel()
+
+                XkbKey.F2 -> {
+                    compositor.terminalPath?.let {
+                        compositor.startProcess(it)
+                    }
+                }
+
+                XkbKey.Escape -> compositor.stop()
+
+                else -> propagateKey = true
+
+            }
+        }
+
+        if (keyboardModifiers.contains(KeyboardModifier.Logo) && event.state == KeyboardKeyState.PRESSED) {
+            when (keysym) {
+                XkbKey.Insert -> println("Meta+Insert")
+
+                else -> propagateKey = true
+            }
+        }
+
+        if (propagateKey) {
+            compositor.seat.setKeyboard(keyboard)
+            compositor.seat.keyboardNotifyKey(event.timeMsec, event.keycode, event.state)
+        }
+    }
 
 
-  fun onCursorButton(event: PointerButtonEvent) {
-	 compositor.captureMode.onCursorButton(event)
-  }
+    fun onKeyboardModifiers(keyboard: Keyboard) {
+        compositor.seat.setKeyboard(keyboard)
+        compositor.seat.keyboardNotifyModifiers(keyboard.getModifiers())
+    }
 
 
-  fun onCursorAxis(event: PointerAxisEvent) {
-	 compositor.seat.pointerNotifyAxis(event)
-  }
+    //
+    // *** Listeners: MOUSE input: button clicks, scrolling, moving the cursor
+    //
 
 
-  fun onCursorFrame(cursor: Cursor) {
-	 compositor.seat.pointerNotifyFrame()
-  }
+    fun onCursorMotion(event: PointerMotionEvent) {
+        cursor.move(event.pointer.base, event.deltaX, event.deltaY)
+        compositor.captureMode.onCursorMotion(event.timeMsec)
+    }
+
+
+    fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
+        cursor.warpAbsolute(event.pointer.base, event.x, event.y)
+        compositor.captureMode.onCursorMotion(event.timeMsec)
+    }
+
+
+    fun onCursorButton(event: PointerButtonEvent) {
+        compositor.captureMode.onCursorButton(event)
+    }
+
+
+    fun onCursorAxis(event: PointerAxisEvent) {
+        compositor.seat.pointerNotifyAxis(event)
+    }
+
+
+    fun onCursorFrame(cursor: Cursor) {
+        compositor.seat.pointerNotifyFrame()
+    }
 }

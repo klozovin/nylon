@@ -15,6 +15,7 @@ import wlroots.types.Cursor
 import wlroots.types.input.InputDevice
 import wlroots.types.input.KeyboardKeyEvent
 import wlroots.types.input.Keyboard
+import wlroots.types.input.KeyboardModifier
 import wlroots.types.output.EventRequestState
 import wlroots.types.output.Output
 import wlroots.types.output.OutputLayout
@@ -254,9 +255,9 @@ object Tiny {
         seat.getKeyboard()?.let { keyboard ->
             seat.keyboardNotifyEnter(
                 surface,
-                keyboard.keycodesPtr(),
-                keyboard.keycodesNum(),
-                keyboard.modifiers()
+                keyboard.getKeycodesPtr(),
+                keyboard.getNumKeycodes(),
+                keyboard.modifiers
             )
         }
     }
@@ -404,10 +405,10 @@ object Tiny {
     fun onKeyboardKey(listener: Listener, event: KeyboardKeyEvent) {
         val keyboard = KEYBOARDS.find { it.keyListener == listener }!!.keyboard
         val keycode = event.keycode + 8
-        val keysym = keyboard.xkbState().keyGetOneSym(keycode)
+        val keysym = keyboard.xkbState.keyGetOneSym(keycode)
 
         var handledInCompositor = false
-        if (keyboard.modifiers.containsAlt() && event.state == KeyboardKeyState.PRESSED) {
+        if (keyboard.getKeyboardModifiers().contains(KeyboardModifier.Alt) && event.state == KeyboardKeyState.PRESSED) {
             when (keysym) {
                 XkbKey.F1 -> {
                     if (TOPLEVELS.isNotEmpty()) {
@@ -436,7 +437,7 @@ object Tiny {
 
     fun onKeyboardModifiers(keyboard: Keyboard) {
         seat.setKeyboard(keyboard)
-        seat.keyboardNotifyModifiers(keyboard.modifiers())
+        seat.keyboardNotifyModifiers(keyboard.getModifiers())
     }
 
 

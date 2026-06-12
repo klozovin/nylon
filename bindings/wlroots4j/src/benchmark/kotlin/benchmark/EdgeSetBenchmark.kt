@@ -1,6 +1,6 @@
 package benchmark
 
-import jextract.wlroots.util.edges_h.*
+import jextract.wlroots.wlr.*
 import kotlinx.benchmark.*
 import wayland.util.Edge
 
