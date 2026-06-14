@@ -1,4 +1,4 @@
-package wlroots.types.input;
+package wlroots.types.pointer;
 
 import jextract.wlroots.wlr_pointer_motion_absolute_event;
 import org.jspecify.annotations.NullMarked;

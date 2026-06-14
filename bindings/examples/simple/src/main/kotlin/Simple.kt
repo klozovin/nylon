@@ -8,8 +8,9 @@ import wlroots.render.Allocator
 import wlroots.render.RectOptions
 import wlroots.render.Renderer
 import wlroots.types.input.InputDevice
-import wlroots.types.input.Keyboard
-import wlroots.types.input.KeyboardKeyEvent
+import wlroots.types.input.InputDeviceType
+import wlroots.types.keyboard.KeyEvent
+import wlroots.types.keyboard.Keyboard
 import wlroots.types.output.Output
 import wlroots.types.output.OutputState
 import xkbcommon.Keymap
@@ -81,7 +82,7 @@ fun newOutputNotify(output: Output) {
  * ```
  */
 fun newInputNotify(inputDevice: InputDevice) {
-    if (inputDevice.type == InputDevice.Type.KEYBOARD) {
+    if (inputDevice.type == InputDeviceType.Keyboard) {
         State.keyboard = Keyboard.fromInputDevice(inputDevice)
         State.keyboardKeyListener = State.keyboard.events.key.add(::keyboardKeyNotify)
         State.keyboardDestroyListener = inputDevice.events.destroy.add(::keyboardDestroyNotify)
@@ -134,8 +135,8 @@ fun outputFrameNotify(output: Output) {
 }
 
 
-fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
-    val keycode = keyboardKeyEvent.keycode + 8
+fun keyboardKeyNotify(keyEvent: KeyEvent) {
+    val keycode = keyEvent.keycode + 8
     val keySym = State.keyboard.xkbState.keyGetOneSym(keycode)
 
     check(keySym != XkbKey.NoSymbol)
@@ -143,7 +144,7 @@ fun keyboardKeyNotify(keyboardKeyEvent: KeyboardKeyEvent) {
 
     // BUGFIX: Have to check for Escape release, because on some keyboard setups both PRESSED and RELEASED events come
     //         together, when the key is depressed.
-    if (keySym == XkbKey.Escape && keyboardKeyEvent.state == KeyboardKeyState.RELEASED) {
+    if (keySym == XkbKey.Escape && keyEvent.state == KeyboardKeyState.RELEASED) {
         Log.logDebug("Terminating display...")
         State.display.terminate()
         Log.logDebug("...terminated display!")

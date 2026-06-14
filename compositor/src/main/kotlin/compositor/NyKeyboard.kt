@@ -3,9 +3,9 @@ package compositor
 import wayland.KeyboardKeyState
 import wayland.server.Listener
 import wlroots.types.input.InputDevice
-import wlroots.types.input.Keyboard
-import wlroots.types.input.KeyboardKeyEvent
-import wlroots.types.input.KeyboardModifier
+import wlroots.types.keyboard.Keyboard
+import wlroots.types.keyboard.KeyEvent
+import wlroots.types.keyboard.KeyboardModifier
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
 import xkbcommon.XkbKey
@@ -33,7 +33,7 @@ class NyKeyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
     }
 
 
-    fun onKey(event: KeyboardKeyEvent) {
+    fun onKey(event: KeyEvent) {
         val keyboard = wlrKeyboard
         val keycode = event.keycode + 8
         val keysym = keyboard.getXkbState().keyGetOneSym(keycode)

@@ -1,4 +1,4 @@
-package wlroots.types.input;
+package wlroots.types.pointer;
 
 import jextract.wlroots.wlr_pointer_axis_event;
 import org.jspecify.annotations.NullMarked;

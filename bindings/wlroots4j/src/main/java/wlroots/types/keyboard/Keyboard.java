@@ -1,10 +1,10 @@
-package wlroots.types.input;
+package wlroots.types.keyboard;
 
 import jextract.wlroots.wlr_keyboard;
 import org.jspecify.annotations.NullMarked;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
-import wlroots.types.KeyboardModifiers;
+import wlroots.types.input.InputDevice;
 import xkbcommon.Keymap;
 import xkbcommon.XkbState;
 
@@ -161,7 +161,7 @@ public class Keyboard {
     public static class Events {
         /// Raised when a key has been pressed or released on the keyboard. Emitted before the xkb state of
         /// the keyboard has been updated (including modifiers).
-        public final Signal1<KeyboardKeyEvent> key;
+        public final Signal1<KeyEvent> key;
 
         /// Raised when the modifier state of the {@link Keyboard} has been updated. At this time, you can
         /// read the modifier state of the struct wlr_keyboard and handle the updated state by sending it to
@@ -171,7 +171,7 @@ public class Keyboard {
 
         Events(MemorySegment ptr) {
             assert !ptr.equals(NULL);
-            key       = Signal.of(wlr_keyboard.events.key(ptr), KeyboardKeyEvent::new);
+            key       = Signal.of(wlr_keyboard.events.key(ptr), KeyEvent::new);
             modifiers = Signal.of(wlr_keyboard.events.modifiers(ptr), Keyboard::new);
         }
     }

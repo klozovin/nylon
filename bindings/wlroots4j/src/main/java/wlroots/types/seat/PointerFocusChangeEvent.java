@@ -11,7 +11,7 @@ import java.lang.foreign.MemorySegment;
 @NullMarked
 public record PointerFocusChangeEvent(
     Seat seat,
-    Surface oldSurface,
+    @Nullable Surface oldSurface,
     @Nullable Surface newSurface,
     double sx,
     double sy
@@ -20,7 +20,7 @@ public record PointerFocusChangeEvent(
         this(
             new Seat(wlr_seat_pointer_focus_change_event.seat(ptr)),
 
-            Surface.ofPtr(wlr_seat_pointer_focus_change_event.old_surface(ptr)),
+            Surface.ofPtrOrNull(wlr_seat_pointer_focus_change_event.old_surface(ptr)),
             Surface.ofPtrOrNull(wlr_seat_pointer_focus_change_event.new_surface(ptr)),
 
             wlr_seat_pointer_focus_change_event.sx(ptr),

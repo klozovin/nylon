@@ -11,19 +11,21 @@ import wlroots.types.*
 import wlroots.types.compositor.Compositor
 import wlroots.types.compositor.Subcompositor
 import wlroots.types.compositor.Surface
-import wlroots.types.Cursor
+import wlroots.types.cursor.Cursor
+import wlroots.types.data_device.DataDeviceManager
 import wlroots.types.input.InputDevice
-import wlroots.types.input.KeyboardKeyEvent
-import wlroots.types.input.Keyboard
-import wlroots.types.input.KeyboardModifier
+import wlroots.types.input.InputDeviceType
+import wlroots.types.keyboard.KeyEvent
+import wlroots.types.keyboard.Keyboard
+import wlroots.types.keyboard.KeyboardModifier
 import wlroots.types.output.EventRequestState
 import wlroots.types.output.Output
 import wlroots.types.output.OutputLayout
 import wlroots.types.output.OutputState
-import wlroots.types.input.PointerAxisEvent
-import wlroots.types.input.PointerButtonEvent
-import wlroots.types.input.PointerMotionAbsoluteEvent
-import wlroots.types.input.PointerMotionEvent
+import wlroots.types.pointer.PointerAxisEvent
+import wlroots.types.pointer.PointerButtonEvent
+import wlroots.types.pointer.PointerMotionAbsoluteEvent
+import wlroots.types.pointer.PointerMotionEvent
 import wlroots.types.scene.*
 import wlroots.types.seat.PointerFocusChangeEvent
 import wlroots.types.seat.PointerRequestSetCursorEvent
@@ -354,7 +356,7 @@ object Tiny {
         val seatCapabilities = seat.capabilities()
 
         when (inputDevice.type) {
-            InputDevice.Type.KEYBOARD -> {
+            InputDeviceType.Keyboard -> {
                 val keyboard = Keyboard.fromInputDevice(inputDevice)
 
                 val context = XkbContext.of(XkbContext.Flags.NO_FLAGS) ?: error {
@@ -387,7 +389,7 @@ object Tiny {
                 )
             }
 
-            InputDevice.Type.POINTER -> {
+            InputDeviceType.Pointer -> {
                 cursor.attachInputDevice(inputDevice)
                 seatCapabilities.add(SeatCapability.POINTER)
             }
@@ -402,7 +404,7 @@ object Tiny {
     // *** Keyboard events ******************************************************************************** //
 
 
-    fun onKeyboardKey(listener: Listener, event: KeyboardKeyEvent) {
+    fun onKeyboardKey(listener: Listener, event: KeyEvent) {
         val keyboard = KEYBOARDS.find { it.keyListener == listener }!!.keyboard
         val keycode = event.keycode + 8
         val keysym = keyboard.xkbState.keyGetOneSym(keycode)
@@ -782,8 +784,9 @@ object Tiny {
     }
 
 
-    // *** Seat events ************************************************************************************ //
-
+    //
+    // *** Seat events ***
+    //
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
         val focusedClient = seat.pointerState.focusedClient
@@ -798,7 +801,7 @@ object Tiny {
 
 
     fun onSeatPointerFocusChange(event: PointerFocusChangeEvent) {
-        if (event.newSurface() == null) {
+        if (event.newSurface == null) {
             cursor.setXcursor(xcursorManager, "default")
         }
     }

@@ -1,4 +1,4 @@
-package wlroots.types;
+package wlroots.types.data_device;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

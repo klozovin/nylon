@@ -1,4 +1,4 @@
-package wlroots.types.input;
+package wlroots.types.keyboard;
 
 import jextract.wlroots.wlr_keyboard_key_event;
 import org.jspecify.annotations.NullMarked;
@@ -11,7 +11,7 @@ import static java.lang.foreign.MemorySegment.NULL;
 
 /// `struct wlr_keyboard_key_event {}`
 @NullMarked
-public class KeyboardKeyEvent {
+public class KeyEvent {
     public final int timeMsec;
     public final int keycode;
     /// If backend doesn't update modifiers on its own
@@ -19,7 +19,7 @@ public class KeyboardKeyEvent {
     public final KeyboardKeyState state;
 
 
-    public KeyboardKeyEvent(MemorySegment ptr) {
+    public KeyEvent(MemorySegment ptr) {
         assert !ptr.equals(NULL);
         timeMsec    = wlr_keyboard_key_event.time_msec(ptr);
         keycode     = wlr_keyboard_key_event.keycode(ptr);

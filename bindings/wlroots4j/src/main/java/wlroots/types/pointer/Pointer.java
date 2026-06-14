@@ -1,8 +1,9 @@
-package wlroots.types.input;
+package wlroots.types.pointer;
 
 import jextract.wlroots.wlr_pointer;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import wlroots.types.input.InputDevice;
 
 import java.lang.foreign.MemorySegment;
 

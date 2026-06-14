@@ -3,7 +3,7 @@ package wlroots.types.seat;
 import jextract.wlroots.wlr_seat_request_set_selection_event;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import wlroots.types.DataSource;
+import wlroots.types.data_device.DataSource;
 
 import java.lang.foreign.MemorySegment;
 

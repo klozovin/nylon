@@ -6,24 +6,24 @@ import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.RectOptions
 import wlroots.render.Renderer
-import wlroots.types.*
-import wlroots.types.Cursor
+import wlroots.types.XcursorManager
+import wlroots.types.cursor.Cursor
 import wlroots.types.input.InputDevice
-import wlroots.types.input.InputDevice.Type.*
-import wlroots.types.input.Keyboard
-import wlroots.types.input.KeyboardKeyEvent
+import wlroots.types.input.InputDeviceType
+import wlroots.types.keyboard.KeyEvent
+import wlroots.types.keyboard.Keyboard
 import wlroots.types.output.Output
 import wlroots.types.output.OutputLayout
 import wlroots.types.output.OutputState
-import wlroots.types.input.PointerAxisEvent
-import wlroots.types.input.PointerButtonEvent
-import wlroots.types.input.PointerMotionAbsoluteEvent
-import wlroots.types.input.PointerMotionEvent
-import wlroots.types.input.TabletToolAxisEvent
-import wlroots.types.input.TouchCancelEvent
-import wlroots.types.input.TouchDownEvent
-import wlroots.types.input.TouchMotionEvent
-import wlroots.types.input.TouchUpEvent
+import wlroots.types.pointer.PointerAxisEvent
+import wlroots.types.pointer.PointerButtonEvent
+import wlroots.types.pointer.PointerMotionAbsoluteEvent
+import wlroots.types.pointer.PointerMotionEvent
+import wlroots.types.tablet_tool.TabletToolAxisEvent
+import wlroots.types.touch.TouchCancelEvent
+import wlroots.types.touch.TouchDownEvent
+import wlroots.types.touch.TouchMotionEvent
+import wlroots.types.touch.TouchUpEvent
 import wlroots.util.Log
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
@@ -171,9 +171,11 @@ object Pointer {
 
     fun onNewInput(device: InputDevice) {
         when (device.type) {
-            POINTER, TOUCH, TABLET -> cursor.attachInputDevice(device)
-            KEYBOARD -> {
-//                keyboard = device.keyboardFromInputDevice()
+            InputDeviceType.Pointer,
+            InputDeviceType.Touch,
+            InputDeviceType.Tablet -> cursor.attachInputDevice(device)
+
+            InputDeviceType.Keyboard -> {
                 keyboard = Keyboard.fromInputDevice(device)
                 keyboardKeyListener = keyboard.events.key.add(::onKeyboardKey)
                 inputDeviceDestroyListener = device.events.destroy.add(::onKeyboardDestroy)
@@ -197,7 +199,7 @@ object Pointer {
         }
     }
 
-    fun onKeyboardKey(key: KeyboardKeyEvent) {
+    fun onKeyboardKey(key: KeyEvent) {
         val keycode = key.keycode + 8 // Convert from libinput/evdev raw hardware code to xkbcommon ones.
         val keysym = keyboard.xkbState.keyGetOneSym(keycode)
         check(keysym != XkbKey.NoSymbol)

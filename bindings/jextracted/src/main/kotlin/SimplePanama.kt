@@ -9,7 +9,6 @@ import jextract.wayland.wl_signal
 import jextract.wlroots.*
 import jextract.wlroots.wlr.*
 import jextract.xkbcommon.xkb
-import wlroots.util.Log
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 import kotlin.system.exitProcess
@@ -163,7 +162,7 @@ object SimplePanama {
         // struct sample_output *sample_output = wl_container_of(listener, sample_output, destroy);
 
         // wlr_log(WLR_DEBUG, "Output removed");
-        Log.logDebug("Output removed")
+        logDebug("Output removed")
 
         // wl_list_remove(&sample_output->frame.link);
         // wl_list_remove(&sample_output->destroy.link);
@@ -311,7 +310,7 @@ object SimplePanama {
             // }
             val xkbContextPtr = xkb.xkb_context_new(xkb.XKB_CONTEXT_NO_FLAGS())
             if (xkbContextPtr == MemorySegment.NULL) {
-                Log.logError("Failed to create XKB context")
+                logError("Failed to create XKB context")
                 exitProcess(1)
             }
 
@@ -326,7 +325,7 @@ object SimplePanama {
                 XKB_KEYMAP_COMPILE_NO_FLAGS()
             )
             if (xkbKeymapPtr == MemorySegment.NULL) {
-                Log.logError("Failed to create XKB keymap")
+                logError("Failed to create XKB keymap")
                 exitProcess(1)
             }
 
@@ -382,7 +381,7 @@ object SimplePanama {
         //     exit(1);
         // }
         if (!wlr_backend_start(backendPtr)) {
-            Log.logError("Failed to start backend")
+            logError("Failed to start backend")
             wlr_backend_destroy(backendPtr)
             exitProcess(1)
         }
@@ -417,4 +416,19 @@ fun wl_signal_add(signalPtr: MemorySegment, listenerPtr: MemorySegment) {
     val signal_listenerList_prev = wl_list.prev(wl_signal.listener_list(signalPtr))
     val listener_link = wl_listener.link(listenerPtr)
     wl_list_insert(signal_listenerList_prev, listener_link)
+}
+
+
+fun logDebug(message: String) {
+    Arena.ofConfined().use { arena ->
+        val invoker = _wlr_log.makeInvoker()
+        invoker.apply(WLR_DEBUG(), arena.allocateFrom(message))
+    }
+}
+
+fun logError(message: String) {
+    Arena.ofConfined().use { arena ->
+        val invoker = _wlr_log.makeInvoker()
+        invoker.apply(WLR_ERROR(), arena.allocateFrom(message))
+    }
 }

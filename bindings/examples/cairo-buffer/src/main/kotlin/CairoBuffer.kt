@@ -1,4 +1,4 @@
-import jextract.drm.drm_fourcc_h
+import drm.DrmFormat
 import org.freedesktop.cairo.Context
 import org.freedesktop.cairo.Format
 import org.freedesktop.cairo.ImageSurface
@@ -8,6 +8,7 @@ import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
 import wlroots.types.buffer.Buffer
+import wlroots.types.buffer.DataAccessFlag
 import wlroots.types.output.Output
 import wlroots.types.output.OutputState
 import wlroots.types.scene.Scene
@@ -19,7 +20,7 @@ import kotlin.system.exitProcess
 
 
 class CairoImageSurfaceBuffer(val width: Int, val height: Int) : Buffer.Impl(Arena.global()), Buffer.DataSource.Memory {
-    val surface = ImageSurface.create(Format.ARGB32, width, height)
+    val surface = ImageSurface.create(Format.ARGB32, width, height)!!
 
     fun init() {
         super.init(width, height)
@@ -30,10 +31,10 @@ class CairoImageSurfaceBuffer(val width: Int, val height: Int) : Buffer.Impl(Are
         surface.destroy()
     }
 
-    override fun beginDataAccess(flags: EnumSet<AccessFlag>): MemoryBufferFormat =
+    override fun beginDataAccess(flags: EnumSet<DataAccessFlag>): MemoryBufferFormat =
         MemoryBufferFormat(
-            flags.contains(AccessFlag.READ),
-            drm_fourcc_h.DRM_FORMAT_ARGB8888(), // TODO: turn into enum
+            flags.contains(DataAccessFlag.Read),
+            DrmFormat.ARGB8888,
             surface.data,
             surface.stride
         )
@@ -81,13 +82,17 @@ object CairoBuffer {
         val cairoContext = Context.create(cairoSurfaceBuffer.surface)
 
         // Cairo: Start drawing
-        cairoContext.setSourceRGB(1.0, 1.0, 1.0)
-        cairoContext.paint()
-        cairoContext.setSourceRGB(0.0, 0.0, 0.0)
-        cairoContext.moveTo(25.6, 128.0)
-        cairoContext.curveTo(102.4, 230.4, 153.6, 25.6, 230.4, 128.0)
-        cairoContext.lineWidth = 10.0
-        cairoContext.stroke()
+        with(cairoContext) {
+            setSourceRGB(1.0, 1.0, 1.0)
+            paint()
+            setSourceRGB(0.0, 0.0, 0.0)
+            moveTo(25.6, 128.0)
+            curveTo(102.4, 230.4, 153.6, 25.6, 230.4, 128.0)
+            lineWidth = 10.0
+            stroke()
+        }
+
+        // Dispose
         cairoContext.destroy()
 
         // Scene buffer

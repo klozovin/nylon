@@ -14,6 +14,7 @@ wayland-scanner server-header /usr/share/wayland-protocols/stable/xdg-shell/xdg-
 # Linux kernel DRM
 jextract --library "drm" --output $java_output  \
     --target-package jextract.drm               \
+    --header-class-name "fourcc"                \
     "/usr/include/libdrm/drm_fourcc.h"
 
 

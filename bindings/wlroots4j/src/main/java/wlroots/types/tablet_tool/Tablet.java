@@ -1,4 +1,4 @@
-package wlroots.types.input;
+package wlroots.types.tablet_tool;
 
 import org.jspecify.annotations.NullMarked;
 

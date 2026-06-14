@@ -5,7 +5,7 @@ import wayland.server.Display
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
-import wlroots.types.DataDeviceManager
+import wlroots.types.data_device.DataDeviceManager
 import wlroots.types.XcursorManager
 import wlroots.types.compositor.Subcompositor
 import wlroots.types.output.OutputLayout

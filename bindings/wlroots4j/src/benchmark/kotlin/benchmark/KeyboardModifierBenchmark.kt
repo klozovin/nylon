@@ -9,9 +9,9 @@ import kotlinx.benchmark.OutputTimeUnit
 import kotlinx.benchmark.Scope
 import kotlinx.benchmark.State
 import kotlinx.benchmark.Warmup
-import wlroots.types.input.Keyboard
-import wlroots.types.input.KeyboardModifier
-import wlroots.types.input.KeyboardModifier.*
+import wlroots.types.keyboard.Keyboard
+import wlroots.types.keyboard.KeyboardModifier
+import wlroots.types.keyboard.KeyboardModifier.*
 import java.util.EnumSet
 
 

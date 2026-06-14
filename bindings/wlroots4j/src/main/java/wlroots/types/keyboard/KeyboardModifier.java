@@ -1,4 +1,4 @@
-package wlroots.types.input;
+package wlroots.types.keyboard;
 
 import org.jspecify.annotations.NullMarked;
 

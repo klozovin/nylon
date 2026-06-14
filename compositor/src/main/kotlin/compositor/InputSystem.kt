@@ -3,8 +3,16 @@ package compositor
 import wayland.KeyboardKeyState
 import wayland.SeatCapability
 import wayland.server.Listener
-import wlroots.types.Cursor
+import wlroots.types.cursor.Cursor
 import wlroots.types.input.*
+import wlroots.types.keyboard.Keyboard
+import wlroots.types.keyboard.KeyEvent
+import wlroots.types.keyboard.KeyboardModifier
+import wlroots.types.pointer.Pointer
+import wlroots.types.pointer.PointerAxisEvent
+import wlroots.types.pointer.PointerButtonEvent
+import wlroots.types.pointer.PointerMotionAbsoluteEvent
+import wlroots.types.pointer.PointerMotionEvent
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
 import xkbcommon.XkbKey
@@ -40,8 +48,8 @@ class InputSystem(val compositor: Compositor) {
 
     fun onNewInput(device: InputDevice) {
         when (device.type) {
-            InputDevice.Type.KEYBOARD -> onNewKeyboard(Keyboard.fromInputDevice(device))
-            InputDevice.Type.POINTER -> onNewPointer(Pointer.fromInputDevice(device))
+            InputDeviceType.Keyboard -> onNewKeyboard(Keyboard.fromInputDevice(device))
+            InputDeviceType.Pointer -> onNewPointer(Pointer.fromInputDevice(device))
             else -> error("Unsupported wlr_input_device_type: ${device.type}")
         }
     }
@@ -125,7 +133,7 @@ class InputSystem(val compositor: Compositor) {
     // **************************************************************************************************** //
 
 
-    fun onKeyboardKey(listener: Listener, event: KeyboardKeyEvent) {
+    fun onKeyboardKey(listener: Listener, event: KeyEvent) {
         val keyboard = keyboards[listener]!!
         val keycode = event.keycode + 8
         val keysym = keyboard.getXkbState().keyGetOneSym(keycode)

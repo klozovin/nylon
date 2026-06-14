@@ -1,7 +1,8 @@
 package wlroots.types.buffer;
 
-import jextract.wlroots.wlr_buffer_impl;
+import drm.DrmFormat;
 import jextract.wlroots.wlr_buffer;
+import jextract.wlroots.wlr_buffer_impl;
 import org.jspecify.annotations.NullMarked;
 import wlroots.render.DmabufAttributes;
 
@@ -15,10 +16,9 @@ import static jextract.wlroots.wlr.*;
 
 /// A buffer containing pixel data.
 ///
-/// A buffer has a single producer (the party who created the buffer) and multiple consumers
-/// (parties reading the buffer). When all consumers are done with the buffer, it gets
-/// released and can be re-used by the producer. When the producer and all consumers are done
-/// with the buffer, it gets destroyed.
+/// A buffer has a single producer (the party who created the buffer) and multiple consumers (parties reading
+/// the buffer). When all consumers are done with the buffer, it gets released and can be re-used by the
+/// producer. When the producer and all consumers are done with the buffer, it gets destroyed.
 ///
 /// ```struct wlr_buffer {};```
 @NullMarked
@@ -37,7 +37,8 @@ public class Buffer {
     }
 
 
-    /// Unreference the buffer. This function should be called by producers when they are done with the buffer.
+    /// Unreference the buffer. This function should be called by producers when they are done with the
+    /// buffer.
     public void drop() {
         wlr_buffer_drop(bufferPtr);
     }
@@ -51,8 +52,8 @@ public class Buffer {
     /// 	bool (*get_shm)(struct wlr_buffer *buffer, struct wlr_shm_attributes *attribs);
     /// 	bool (*begin_data_ptr_access)(struct wlr_buffer *buffer, uint32_t flags, void **data, uint32_t *format, size_t *stride);
     /// 	void (*end_data_ptr_access)(struct wlr_buffer *buffer);
-    ///};
-    ///```
+    /// };
+    /// ```
     @NullMarked
     public abstract static class Impl extends Buffer {
         MemorySegment implPtr;
@@ -87,15 +88,15 @@ public class Buffer {
                     wlr_buffer_impl.begin_data_ptr_access(implPtr, wlr_buffer_impl.begin_data_ptr_access.allocate(
                         (MemorySegment wlrBufferPtr, int flags, MemorySegment data, MemorySegment format, MemorySegment stride) -> {
                             assert wlrBufferPtr.equals(this.bufferPtr);
-                            var flagsSet = AccessFlag.setFromBitmask(flags);
+                            var flagsSet = DataAccessFlag.setFromBitmask(flags);
                             var result = buf.beginDataAccess(flagsSet);
                             // TODO: When resul.result false, should we return without setting the out parameters?
                             data.set(C_POINTER, 0, result.data);
-                            format.set(C_INT, 0, result.format);
+                            format.set(C_INT, 0, result.format.value);
                             stride.set(C_INT, 0, result.stride);
                             return result.result;
                         },
-                        Arena.global()
+                        Arena.global() // TODO: Memory management: why global?
                     ));
 
                     wlr_buffer_impl.end_data_ptr_access(implPtr, wlr_buffer_impl.end_data_ptr_access.allocate(
@@ -103,7 +104,7 @@ public class Buffer {
                             assert wlrBufferPtr.equals(this.bufferPtr);
                             buf.endDataAccess();
                         },
-                        Arena.global()
+                        Arena.global() // TODO: Memory management: why global?
                     ));
                 }
 
@@ -114,7 +115,7 @@ public class Buffer {
                             assert wlrBufferPtr.equals(bufferPtr);
                             return buf.getDmabuf(new DmabufAttributes(attribs));
                         },
-                        Arena.global()
+                        Arena.global() // TODO: Memory management: why global?
                     ));
                 }
 
@@ -140,13 +141,13 @@ public class Buffer {
         public abstract void destroy();
     }
 
-    /// In C, wlr_buffer_impl struct can actually implement three different interfaces (memory, shm, dmabuf). To pick
-    /// an interface, implement those callbacks, leave others unassigned. To make it more idiomatic in Java, there are
-    /// separate interfaces for those.
+    /// In C, wlr_buffer_impl struct can actually implement three different interfaces (memory, shm, dmabuf).
+    /// To pick an interface, implement those callbacks, leave others unassigned. To make it more idiomatic in
+    /// Java, there are separate interfaces for those.
     public sealed interface DataSource {
 
         non-sealed interface Memory extends DataSource {
-            MemoryBufferFormat beginDataAccess(EnumSet<AccessFlag> flags);
+            MemoryBufferFormat beginDataAccess(EnumSet<DataAccessFlag> flags);
 
             void endDataAccess();
         }
@@ -163,42 +164,13 @@ public class Buffer {
 
     /// Describe how the data is laid out for a buffer that keeps it's data in RAM memory. Used only in
     /// {@link DataSource.Memory} interface.
+    ///
+    /// Convenience class for Java bindings, does not exists in original C source.
     public record MemoryBufferFormat(
         boolean result,
-        int format,
+        DrmFormat format,
         MemorySegment data,
         int stride
     ) {
-    }
-
-
-    public enum AccessFlag {
-        READ(WLR_BUFFER_DATA_PTR_ACCESS_READ()),
-        WRITE(WLR_BUFFER_DATA_PTR_ACCESS_WRITE());
-
-        public final int idx;
-
-
-        AccessFlag(int idx) {
-            this.idx = idx;
-        }
-
-
-        public static AccessFlag of(int value) {
-            if (value == WLR_BUFFER_DATA_PTR_ACCESS_READ())  return READ;
-            if (value == WLR_BUFFER_DATA_PTR_ACCESS_WRITE()) return WRITE;
-
-            throw new RuntimeException("Invalid enum value from C code for wlr_buffer_data_ptr_access_flag");
-        }
-
-
-        public static EnumSet<AccessFlag> setFromBitmask(int flags) {
-            var flagsSet = EnumSet.noneOf(AccessFlag.class);
-            for (var e: values()) {
-                if ((flags & e.idx) != 0)
-                    flagsSet.add(e);
-            }
-            return flagsSet;
-        }
     }
 }

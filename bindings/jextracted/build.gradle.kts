@@ -1,1 +1,6 @@
-// Intentionally left blank
+application {
+    mainClass = "SimplePanamaKt"
+    applicationDefaultJvmArgs += listOf(
+        "-ea",
+    )
+}

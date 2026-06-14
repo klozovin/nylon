@@ -7,18 +7,17 @@ import wayland.*;
 import wayland.server.Display;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
-import wlroots.types.DataSource;
-import wlroots.types.KeyboardModifiers;
 import wlroots.types.compositor.Surface;
-import wlroots.types.input.Keyboard;
-import wlroots.types.input.PointerAxisEvent;
+import wlroots.types.data_device.DataSource;
+import wlroots.types.keyboard.Keyboard;
+import wlroots.types.keyboard.KeyboardModifiers;
+import wlroots.types.pointer.PointerAxisEvent;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.EnumSet;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static jextract.wlroots.wlr.wlr_seat_set_selection;
 import static jextract.wlroots.wlr.*;
 
 
@@ -224,15 +223,15 @@ public final class Seat {
         public final Signal1<PointerRequestSetCursorEvent> requestSetCursor;
 
         /// Called when an application wants to set the selection (user copied some data).
-        public final Signal1<RequestSetSelectionEvent>     requestSetSelection;
+        public final Signal1<RequestSetSelectionEvent> requestSetSelection;
 
-        public final Signal1<Seat>                         destroy;
+        public final Signal1<Seat> destroy;
 
 
         Events(MemorySegment ptr) {
-            requestSetCursor    = Signal.of(wlr_seat.events.request_set_cursor(ptr), PointerRequestSetCursorEvent::new);
+            requestSetCursor = Signal.of(wlr_seat.events.request_set_cursor(ptr), PointerRequestSetCursorEvent::new);
             requestSetSelection = Signal.of(wlr_seat.events.request_set_selection(ptr), RequestSetSelectionEvent::new);
-            destroy             = Signal.of(wlr_seat.events.destroy(ptr), Seat::new);
+            destroy = Signal.of(wlr_seat.events.destroy(ptr), Seat::new);
         }
     }
 }

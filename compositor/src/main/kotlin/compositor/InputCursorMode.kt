@@ -6,7 +6,7 @@ import wayland.util.Edge.BOTTOM
 import wayland.util.Edge.LEFT
 import wayland.util.Edge.RIGHT
 import wayland.util.Edge.TOP
-import wlroots.types.input.PointerButtonEvent
+import wlroots.types.pointer.PointerButtonEvent
 import wlroots.types.xdgshell.XdgToplevel
 import wlroots.util.Box
 import java.util.*

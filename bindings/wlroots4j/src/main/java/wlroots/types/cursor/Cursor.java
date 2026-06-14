@@ -1,13 +1,20 @@
-package wlroots.types;
+package wlroots.types.cursor;
 
 import jextract.wlroots.wlr_cursor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
+import wlroots.types.XcursorManager;
 import wlroots.types.compositor.Surface;
 import wlroots.types.input.*;
 import wlroots.types.output.OutputLayout;
+import wlroots.types.pointer.*;
+import wlroots.types.tablet_tool.TabletToolAxisEvent;
+import wlroots.types.touch.TouchCancelEvent;
+import wlroots.types.touch.TouchDownEvent;
+import wlroots.types.touch.TouchMotionEvent;
+import wlroots.types.touch.TouchUpEvent;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -39,8 +46,9 @@ public class Cursor {
     }
 
 
-    // *** Fields ***************************************************************************************** //
-
+    //
+    // *** Struct fields getters and setters ***
+    //
 
     public double getX() {
         return wlr_cursor.x(cursorPtr);
@@ -51,8 +59,10 @@ public class Cursor {
         return wlr_cursor.y(cursorPtr);
     }
 
-    // *** Methods **************************************************************************************** //
 
+    //
+    // *** Methods ***
+    //
 
     /// Uses the given layout to establish the boundaries and movement semantics of this cursor. Cursors
     /// without an output layout allow infinite movement in any direction and do not support absolute input
@@ -63,7 +73,7 @@ public class Cursor {
 
 
     /// Attaches this input device to this cursor. The input device must be one
-    /// of:{@link InputDevice.Type#POINTER}, {@link InputDevice.Type#TOUCH}, {@link InputDevice.Type#TABLET}
+    /// of:{@link InputDeviceType#Pointer}, {@link InputDeviceType#Touch}, {@link InputDeviceType#Tablet}
     public void attachInputDevice(InputDevice device) {
         wlr_cursor_attach_input_device(cursorPtr, device.inputDevicePtr);
     }
