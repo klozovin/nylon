@@ -31,6 +31,7 @@ import wlroots.types.seat.PointerFocusChangeEvent
 import wlroots.types.seat.PointerRequestSetCursorEvent
 import wlroots.types.seat.RequestSetSelectionEvent
 import wlroots.types.seat.Seat
+import wlroots.types.xcursor_manager.XcursorManager
 import wlroots.types.xdgshell.XdgPopup
 import wlroots.types.xdgshell.XdgShell
 import wlroots.types.xdgshell.XdgSurface
@@ -377,7 +378,7 @@ object Tiny {
                 keymap.unref()
                 context.unref()
 
-                seatCapabilities.add(SeatCapability.KEYBOARD)
+                seatCapabilities.add(SeatCapability.Keyboard)
 
                 KEYBOARDS.add(
                     TyKeyboard(
@@ -391,7 +392,7 @@ object Tiny {
 
             InputDeviceType.Pointer -> {
                 cursor.attachInputDevice(inputDevice)
-                seatCapabilities.add(SeatCapability.POINTER)
+                seatCapabilities.add(SeatCapability.Pointer)
             }
 
             else -> Log.logDebug("Unknown device type: ${inputDevice.type}")

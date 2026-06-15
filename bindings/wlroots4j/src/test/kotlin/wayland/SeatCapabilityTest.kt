@@ -2,36 +2,36 @@ package wayland
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.equals.shouldBeEqual
-import wayland.SeatCapability.KEYBOARD
-import wayland.SeatCapability.POINTER
-import wayland.SeatCapability.TOUCH
+import wayland.SeatCapability.Keyboard
+import wayland.SeatCapability.Pointer
+import wayland.SeatCapability.Touch
 import java.util.EnumSet
 
 
 class SeatCapabilityTest : FunSpec({
     context("set to bitfield") {
         test("POINTER") {
-            SeatCapability.setToBitfield(EnumSet.of(POINTER)) shouldBeEqual 1
+            SeatCapability.toBitset(EnumSet.of(Pointer)) shouldBeEqual 1
         }
 
         test("KEYBOARD") {
-            SeatCapability.setToBitfield(EnumSet.of(KEYBOARD)) shouldBeEqual 2
+            SeatCapability.toBitset(EnumSet.of(Keyboard)) shouldBeEqual 2
         }
 
         test("TOUCH") {
-            SeatCapability.setToBitfield(EnumSet.of(TOUCH)) shouldBeEqual 4
+            SeatCapability.toBitset(EnumSet.of(Touch)) shouldBeEqual 4
         }
 
         test("POINTER | KEYBOARD") {
-            SeatCapability.setToBitfield(EnumSet.of(POINTER, KEYBOARD)) shouldBeEqual 3
+            SeatCapability.toBitset(EnumSet.of(Pointer, Keyboard)) shouldBeEqual 3
         }
 
         test("POINTER | TOUCH") {
-            SeatCapability.setToBitfield(EnumSet.of(POINTER, TOUCH)) shouldBeEqual 5
+            SeatCapability.toBitset(EnumSet.of(Pointer, Touch)) shouldBeEqual 5
         }
 
         test("POINTER | KEYBOARD | TOUCH") {
-            SeatCapability.setToBitfield(EnumSet.of(POINTER, KEYBOARD, TOUCH)) shouldBeEqual 7
+            SeatCapability.toBitset(EnumSet.of(Pointer, Keyboard, Touch)) shouldBeEqual 7
         }
     }
 })

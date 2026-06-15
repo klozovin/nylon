@@ -5,7 +5,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
-import wlroots.types.XcursorManager;
+import wlroots.types.xcursor_manager.XcursorManager;
 import wlroots.types.compositor.Surface;
 import wlroots.types.input.*;
 import wlroots.types.output.OutputLayout;

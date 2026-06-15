@@ -16,8 +16,22 @@ import static java.lang.foreign.MemorySegment.NULL;
 /// struct wl_listener {
 ///     struct wl_list      link;
 ///     wl_notify_func_t    notify;
-///};
-///```
+/// };
+/// ```
+///
+/// # Memory management
+///
+/// [Listener] can't use Arena's of type:
+///
+/// * Global - because it leaks memory. It may be acceptable in a short demo, but a long running compositor
+/// can't do that.
+/// * Automatic - because Listener objects may be GC collected before while the data structures on the native
+/// wlroots side still live. One would have to make sure to store references to the Java objects to prevent
+/// this from happening, making it error-prone and non-deterministic.
+/// * Confined with resources - lifetimes are not scope based, but dynamic.
+///
+/// That means we have to use some sort of manual disposal of Arenas. First we have to call .remove() on the
+/// list side, then close the Arena.
 @NullMarked
 public class Listener implements List.Element<Listener> {
     public final MemorySegment listenerPtr;

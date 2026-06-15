@@ -2,6 +2,7 @@ package wlroots.types.keyboard;
 
 import jextract.wlroots.wlr_keyboard;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
 import wlroots.types.input.InputDevice;
@@ -32,7 +33,7 @@ public class Keyboard {
 
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(@Nullable Object other) {
         return switch (other) {
             case Keyboard otherKeyboard -> keyboardPtr.equals(otherKeyboard.keyboardPtr);
             case null -> false;

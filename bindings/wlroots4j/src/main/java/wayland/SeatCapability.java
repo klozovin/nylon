@@ -6,9 +6,9 @@ import static jextract.wayland.wl.*;
 
 
 public enum SeatCapability {
-    POINTER(WL_SEAT_CAPABILITY_POINTER()),
-    KEYBOARD(WL_SEAT_CAPABILITY_KEYBOARD()),
-    TOUCH(WL_SEAT_CAPABILITY_TOUCH());
+    Pointer(WL_SEAT_CAPABILITY_POINTER()),
+    Keyboard(WL_SEAT_CAPABILITY_KEYBOARD()),
+    Touch(WL_SEAT_CAPABILITY_TOUCH());
 
     public final int value;
 
@@ -18,7 +18,7 @@ public enum SeatCapability {
     }
 
 
-    public static int setToBitfield(EnumSet<SeatCapability> capabilities) {
+    public static int toBitset(EnumSet<SeatCapability> capabilities) {
         // TODO: Don't use streaming ^)
         //        int bitfield = 0;
 //        for (var cap : capabilities)
@@ -30,7 +30,7 @@ public enum SeatCapability {
     }
 
 
-    /// Create an EnumSet of SeatCapabilities from the C bitmask
+    /// Create an `EnumSet<SeatCapabilities>` from the C bitmask
     public static EnumSet<SeatCapability> fromBitset(int bitset) {
         assert bitset >= 0;
         var capabilities = EnumSet.noneOf(SeatCapability.class);

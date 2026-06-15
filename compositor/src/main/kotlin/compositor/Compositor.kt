@@ -1,12 +1,13 @@
 package compositor
 
+import compositor.input.InputSystem
 import compositor.inspector.Inspector
 import wayland.server.Display
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
 import wlroots.types.data_device.DataDeviceManager
-import wlroots.types.XcursorManager
+import wlroots.types.xcursor_manager.XcursorManager
 import wlroots.types.compositor.Subcompositor
 import wlroots.types.output.OutputLayout
 import wlroots.types.scene.Scene
@@ -138,7 +139,7 @@ class Compositor(val terminalPath: String? = null) {
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
         // TODO: Move to input system?
         if (seat.getPointerState().getFocusedClient() == event.seatClient)
-            inputSystem.cursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
+            inputSystem.cursor.wlrCursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
     }
 
 

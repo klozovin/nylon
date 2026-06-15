@@ -81,6 +81,7 @@ class InputCursorMode(val compositor: Compositor) {
 
     fun onCursorButton(event: PointerButtonEvent) {
         // Remember pointer button held down (used for canceling the move/resize request)
+        // TODO: Probably remove this later, only used for debugging tracking
         when(event.state) {
             PointerButtonState.PRESSED -> pointerPressedButtons.add(event.button)
             PointerButtonState.RELEASED -> pointerPressedButtons.remove(event.button)
@@ -125,7 +126,7 @@ sealed class CursorState {
             val cursor = COMPOSITOR.inputSystem.cursor
             val seat = COMPOSITOR.seat
 
-            when (val tpl = windowSystem.toplevelAtCoordinates(cursor.x, cursor.y)) {
+            when (val tpl = windowSystem.toplevelAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y)) {
                 // Find the XdgToplevel under the cursor and forward cursor events to it.
                 is WindowSystem.UnderCursor -> {
                     seat.pointerNotifyEnter(tpl.surface, tpl.nx, tpl.ny)
@@ -137,7 +138,7 @@ sealed class CursorState {
                 // have cursor over it.
                 null -> {
                     seat.pointerClearFocus()
-                    cursor.setXcursor(COMPOSITOR.xcursorManager, "default")
+                    cursor.wlrCursor.setXcursor(COMPOSITOR.xcursorManager, "default")
                 }
             }
         }
@@ -155,7 +156,7 @@ sealed class CursorState {
 
             // "Raise" the clicked window
             if (event.state == PointerButtonState.PRESSED) {
-                windowSystem.toplevelAtCoordinates(cursor.x, cursor.y)?.let {
+                windowSystem.toplevelAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y)?.let {
                     windowSystem.focusToplevel(it.toplevel)
                 }
             }
@@ -173,8 +174,8 @@ sealed class CursorState {
         val grabbedSceneNode = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!.node
 
         val cursor = COMPOSITOR.inputSystem.cursor
-        val grabX = compositor.inputSystem.cursor.x - grabbedSceneNode.x
-        val grabY = compositor.inputSystem.cursor.y - grabbedSceneNode.y
+        val grabX = compositor.inputSystem.cursor.wlrCursor.x - grabbedSceneNode.x
+        val grabY = compositor.inputSystem.cursor.wlrCursor.y - grabbedSceneNode.y
 
         init {
             println("WindowMove: ${pressedButtons}")
@@ -186,15 +187,20 @@ sealed class CursorState {
             check(compositor.windowSystem.toplevels.containsValue(grabbedToplevel)) {
                 "BUG: Trying to move a non existent window"
             }
-            grabbedSceneNode.setPosition((cursor.x - grabX), (cursor.y - grabY))
+            grabbedSceneNode.setPosition((cursor.wlrCursor.x - grabX), (cursor.wlrCursor.y - grabY))
         }
 
 
         fun processCursorButton(event: PointerButtonEvent) {
+            assert(event.state != PointerButtonState.PRESSED)
             // Exit the move mode only when the released button is the one that started the move request
             // (kind of).
+
             if (event.state == PointerButtonState.RELEASED && event.button in pressedButtons)
                 COMPOSITOR.captureMode.transitionToPassthrough()
+
+            // Bugfix: Still have to pass the event to the client!
+            COMPOSITOR.seat.pointerNotifyButton(event.timeMsec, event.button, event.state)
         }
     }
 
@@ -216,8 +222,8 @@ sealed class CursorState {
             val geometry = grabbedToplevel.getBase().geometry
             val borderX = (grabbedSceneNode.x + geometry.x) + if (RIGHT in edges) geometry.width else 0
             val borderY = (grabbedSceneNode.y + geometry.y) + if (BOTTOM in edges) geometry.height else 0
-            grabX = cursor.x - borderX
-            grabY = cursor.y - borderY
+            grabX = cursor.wlrCursor.x - borderX
+            grabY = cursor.wlrCursor.y - borderY
             grabbedGeometry = Box.allocateCopy(geometry).apply {
                 x += grabbedSceneNode.x
                 y += grabbedSceneNode.y
@@ -226,8 +232,8 @@ sealed class CursorState {
 
         // Do the window resize
         fun processCursorMotion() {
-            val borderX = (cursor.x - grabX).toInt()
-            val borderY = (cursor.y - grabY).toInt()
+            val borderX = (cursor.wlrCursor.x - grabX).toInt()
+            val borderY = (cursor.wlrCursor.y - grabY).toInt()
 
             // Coordinates for new (resized) vertices
             var left = grabbedGeometry.x

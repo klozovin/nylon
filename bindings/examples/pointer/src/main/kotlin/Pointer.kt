@@ -6,7 +6,7 @@ import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.RectOptions
 import wlroots.render.Renderer
-import wlroots.types.XcursorManager
+import wlroots.types.xcursor_manager.XcursorManager
 import wlroots.types.cursor.Cursor
 import wlroots.types.input.InputDevice
 import wlroots.types.input.InputDeviceType

@@ -188,7 +188,7 @@ public final class Seat {
 
 
     public void setCapabilities(EnumSet<SeatCapability> capabilities) {
-        wlr_seat_set_capabilities(seatPtr, SeatCapability.setToBitfield(capabilities));
+        wlr_seat_set_capabilities(seatPtr, SeatCapability.toBitset(capabilities));
     }
 
 

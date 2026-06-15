@@ -1,4 +1,4 @@
-package wlroots.types;
+package wlroots.types.xcursor_manager;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -24,13 +24,27 @@ public class XcursorManager {
     }
 
 
+    @Override
+    public boolean equals(@Nullable Object other) {
+        return switch (other) {
+            case XcursorManager otherXcursorManager ->
+                xcursorManagerPtr.equals(otherXcursorManager.xcursorManagerPtr);
+            case null -> false;
+            default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
+        };
+    }
+
+
     /// Creates a new XCursor manager with the given xcursor theme name and base size (for use when scale=1).
     public static @Nullable XcursorManager create(@Nullable String name, int size) {
         try (var arena = Arena.ofConfined()) {
-            var xcursorManagerPtr = wlr_xcursor_manager_create(switch (name) {
-                case String n -> arena.allocateFrom(n);
-                case null -> NULL;
-            }, size);
+            var xcursorManagerPtr = wlr_xcursor_manager_create(
+                switch (name) {
+                    case String n -> arena.allocateFrom(n);
+                    case null -> NULL;
+                },
+                size
+            );
 
             // wlr_xcursor_manager_create can return NULL if calloc() inside of it returns NULL.
             return !xcursorManagerPtr.equals(NULL) ? new XcursorManager(xcursorManagerPtr) : null;
