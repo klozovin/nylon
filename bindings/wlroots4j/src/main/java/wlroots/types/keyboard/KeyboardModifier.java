@@ -22,7 +22,7 @@ public enum KeyboardModifier {
 
 
     public final int value;
-    private static final KeyboardModifier[] enumerations = KeyboardModifier.values();
+    private static final KeyboardModifier[] enumerations = values();
 
 
     KeyboardModifier(int value) {

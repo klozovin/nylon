@@ -24,7 +24,7 @@ benchmark {
 
 	configurations {
 		register("targeted") {
-			include("KeyboardModifierBenchmark")
+			include("InputDeviceType")
 		}
 	}
 }

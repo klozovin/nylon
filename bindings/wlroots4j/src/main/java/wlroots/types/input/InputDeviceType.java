@@ -1,5 +1,7 @@
 package wlroots.types.input;
 
+import bindings.Utils;
+
 import static jextract.wlroots.wlr.*;
 
 
@@ -11,7 +13,10 @@ public enum InputDeviceType {
     TabletPad(WLR_INPUT_DEVICE_TABLET_PAD()), // struct wlr_tablet_pad
     Switch(WLR_INPUT_DEVICE_SWITCH());        // struct wlr_switch
 
-    final int value;
+    public final int value;
+
+    private static final InputDeviceType[] lookupTable = Utils.createLookupTableFromEnumClass(InputDeviceType.class);
+    private static final InputDeviceType[] enumerations = values();
 
 
     InputDeviceType(int value) {
@@ -19,10 +24,18 @@ public enum InputDeviceType {
     }
 
 
-    public static InputDeviceType of(int value) {
-        for (var e : values())
+    // TODO: Delete, don't need it anymore
+    public static InputDeviceType ofIterate(int value) {
+        for (var e : enumerations)
             if (e.value == value)
                 return e;
         throw new RuntimeException("Invalid enum value from C code for wlr_input_device_type");
+    }
+
+
+    public static InputDeviceType of(int value) {
+        var deviceType = lookupTable[value];
+        assert deviceType != null : "Invalid enumeration value from C code for wlr_input_device_type: " + value;
+        return deviceType;
     }
 }
