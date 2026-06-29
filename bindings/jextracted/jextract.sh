@@ -11,6 +11,13 @@ mkdir -p $java_output
 
 wayland-scanner server-header /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml "$c_output/xdg-shell-protocol.h"
 
+
+# Linux input event codes
+jextract --output $java_output      \
+    --target-package jextract.linux \
+    --header-class-name "linux"     \
+    "/usr/include/linux/input-event-codes.h"
+
 # Linux kernel DRM
 jextract --library "drm" --output $java_output  \
     --target-package jextract.drm               \
