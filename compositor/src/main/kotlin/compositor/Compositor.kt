@@ -1,6 +1,6 @@
 package compositor
 
-import compositor.input.InputCursorMode
+import compositor.input.CursorInputMode
 import compositor.input.InputSystem
 import compositor.inspector.Inspector
 import wayland.server.Display
@@ -21,7 +21,6 @@ import kotlin.system.exitProcess
 import wlroots.types.compositor.Compositor as WlrCompositor
 
 // nocheckin
-import org.gnome.gtk.*
 
 
 class Compositor(val terminalPath: String? = null) {
@@ -46,7 +45,7 @@ class Compositor(val terminalPath: String? = null) {
     lateinit var socket: String
 
     // TODO: Move to inputSystem
-    val captureMode: InputCursorMode
+    val captureMode: CursorInputMode
 
 
     init {
@@ -77,7 +76,7 @@ class Compositor(val terminalPath: String? = null) {
             events.requestSetSelection.add(::onSeatRequestSetSelection)
         }
 
-        captureMode = InputCursorMode(this)
+        captureMode = CursorInputMode(this)
     }
 
 

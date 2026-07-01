@@ -41,7 +41,7 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
         val modifiers = wlrKeyboard.getKeyboardModifiers()
 
 
-        if (compositor.captureMode.state is CursorState.WindowMove) {
+        if (compositor.captureMode.state is CursorInputState.WindowMove) {
 //            compositor.captureMode.onKey(event)
             println("NOPE NOPE NOPE")
             return

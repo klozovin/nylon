@@ -60,4 +60,12 @@ class Cursor(val compositor: Compositor) {
         // TODO: Swallow this when moving windows
         compositor.seat.pointerNotifyFrame()
     }
+
+    //
+    // Helpers
+    //
+
+    fun setIcon(name: String) {
+        compositor.inputSystem.cursor.wlrCursor.setXcursor(compositor.xcursorManager, name)
+    }
 }

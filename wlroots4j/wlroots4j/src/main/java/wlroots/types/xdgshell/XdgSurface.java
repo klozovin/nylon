@@ -130,7 +130,7 @@ public class XdgSurface {
     // *** Events ***
     //
 
-    static class Events {
+    public static class Events {
         public final Signal0 destroy;
 
 

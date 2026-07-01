@@ -7,139 +7,46 @@ import compositor.enumSetOf
 import linux.MouseButton
 import wayland.PointerButtonState
 import wayland.util.Edge
-import wayland.util.Edge.*
 import wlroots.types.keyboard.KeyboardModifier
 import wlroots.types.pointer.PointerButtonEvent
 import wlroots.types.xdgshell.XdgToplevel
 import wlroots.util.Box
-import java.util.*
-
-
-// Should go to input package (maybe compositor.input)
-typealias Edges = EnumSet<Edge>
-
-
-class InputCursorMode(val compositor: Compositor) {
-
-    val inputSystem = compositor.inputSystem
-    var state: CursorState = CursorState.Passthrough()
-    var pointerPressedButtons = mutableSetOf<Int>()
-
-
-    //
-    // State machine transitions
-    //
-
-    fun transitionToPassthrough() {
-        require(state is CursorState.WindowMove || state is CursorState.WindowResize)
-        setCursorIcon("default")
-        state = CursorState.Passthrough()
-    }
-
-    /**
-     * @param pressedButton Mouse button that was held down while the user initiated the move request
-     */
-    fun transitionToMove(toplevel: XdgToplevel, pressedButton: Int) {
-        require(state is CursorState.Passthrough)
-
-        println("____")
-        println("Currently held down buttons: $pointerPressedButtons")
-        println("Currently number of held buttons: ${COMPOSITOR.seat.pointerState.buttonCount}")
-        println("Buttons:")
-        for (button in COMPOSITOR.seat.pointerState.buttons) {
-            println("\t*) Button: btnid: ${button.button}, npressed: ${button.nPressed}")
-        }
-
-        // TODO: Use button_count for this
-        // TODO: Remove this
-        val pressedButtons = COMPOSITOR.seat.pointerState.buttons.filter { it.button != 0 }.map { it.button }
-
-        // Change the cursor here? Right? Right??
-        setCursorIcon("grabbing")
-
-        state = CursorState.WindowMove(compositor, toplevel, pressedButton)
-    }
-
-
-    fun transitionToResize(toplevel: XdgToplevel, edges: Edges) {
-        require(state is CursorState.Passthrough)
-//        setCursorIcon("grabbing")
-        // Icons: nw-, ne-, sw-, se-resize
-
-        val cursorIconName = "${if (Top in edges) "n" else "s"}${if (Left in edges) "w" else "e"}-resize"
-        setCursorIcon(cursorIconName)
-        state = CursorState.WindowResize(compositor, toplevel, edges)
-    }
-
-    //
-    // Event handling
-    //
-
-    fun onCursorMotion(timeMsec: Int) {
-        when (val state = this@InputCursorMode.state) {
-            is CursorState.Passthrough -> {
-                state.processCursorMotion(timeMsec)
-            }
-
-            is CursorState.WindowMove -> {
-                state.processCursorMotion()
-            }
-
-            is CursorState.WindowResize -> {
-                state.processCursorMotion()
-            }
-        }
-    }
-
-
-    fun onCursorButton(event: PointerButtonEvent) {
-        // Remember pointer button held down (used for canceling the move/resize request)
-        // TODO: Probably remove this later, only used for debugging tracking
-        when (event.state) {
-            PointerButtonState.Pressed -> pointerPressedButtons.add(event.button)
-            PointerButtonState.Released -> pointerPressedButtons.remove(event.button)
-        }
-
-
-        // We only do two things in the compositor on mouse button clicks: focus the window under the cursor,
-        // or exit the move/resize mode when appropriate
-        when (val state = state) {
-            is CursorState.Passthrough -> state.processCursorButton(event)
-            is CursorState.WindowMove -> state.processCursorButton(event)
-            is CursorState.WindowResize -> state.processCursorButton(event)
-        }
-    }
-
-    //
-    // Helpers
-    //
-
-    fun isToplevelGrabbed(toplevel: XdgToplevel): Boolean {
-        return when (val state = state) {
-            is CursorState.Passthrough -> false
-            is CursorState.WindowMove -> state.grabbedToplevel == toplevel
-            is CursorState.WindowResize -> state.grabbedToplevel == toplevel
-        }
-    }
-
-
-    fun setCursorIcon(name: String) {
-        compositor.inputSystem.cursor.wlrCursor.setXcursor(compositor.xcursorManager, name)
-    }
-}
 
 
 /**
- * State machine modeling the capture states of the cursor
+ * State machine modeling the cursor input modes (passthrough, move, resize).
  */
-sealed class CursorState {
+sealed class CursorInputState() {
+    // TODO: add compositor as param
+
+    abstract fun onKeyboardKey()
+    abstract fun onCursorMotion(timeMsec: Int)
+    abstract fun onCursorButton(event: PointerButtonEvent)
+
 
     /**
      * Normal cursor behavior: pass all the pointer events to focused client
+     *
      */
-    class Passthrough : CursorState() {
+    class Passthrough : CursorInputState() {
 
-        fun processCursorMotion(timeMsec: Int) {
+        fun processCursorMotion(timeMsec: Int) = onCursorMotion(timeMsec)
+        fun processCursorButton(event: PointerButtonEvent) = onCursorButton(event)
+
+        // ////////////////////////////////////////////////////////////////
+
+
+        override fun onKeyboardKey() { /* Do nothing */
+        }
+
+
+        /**
+         * Possible action to take:
+         *
+         * - Raise window when cursor passing over
+         * - Give focus to window when cursor passing over (but don't raise)
+         */
+        override fun onCursorMotion(timeMsec: Int) {
             val windowSystem = COMPOSITOR.windowSystem
             val cursor = COMPOSITOR.inputSystem.cursor
             val seat = COMPOSITOR.seat
@@ -165,18 +72,17 @@ sealed class CursorState {
         /**
          * Possible actions to take on mouse click:
          *
-         * - defocus, when clicking on desktop background
-         * - focus/raise window when clicking on a window
-         * - move when clicking while holding mod key
-         * - resize when rmb clicking while holding mod key
+         * - Defocus, when clicking on desktop background
+         * - Focus/raise window when clicking on a window
+         * - Move when clicking while holding mod key
+         * - Resize when RMB clicking while holding mod key
          */
-        fun processCursorButton(event: PointerButtonEvent) {
+        override fun onCursorButton(event: PointerButtonEvent) {
             val cursor = COMPOSITOR.inputSystem.cursor
             val seat = COMPOSITOR.seat
             val windowSystem = COMPOSITOR.windowSystem
 
             // TODO: Maybe swap the order, first change the focus, then send the pointer notify event?
-
 
             // Check for Alt key modifier to start dragging
             val altPressed = COMPOSITOR.seat.keyboard!!.keyboardModifiers.contains(KeyboardModifier.Alt)
@@ -219,8 +125,8 @@ sealed class CursorState {
                     val halfY = coordY + (height / 2)
 
                     val edges = enumSetOf(
-                        if (cursorX <= halfX) Left else Right,
-                        if (cursorY <= halfY) Top else Bottom
+                        if (cursorX <= halfX) Edge.Left else Edge.Right,
+                        if (cursorY <= halfY) Edge.Top else Edge.Bottom
                     )
 
                     if (cursorX <= halfX) {
@@ -229,10 +135,8 @@ sealed class CursorState {
                         println("were in the right half")
                     }
 
-                    if (cursorY <= halfY)
-                        println("We're in the top half")
-                    else
-                        println("we in the bottom half")
+                    if (cursorY <= halfY) println("We're in the top half")
+                    else println("we in the bottom half")
 
                     // TODO: Detect grabbed window edge
 
@@ -267,10 +171,8 @@ sealed class CursorState {
      * pressed.
      */
     class WindowMove(
-        val compositor: Compositor,
-        val grabbedToplevel: XdgToplevel,
-        val initiatingButton: Int
-    ) : CursorState() {
+        val compositor: Compositor, val grabbedToplevel: XdgToplevel, val initiatingButton: Int
+    ) : CursorInputState() {
 
         // TODO: pass this as param, no need to know where is the toplevel kept and how
         val grabbedSceneNode = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!.node
@@ -279,12 +181,25 @@ sealed class CursorState {
         val grabX = compositor.inputSystem.cursor.wlrCursor.x - grabbedSceneNode.x
         val grabY = compositor.inputSystem.cursor.wlrCursor.y - grabbedSceneNode.y
 
+
         init {
             println("WindowMove: $initiatingButton")
         }
 
 
-        fun processCursorMotion() {
+        fun processCursorMotion() = onCursorMotion(0)
+        fun processCursorButton(event: PointerButtonEvent) = onCursorButton(event)
+
+
+
+        ////////////////////////////////////////////
+
+        override fun onKeyboardKey() {
+            TODO("Not yet implemented")
+        }
+
+
+        override fun onCursorMotion(timeMsec: Int) {
             // HACK: this kind of check should be automatic and centralized somewhere
             check(compositor.windowSystem.toplevels.containsValue(grabbedToplevel)) {
                 "BUG: Trying to move a non existent window"
@@ -293,12 +208,11 @@ sealed class CursorState {
         }
 
 
-        /**
-         * Gets called AFTER the window moving process has begun, that means it won't see the button press that
-         * initiated the move, only the release. It can still see other mouse button events, best probably to
-         * ignore them.
-         */
-        fun processCursorButton(event: PointerButtonEvent) {
+        override fun onCursorButton(event: PointerButtonEvent) {
+            // Gets called AFTER the window moving process has begun, that means it won't see the button press that
+            // initiated the move, only the release. It can still see other mouse button events, best probably to
+            // ignore them.
+
             if (event.button == initiatingButton) {
                 assert(event.state != PointerButtonState.Pressed) { "This can't happen, button pressed twice in row" }
 
@@ -329,7 +243,7 @@ sealed class CursorState {
      * Client window is being resized by the user, initiated by dragging the border of the window.
      */
     class WindowResize(val compositor: Compositor, val grabbedToplevel: XdgToplevel, val edges: Edges) :
-        CursorState() {
+        CursorInputState() {
 
         val cursor = COMPOSITOR.inputSystem.cursor
         var grabbedGeometry: Box // TODO: var needed?
@@ -340,8 +254,8 @@ sealed class CursorState {
 
         init {
             val geometry = grabbedToplevel.getBase().geometry
-            val borderX = (grabbedSceneNode.x + geometry.x) + if (Right in edges) geometry.width else 0
-            val borderY = (grabbedSceneNode.y + geometry.y) + if (Bottom in edges) geometry.height else 0
+            val borderX = (grabbedSceneNode.x + geometry.x) + if (Edge.Right in edges) geometry.width else 0
+            val borderY = (grabbedSceneNode.y + geometry.y) + if (Edge.Bottom in edges) geometry.height else 0
             grabX = cursor.wlrCursor.x - borderX
             grabY = cursor.wlrCursor.y - borderY
             grabbedGeometry = Box.allocateCopy(geometry).apply {
@@ -350,8 +264,17 @@ sealed class CursorState {
             }
         }
 
-        // Do the window resize
-        fun processCursorMotion() {
+
+        fun processCursorMotion() = onCursorMotion(0)
+        fun processCursorButton(event: PointerButtonEvent) = onCursorButton(event)
+        override fun onKeyboardKey() = TODO("Not yet implemented")
+
+
+
+
+        /////////////////////////
+
+        override fun onCursorMotion(timeMsec: Int) {
             val borderX = (cursor.wlrCursor.x - grabX).toInt()
             val borderY = (cursor.wlrCursor.y - grabY).toInt()
 
@@ -363,24 +286,24 @@ sealed class CursorState {
 
             // TODO: Explain what does this do? (clamping)
             when {
-                Top in edges -> {
+                Edge.Top in edges -> {
                     top = borderY
                     if (top >= bottom) top = bottom - 1
                 }
 
-                Bottom in edges -> {
+                Edge.Bottom in edges -> {
                     bottom = borderY
                     if (bottom <= top) bottom = top + 1
                 }
             }
 
             when {
-                Left in edges -> {
+                Edge.Left in edges -> {
                     left = borderX
                     if (left >= right) left = right - 1
                 }
 
-                Right in edges -> {
+                Edge.Right in edges -> {
                     right = borderX
                     if (right <= left) right = left + 1
                 }
@@ -392,9 +315,8 @@ sealed class CursorState {
         }
 
 
-        fun processCursorButton(event: PointerButtonEvent) {
-            if (event.state == PointerButtonState.Released)
-                COMPOSITOR.captureMode.transitionToPassthrough()
+        override fun onCursorButton(event: PointerButtonEvent) {
+            if (event.state == PointerButtonState.Released) COMPOSITOR.captureMode.transitionToPassthrough()
         }
     }
 }
