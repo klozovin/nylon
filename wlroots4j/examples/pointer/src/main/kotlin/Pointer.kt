@@ -206,7 +206,7 @@ object Pointer {
 
         println(">> hwkeycode=${key.keycode} keycode=$keycode, keysym=$keysym, state=${key.state}")
 
-        if (keysym == XkbKey.Escape && key.state == KeyboardKeyState.RELEASED) {
+        if (keysym == XkbKey.Escape && key.state == KeyboardKeyState.Released) {
             Log.logDebug(">> Terminating display...")
             display.terminate()
             Log.logDebug(">> ...terminated display!")

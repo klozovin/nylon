@@ -5,8 +5,8 @@ import static jextract.wayland.wl.WL_KEYBOARD_KEY_STATE_PRESSED;
 
 
 public enum KeyboardKeyState {
-    PRESSED(WL_KEYBOARD_KEY_STATE_PRESSED()),
-    RELEASED(WL_KEYBOARD_KEY_STATE_RELEASED());
+    Pressed(WL_KEYBOARD_KEY_STATE_PRESSED()),
+    Released(WL_KEYBOARD_KEY_STATE_RELEASED());
 
     public final int value;
 
@@ -17,8 +17,8 @@ public enum KeyboardKeyState {
 
 
     public static KeyboardKeyState of(int value) {
-        if (value == WL_KEYBOARD_KEY_STATE_PRESSED())  return PRESSED;
-        if (value == WL_KEYBOARD_KEY_STATE_RELEASED()) return RELEASED;
+        if (value == WL_KEYBOARD_KEY_STATE_PRESSED())  return Pressed;
+        if (value == WL_KEYBOARD_KEY_STATE_RELEASED()) return Released;
 
         throw new RuntimeException("Invalid enum value from C code for wl_keyboard_key_state");
     }

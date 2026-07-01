@@ -4,6 +4,7 @@ import compositor.COMPOSITOR
 import compositor.Compositor
 import wayland.util.Edge
 import wayland.util.Edge.*
+import wlroots.types.keyboard.KeyEvent
 import wlroots.types.pointer.PointerButtonEvent
 import wlroots.types.xdgshell.XdgToplevel
 import java.util.*
@@ -15,7 +16,7 @@ typealias Edges = EnumSet<Edge>
 
 class CursorInputMode(val compositor: Compositor) {
 
-    var state: CursorInputState = CursorInputState.Passthrough()
+    var state: CursorInputState = CursorInputState.Passthrough(compositor)
 
 
     //
@@ -24,8 +25,7 @@ class CursorInputMode(val compositor: Compositor) {
 
     fun transitionToPassthrough() {
         require(state is CursorInputState.WindowMove || state is CursorInputState.WindowResize)
-        compositor.inputSystem.cursor.setIcon("default")
-        state = CursorInputState.Passthrough()
+        state = CursorInputState.Passthrough(compositor)
     }
 
     /**
@@ -63,6 +63,11 @@ class CursorInputMode(val compositor: Compositor) {
     }
 
     // --------------------- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+    fun onKeyboardKey(event: KeyEvent, keysym: Int) {
+        state.onKeyboardKey(event, keysym)
+    }
 
 
     fun onCursorMotion(timeMsec: Int) {

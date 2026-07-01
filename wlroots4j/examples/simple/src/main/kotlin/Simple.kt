@@ -144,7 +144,7 @@ fun keyboardKeyNotify(keyEvent: KeyEvent) {
 
     // BUGFIX: Have to check for Escape release, because on some keyboard setups both PRESSED and RELEASED events come
     //         together, when the key is depressed.
-    if (keySym == XkbKey.Escape && keyEvent.state == KeyboardKeyState.RELEASED) {
+    if (keySym == XkbKey.Escape && keyEvent.state == KeyboardKeyState.Released) {
         Log.logDebug("Terminating display...")
         State.display.terminate()
         Log.logDebug("...terminated display!")

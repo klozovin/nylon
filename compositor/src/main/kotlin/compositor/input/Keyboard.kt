@@ -37,20 +37,22 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
     fun onKey(event: KeyEvent) {
         println("key: $event")
         val keycode = event.keycode + 8
-        val keysym = wlrKeyboard.getXkbState().keyGetOneSym(keycode)
+        val keysym = wlrKeyboard.xkbState.keyGetOneSym(keycode)
         val modifiers = wlrKeyboard.getKeyboardModifiers()
 
 
-        if (compositor.captureMode.state is CursorInputState.WindowMove) {
-//            compositor.captureMode.onKey(event)
-            println("NOPE NOPE NOPE")
+        // First check if we're in move/resize mode
+        val isWindowMove = compositor.captureMode.state is CursorInputState.WindowMove
+        val isWindowResize = compositor.captureMode.state is CursorInputState.WindowResize
+        if (isWindowMove || isWindowResize ) {
+            compositor.captureMode.onKeyboardKey(event, keysym)
             return
         }
 
         // Propagate the key to the focused client? Only if the compositor doesn't handle that key combo.
         var propagateKey = false
         when {
-            modifiers.contains(KeyboardModifier.Alt) && event.state == KeyboardKeyState.PRESSED -> {
+            modifiers.contains(KeyboardModifier.Alt) && event.state == KeyboardKeyState.Pressed -> {
                 when (keysym) {
                     XkbKey.F1 -> compositor.windowSystem.focusNextToplevel()
 
@@ -62,7 +64,7 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
                 }
             }
 
-            modifiers.contains(KeyboardModifier.Logo) && event.state == KeyboardKeyState.PRESSED -> {
+            modifiers.contains(KeyboardModifier.Logo) && event.state == KeyboardKeyState.Pressed -> {
                 when (keysym) {
                     XkbKey.Insert -> println("Meta+Insert")
                 }

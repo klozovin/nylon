@@ -35,7 +35,7 @@ class Compositor(val terminalPath: String? = null) {
 
     val xcursorManager: XcursorManager
 
-    // TODO: Move to inputSystem
+    // TODO: Move to inputSystem, maybe?
     val seat: Seat
 
     val outputSystem: OutputSystem
@@ -66,6 +66,8 @@ class Compositor(val terminalPath: String? = null) {
         sceneOutputLayout = scene.attachOutputLayout(outputLayout)
 
         xcursorManager = XcursorManager.create(null, 24) ?: error("Failed to create wlr_xcursor_manager")
+
+        COMPOSITOR = this
 
         inputSystem = InputSystem(this)
         outputSystem = OutputSystem(this)
@@ -146,6 +148,11 @@ class Compositor(val terminalPath: String? = null) {
     fun onSeatRequestSetSelection(event: RequestSetSelectionEvent) {
         // TODO: This should go to some future 'clipboard' system
         seat.setSelection(event.source, event.serial)
+    }
+
+
+    companion object {
+        lateinit var it: Compositor
     }
 
 }

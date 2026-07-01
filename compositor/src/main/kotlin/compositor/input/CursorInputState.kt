@@ -1,25 +1,24 @@
 package compositor.input
 
-import compositor.COMPOSITOR
-import compositor.Compositor
-import compositor.WindowSystem
-import compositor.enumSetOf
+import compositor.*
 import linux.MouseButton
 import wayland.PointerButtonState
 import wayland.util.Edge
+import wlroots.types.keyboard.KeyEvent
 import wlroots.types.keyboard.KeyboardModifier
 import wlroots.types.pointer.PointerButtonEvent
 import wlroots.types.xdgshell.XdgToplevel
 import wlroots.util.Box
+import xkbcommon.XkbKey
 
 
 /**
  * State machine modeling the cursor input modes (passthrough, move, resize).
  */
-sealed class CursorInputState() {
+sealed class CursorInputState(val compositor: Compositor) {
     // TODO: add compositor as param
 
-    abstract fun onKeyboardKey()
+    abstract fun onKeyboardKey(event: KeyEvent, keysym: Int)
     abstract fun onCursorMotion(timeMsec: Int)
     abstract fun onCursorButton(event: PointerButtonEvent)
 
@@ -28,15 +27,16 @@ sealed class CursorInputState() {
      * Normal cursor behavior: pass all the pointer events to focused client
      *
      */
-    class Passthrough : CursorInputState() {
+    class Passthrough(compositor: Compositor) : CursorInputState(compositor) {
 
-        fun processCursorMotion(timeMsec: Int) = onCursorMotion(timeMsec)
-        fun processCursorButton(event: PointerButtonEvent) = onCursorButton(event)
+        init {
+//            COMPOSITOR.inputSystem.cursor.setIcon("default")
+            Compositor.it.inputSystem.cursor.setIcon("default")
+        }
 
-        // ////////////////////////////////////////////////////////////////
 
-
-        override fun onKeyboardKey() { /* Do nothing */
+        override fun onKeyboardKey(event: KeyEvent, keysym: Int) {
+            unreachable()
         }
 
 
@@ -47,9 +47,9 @@ sealed class CursorInputState() {
          * - Give focus to window when cursor passing over (but don't raise)
          */
         override fun onCursorMotion(timeMsec: Int) {
-            val windowSystem = COMPOSITOR.windowSystem
-            val cursor = COMPOSITOR.inputSystem.cursor
-            val seat = COMPOSITOR.seat
+            val windowSystem = compositor.windowSystem
+            val cursor = compositor.inputSystem.cursor
+            val seat = compositor.seat
 
             when (val tpl = windowSystem.toplevelAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y)) {
                 // Find the XdgToplevel under the cursor and forward cursor events to it.
@@ -140,7 +140,7 @@ sealed class CursorInputState() {
 
                     // TODO: Detect grabbed window edge
 
-                    COMPOSITOR.captureMode.transitionToResize(cursorTarget.toplevel, edges)
+                    compositor.captureMode.transitionToResize(cursorTarget.toplevel, edges)
                     return
 
                 }
@@ -171,13 +171,13 @@ sealed class CursorInputState() {
      * pressed.
      */
     class WindowMove(
-        val compositor: Compositor, val grabbedToplevel: XdgToplevel, val initiatingButton: Int
-    ) : CursorInputState() {
+        compositor: Compositor, val grabbedToplevel: XdgToplevel, val initiatingButton: Int
+    ) : CursorInputState(compositor) {
 
         // TODO: pass this as param, no need to know where is the toplevel kept and how
         val grabbedSceneNode = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!.node
 
-        val cursor = COMPOSITOR.inputSystem.cursor
+        val cursor = compositor.inputSystem.cursor
         val grabX = compositor.inputSystem.cursor.wlrCursor.x - grabbedSceneNode.x
         val grabY = compositor.inputSystem.cursor.wlrCursor.y - grabbedSceneNode.y
 
@@ -187,15 +187,10 @@ sealed class CursorInputState() {
         }
 
 
-        fun processCursorMotion() = onCursorMotion(0)
-        fun processCursorButton(event: PointerButtonEvent) = onCursorButton(event)
-
-
-
-        ////////////////////////////////////////////
-
-        override fun onKeyboardKey() {
-            TODO("Not yet implemented")
+        override fun onKeyboardKey(event: KeyEvent, keysym: Int) {
+            when (keysym) {
+                XkbKey.Escape -> compositor.captureMode.transitionToPassthrough()
+            }
         }
 
 
@@ -242,8 +237,8 @@ sealed class CursorInputState() {
     /**
      * Client window is being resized by the user, initiated by dragging the border of the window.
      */
-    class WindowResize(val compositor: Compositor, val grabbedToplevel: XdgToplevel, val edges: Edges) :
-        CursorInputState() {
+    class WindowResize(compositor: Compositor, val grabbedToplevel: XdgToplevel, val edges: Edges) :
+        CursorInputState(compositor) {
 
         val cursor = COMPOSITOR.inputSystem.cursor
         var grabbedGeometry: Box // TODO: var needed?
@@ -265,14 +260,13 @@ sealed class CursorInputState() {
         }
 
 
-        fun processCursorMotion() = onCursorMotion(0)
-        fun processCursorButton(event: PointerButtonEvent) = onCursorButton(event)
-        override fun onKeyboardKey() = TODO("Not yet implemented")
+        override fun onKeyboardKey(event: KeyEvent, keysym: Int) {
+            when (keysym) {
+                XkbKey.Escape -> compositor.captureMode.transitionToPassthrough()
+                else -> println("$this -> don't know what to do on that key")
+            }
+        }
 
-
-
-
-        /////////////////////////
 
         override fun onCursorMotion(timeMsec: Int) {
             val borderX = (cursor.wlrCursor.x - grabX).toInt()

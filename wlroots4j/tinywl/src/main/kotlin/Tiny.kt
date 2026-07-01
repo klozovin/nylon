@@ -411,7 +411,7 @@ object Tiny {
         val keysym = keyboard.xkbState.keyGetOneSym(keycode)
 
         var handledInCompositor = false
-        if (keyboard.getKeyboardModifiers().contains(KeyboardModifier.Alt) && event.state == KeyboardKeyState.PRESSED) {
+        if (keyboard.getKeyboardModifiers().contains(KeyboardModifier.Alt) && event.state == KeyboardKeyState.Pressed) {
             when (keysym) {
                 XkbKey.F1 -> {
                     if (TOPLEVELS.isNotEmpty()) {
