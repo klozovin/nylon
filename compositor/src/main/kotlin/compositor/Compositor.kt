@@ -1,5 +1,6 @@
 package compositor
 
+import compositor.input.InputCursorMode
 import compositor.input.InputSystem
 import compositor.inspector.Inspector
 import wayland.server.Display
@@ -138,7 +139,7 @@ class Compositor(val terminalPath: String? = null) {
 
     fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
         // TODO: Move to input system?
-        if (seat.getPointerState().getFocusedClient() == event.seatClient)
+        if (seat.pointerState.getFocusedClient() == event.seatClient)
             inputSystem.cursor.wlrCursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
     }
 

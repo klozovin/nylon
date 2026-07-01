@@ -75,10 +75,12 @@ class WindowSystem(val compositor: Compositor) {
 
 
     fun toplevelAtCoordinates(x: Double, y: Double): UnderCursor? {
+        // First, find a scene node under the cursor, then walk its parents upwards untill you reach a
+        // top level window.
         val (sceneNode, nx, ny) = compositor.scene.tree().node.nodeAt(x, y)
             ?: return null
 
-        if (sceneNode.type != SceneNode.Type.BUFFER)
+        if (sceneNode.type != SceneNode.Type.Buffer)
             return null
 
         val sceneBuffer = SceneBuffer.fromNode(sceneNode)
@@ -89,6 +91,7 @@ class WindowSystem(val compositor: Compositor) {
             for ((toplevel, toplevelSceneTree) in toplevelSceneTree)
                 if (sceneTree == toplevelSceneTree)
                     return UnderCursor(toplevel, sceneSurface.surface(), nx, ny)
+
         unreachable()
     }
 
@@ -175,7 +178,15 @@ class WindowSystem(val compositor: Compositor) {
     fun onToplevelRequestMove(event: XdgToplevel.MoveEvent) {
         if (!isPointerGrabValid(event.serial))
             return
-        compositor.captureMode.transitionToMove(event.toplevel)
+
+        // Get the mouse button used to initiate this request
+        val buttonCount = compositor.seat.pointerState.buttonCount
+        assert(buttonCount <= 1) {"Don't know what to do yet with this"}
+
+        val pressedButton = compositor.seat.pointerState.buttons.first()
+        assert(pressedButton.nPressed == 1L) { "Can't handle multiple pointing devices at the same time for now"}
+
+        compositor.captureMode.transitionToMove(event.toplevel, pressedButton.button)
     }
 
 

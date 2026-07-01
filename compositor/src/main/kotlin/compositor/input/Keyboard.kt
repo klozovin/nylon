@@ -35,9 +35,17 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
 
 
     fun onKey(event: KeyEvent) {
+        println("key: $event")
         val keycode = event.keycode + 8
         val keysym = wlrKeyboard.getXkbState().keyGetOneSym(keycode)
         val modifiers = wlrKeyboard.getKeyboardModifiers()
+
+
+        if (compositor.captureMode.state is CursorState.WindowMove) {
+//            compositor.captureMode.onKey(event)
+            println("NOPE NOPE NOPE")
+            return
+        }
 
         // Propagate the key to the focused client? Only if the compositor doesn't handle that key combo.
         var propagateKey = false
@@ -65,8 +73,11 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
         }
 
         if (propagateKey) {
+            println("Propagatin key: $event")
             compositor.seat.setKeyboard(wlrKeyboard)
             compositor.seat.keyboardNotifyKey(event.timeMsec, event.keycode, event.state)
+        } else {
+            println("NOT propagatin: $event")
         }
     }
 

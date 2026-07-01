@@ -57,6 +57,7 @@ class Cursor(val compositor: Compositor) {
     }
 
     fun onCursorFrame(cursor: WlrCursor) {
+        // TODO: Swallow this when moving windows
         compositor.seat.pointerNotifyFrame()
     }
 }
