@@ -9,6 +9,7 @@ import wlroots.types.scene.SceneTree
 import wlroots.types.xdgshell.XdgPopup
 import wlroots.types.xdgshell.XdgShell
 import wlroots.types.xdgshell.XdgSurface
+import wlroots.types.xdgshell.XdgSurfaceConfigure
 import wlroots.types.xdgshell.XdgToplevel
 import java.util.*
 
@@ -23,6 +24,8 @@ class WindowSystem(val compositor: Compositor) {
     val popupSceneTree: MutableMap<XdgPopup, SceneTree> = HashMap()
 
     var focusedToplevel: XdgToplevel? = null // TODO: Should go to 'cycle' class
+
+    var moveAndResize: MoveAndResize? = null
 
 
     init {
@@ -110,7 +113,7 @@ class WindowSystem(val compositor: Compositor) {
                 arrayOf(
                     map.add(::onToplevelMap),
                     unmap.add(::onToplevelUnmap),
-                    commit.add(::onToplevelCommit)
+                    commit.add(::onToplevelCommit),
                 )
             },
             *with(toplevel.events) {
@@ -121,6 +124,8 @@ class WindowSystem(val compositor: Compositor) {
                     requestResize.add(::onToplevelRequestResize),
                     requestMaximize.add(::onToplevelRequestMaximize),
                     requestFullscreen.add(::onToplevelRequestFullscreen),
+
+                    ackConfigure.add(::onAckConfigure)
                 )
             }
         ).forEach { toplevels.put(it, toplevel) }
@@ -298,7 +303,7 @@ class WindowSystem(val compositor: Compositor) {
     /**
      * Check whether the pointer grab for move or resize operation is valid.
      *
-     * Also fixes bad behaviour for clients built with Rust's "winit" library: they try to initiate the
+     * Also fixes bad behavior for clients built with Rust's "winit" library: they try to initiate the
      * move/resize after the mouse button has already been released, leading to state where the window is
      * "stuck" to the cursor even though no mouse buttons are held down.
      */
@@ -309,9 +314,55 @@ class WindowSystem(val compositor: Compositor) {
     }
 
 
+    fun moveAndResizeAtomic(toplevel: XdgToplevel, x: Int, y: Int, w: Int, h: Int) {
+        assert(toplevel.base.initialized)
+
+        // TODO: This require should be satisfied
+//        require(moveAndResize == null) //
+
+        val sceneTree = toplevelSceneTree[toplevel]!!
+
+        // Set size, commit transaction
+        val serialSetSize = toplevel.setSize(w, h)
+        val configureSerial = toplevel.base.scheduleConfigure()
+        check(serialSetSize == configureSerial) // Don't need this for real, just to check an assumption
+
+        // Setup waiting for ack
+        val op = MoveAndResize(toplevel, sceneTree.node, configureSerial, x, y, w, h)
+
+        moveAndResize = op
+        // Then do a move ... but NOT here :D
+
+
+    }
+
+
+    /**
+     * Only thing it currently does is try to finish atomically moving and resizing the window.
+     */
+    fun onAckConfigure(configure: XdgSurfaceConfigure.Toplevel) {
+        moveAndResize?.let {
+            // Finish the MoverSize
+            it.sceneNode.setPosition(it.x, it.y)
+            moveAndResize = null
+        }
+    }
+
+
     //
     // Helper classes
     //
+
+    data class MoveAndResize(
+        val toplevel: XdgToplevel,
+        val sceneNode: SceneNode,
+        val configureSerial: Int,
+        val x: Int,
+        val y: Int,
+        val width: Int, // TODO: Maybe don't need it here?
+        val height: Int
+    )
+
 
     data class UnderCursor(
         val toplevel: XdgToplevel,
@@ -333,7 +384,8 @@ private fun _countSignalHandlers(toplevel: XdgToplevel): Int =
                 requestMove,
                 requestResize,
                 requestMaximize,
-                requestFullscreen
+                requestFullscreen,
+                ackConfigure
             )
         }
     ).flatten().sumOf { it.listenerList.length() }

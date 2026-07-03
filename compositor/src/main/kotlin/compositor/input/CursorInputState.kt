@@ -275,8 +275,18 @@ sealed class CursorInputState(val compositor: Compositor) {
         override fun onKeyboardKey(event: KeyEvent, keysym: Int) {
             when (keysym) {
                 XkbKey.Escape -> {
-                    grabbedSceneNode.setPosition(startingX, startingY)
-                    grabbedToplevel.setSize(startingWidth, startingHeight)
+
+                    compositor.windowSystem.moveAndResizeAtomic(
+                        grabbedToplevel,
+                        startingX, startingY,
+                        startingWidth, startingHeight
+                    )
+
+
+//                    grabbedSceneNode.setPosition(startingX, startingY)
+//                    grabbedToplevel.setSize(startingWidth, startingHeight)
+
+                    // Where to transition? Here or in the atomic move handler? Leave it for now here, it easier.
                     compositor.captureMode.transitionToPassthrough()
                 }
                 else -> println("$this -> don't know what to do on that key")
@@ -320,8 +330,14 @@ sealed class CursorInputState(val compositor: Compositor) {
             }
 
             val geometry = grabbedToplevel.getBase().geometry
-            grabbedSceneNode.setPosition(left - geometry.x, top - geometry.y)
-            grabbedToplevel.setSize(right - left, bottom - top)
+//            grabbedSceneNode.setPosition(left - geometry.x, top - geometry.y)
+//            grabbedToplevel.setSize(right - left, bottom - top)
+
+            val positionX = left - geometry.x
+            val positionY = top - geometry.y
+            val width = right - left
+            val height = bottom - top
+            compositor.windowSystem.moveAndResizeAtomic(grabbedToplevel, positionX, positionY, width, height)
         }
 
 
