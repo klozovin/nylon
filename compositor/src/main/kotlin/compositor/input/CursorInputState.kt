@@ -30,8 +30,7 @@ sealed class CursorInputState(val compositor: Compositor) {
     class Passthrough(compositor: Compositor) : CursorInputState(compositor) {
 
         init {
-//            COMPOSITOR.inputSystem.cursor.setIcon("default")
-            Compositor.it.inputSystem.cursor.setIcon("default")
+            compositor.inputSystem.cursor.setIcon("default")
         }
 
 
@@ -176,6 +175,8 @@ sealed class CursorInputState(val compositor: Compositor) {
 
         // TODO: pass this as param, no need to know where is the toplevel kept and how
         val grabbedSceneNode = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!.node
+        val startingX = grabbedSceneNode.x
+        val startingY = grabbedSceneNode.y
 
         val cursor = compositor.inputSystem.cursor
         val grabX = compositor.inputSystem.cursor.wlrCursor.x - grabbedSceneNode.x
@@ -189,7 +190,11 @@ sealed class CursorInputState(val compositor: Compositor) {
 
         override fun onKeyboardKey(event: KeyEvent, keysym: Int) {
             when (keysym) {
-                XkbKey.Escape -> compositor.captureMode.transitionToPassthrough()
+                // Stop the move operation, restore starting window position
+                XkbKey.Escape -> {
+                    grabbedSceneNode.setPosition(startingX, startingY)
+                    compositor.captureMode.transitionToPassthrough()
+                }
             }
         }
 
@@ -244,11 +249,18 @@ sealed class CursorInputState(val compositor: Compositor) {
         var grabbedGeometry: Box // TODO: var needed?
         val grabbedSceneTree = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!
         val grabbedSceneNode = grabbedSceneTree.node
+
+        // Starting size and position, used for restoring.
+        val startingX = grabbedSceneNode.x
+        val startingY = grabbedSceneNode.y
+        val startingWidth = grabbedToplevel.base.geometry.width
+        val startingHeight = grabbedToplevel.base.geometry.height
+
         var grabX: Double
         var grabY: Double
 
         init {
-            val geometry = grabbedToplevel.getBase().geometry
+            val geometry = grabbedToplevel.base.geometry
             val borderX = (grabbedSceneNode.x + geometry.x) + if (Edge.Right in edges) geometry.width else 0
             val borderY = (grabbedSceneNode.y + geometry.y) + if (Edge.Bottom in edges) geometry.height else 0
             grabX = cursor.wlrCursor.x - borderX
@@ -262,7 +274,11 @@ sealed class CursorInputState(val compositor: Compositor) {
 
         override fun onKeyboardKey(event: KeyEvent, keysym: Int) {
             when (keysym) {
-                XkbKey.Escape -> compositor.captureMode.transitionToPassthrough()
+                XkbKey.Escape -> {
+                    grabbedSceneNode.setPosition(startingX, startingY)
+                    grabbedToplevel.setSize(startingWidth, startingHeight)
+                    compositor.captureMode.transitionToPassthrough()
+                }
                 else -> println("$this -> don't know what to do on that key")
             }
         }

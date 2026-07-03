@@ -34,7 +34,6 @@ public class SceneNode {
     // *** Getters and setters ***
     //
 
-
     public Type getType() {
         return Type.of(wlr_scene_node.type(sceneNodePtr));
     }

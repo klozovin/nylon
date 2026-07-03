@@ -5,8 +5,8 @@ import static jextract.wayland.wl.WL_POINTER_AXIS_VERTICAL_SCROLL;
 
 
 public enum PointerAxis {
-    VERTICAL_SCROLL(WL_POINTER_AXIS_VERTICAL_SCROLL()),
-    HORIZONTAL_SCROLL(WL_POINTER_AXIS_HORIZONTAL_SCROLL());
+    VerticalScroll(WL_POINTER_AXIS_VERTICAL_SCROLL()),
+    HorizontalScroll(WL_POINTER_AXIS_HORIZONTAL_SCROLL());
 
 
     public final int value;
@@ -18,8 +18,8 @@ public enum PointerAxis {
 
 
     public static PointerAxis of(int value) {
-        if (value == WL_POINTER_AXIS_VERTICAL_SCROLL())   return VERTICAL_SCROLL;
-        if (value == WL_POINTER_AXIS_HORIZONTAL_SCROLL()) return HORIZONTAL_SCROLL;
+        if (value == WL_POINTER_AXIS_VERTICAL_SCROLL())   return VerticalScroll;
+        if (value == WL_POINTER_AXIS_HORIZONTAL_SCROLL()) return HorizontalScroll;
 
         throw new RuntimeException("Invalid enum value from C code for wl_pointer_axis");
     }

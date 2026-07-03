@@ -149,12 +149,6 @@ class Compositor(val terminalPath: String? = null) {
         // TODO: This should go to some future 'clipboard' system
         seat.setSelection(event.source, event.serial)
     }
-
-
-    companion object {
-        lateinit var it: Compositor
-    }
-
 }
 
 
