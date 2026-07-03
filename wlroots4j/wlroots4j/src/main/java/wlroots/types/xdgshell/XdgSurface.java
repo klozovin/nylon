@@ -5,6 +5,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal0;
+import wayland.server.Signal.Signal1;
 import wlroots.types.compositor.Surface;
 import wlroots.util.Box;
 
@@ -104,9 +105,9 @@ public class XdgSurface {
     //
 
     public enum SurfaceRole {
-        NONE(WLR_XDG_SURFACE_ROLE_NONE()),
-        TOPLEVEL(WLR_XDG_SURFACE_ROLE_TOPLEVEL()),
-        POPUP(WLR_XDG_SURFACE_ROLE_POPUP());
+        None(WLR_XDG_SURFACE_ROLE_NONE()),
+        Toplevel(WLR_XDG_SURFACE_ROLE_TOPLEVEL()),
+        Popup(WLR_XDG_SURFACE_ROLE_POPUP());
 
 
         public final int value;
@@ -117,9 +118,9 @@ public class XdgSurface {
         }
 
         public static SurfaceRole of(int value) {
-            if (value == WLR_XDG_SURFACE_ROLE_NONE())     return NONE;
-            if (value == WLR_XDG_SURFACE_ROLE_TOPLEVEL()) return TOPLEVEL;
-            if (value == WLR_XDG_SURFACE_ROLE_POPUP())    return POPUP;
+            if (value == WLR_XDG_SURFACE_ROLE_NONE())     return None;
+            if (value == WLR_XDG_SURFACE_ROLE_TOPLEVEL()) return Toplevel;
+            if (value == WLR_XDG_SURFACE_ROLE_POPUP())    return Popup;
 
             throw new RuntimeException("Invalid enum value from C code for wlr_xdg_surface_role");
         }
@@ -131,11 +132,19 @@ public class XdgSurface {
     //
 
     public static class Events {
+        public final MemorySegment eventsPtr;
         public final Signal0 destroy;
+
+        /// Left here for API compatibility with wlroots. It's better to use convenience `ackConfigure` events
+        /// {@link XdgToplevel.Events#ackConfigure} and {@link XdgPopup.Events#ackConfigure} instead of this.
+        public final Signal1<XdgSurfaceConfigure> ackConfigure;
 
 
         public Events(MemorySegment eventsPtr) {
-            this.destroy = Signal.of(wlr_xdg_surface.events.destroy(eventsPtr));
+            assert !eventsPtr.equals(NULL);
+            this.eventsPtr    = eventsPtr;
+            this.destroy      = Signal.of(wlr_xdg_surface.events.destroy(eventsPtr));
+            this.ackConfigure = Signal.of(wlr_xdg_surface.events.ack_configure(eventsPtr), XdgSurfaceConfigure::new);
         }
     }
 }

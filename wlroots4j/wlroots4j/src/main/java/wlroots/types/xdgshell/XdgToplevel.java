@@ -95,6 +95,10 @@ public class XdgToplevel {
     // *** Methods ***
     //
 
+
+    /// Request that this toplevel surface be the given size.
+    ///
+    /// @return associated configure serial
     public int setSize(int width, int height) {
         return wlr_xdg_toplevel_set_size(xdgToplevelPtr, width, height);
     }
@@ -112,20 +116,27 @@ public class XdgToplevel {
     // *** Events ***
     //
 
-    public static class Events {
+    public class Events {
         public final Signal0 destroy;
         public final Signal1<MoveEvent> requestMove;
         public final Signal1<ResizeEvent> requestResize;
         public final Signal0 requestMaximize;
         public final Signal0 requestFullscreen;
 
+        /// Added for API safety and convenience, does not exist in wlroots. Automatically passes the correct
+        /// subclass of {@link XdgSurfaceConfigure} to signal handler.
+        public final Signal1<XdgSurfaceConfigure.Toplevel> ackConfigure;
+
 
         Events(MemorySegment eventsPtr) {
             this.destroy           = Signal.of(wlr_xdg_toplevel.events.destroy(eventsPtr));
-            this.requestMove       = Signal.of(wlr_xdg_toplevel.events.request_move(eventsPtr), MoveEvent::new);
+            this.requestMove       = Signal.of(wlr_xdg_toplevel.events.request_move(eventsPtr),   MoveEvent::new);
             this.requestResize     = Signal.of(wlr_xdg_toplevel.events.request_resize(eventsPtr), ResizeEvent::new);
             this.requestMaximize   = Signal.of(wlr_xdg_toplevel.events.request_maximize(eventsPtr));
             this.requestFullscreen = Signal.of(wlr_xdg_toplevel.events.request_fullscreen(eventsPtr));
+
+            var baseAckConfigureSignalPtr = getBase().events.ackConfigure.signalPtr;
+            this.ackConfigure = Signal.of(baseAckConfigureSignalPtr, XdgSurfaceConfigure.Toplevel::new);
         }
     }
 
@@ -133,31 +144,31 @@ public class XdgToplevel {
     /// `struct wlr_xdg_toplevel_move_event {}`
     public static class MoveEvent {
         public final XdgToplevel toplevel;
-        public final SeatClient  seat;
-        public final int         serial;
+        public final SeatClient seat;
+        public final int serial;
 
 
         public MoveEvent(MemorySegment ptr) {
             toplevel = new XdgToplevel(wlr_xdg_toplevel_move_event.toplevel(ptr));
-            seat     = new SeatClient(wlr_xdg_toplevel_move_event.seat(ptr));
-            serial   = wlr_xdg_toplevel_move_event.serial(ptr);
+            seat = new SeatClient(wlr_xdg_toplevel_move_event.seat(ptr));
+            serial = wlr_xdg_toplevel_move_event.serial(ptr);
         }
     }
 
 
     /// `struct wlr_xdg_toplevel_resize_event {}`
     public static class ResizeEvent {
-        public final XdgToplevel   toplevel;
-        public final SeatClient    seat;
-        public final int           serial;
+        public final XdgToplevel toplevel;
+        public final SeatClient seat;
+        public final int serial;
         public final EnumSet<Edge> edges;
 
 
         public ResizeEvent(MemorySegment ptr) {
             toplevel = new XdgToplevel(wlr_xdg_toplevel_resize_event.toplevel(ptr));
-            seat     = new SeatClient(wlr_xdg_toplevel_resize_event.seat(ptr));
-            serial   = wlr_xdg_toplevel_resize_event.serial(ptr);
-            edges    = Edge.fromBitset(wlr_xdg_toplevel_resize_event.edges(ptr));
+            seat = new SeatClient(wlr_xdg_toplevel_resize_event.seat(ptr));
+            serial = wlr_xdg_toplevel_resize_event.serial(ptr);
+            edges = Edge.fromBitset(wlr_xdg_toplevel_resize_event.edges(ptr));
         }
     }
 }

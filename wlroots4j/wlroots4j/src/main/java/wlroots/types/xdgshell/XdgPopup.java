@@ -5,6 +5,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal0;
+import wayland.server.Signal.Signal1;
 import wlroots.types.compositor.Surface;
 
 import java.lang.foreign.MemorySegment;
@@ -60,12 +61,20 @@ public class XdgPopup {
     // *** Events ***
     //
 
-    public static class Events {
+    public class Events {
         public final Signal0 destroy;
+
+        /// Added for API safety and convenience, it does not exist in wlroots. Correctly passes the subclass
+        /// of {@link XdgSurfaceConfigure} to handler. Use this instead of
+        /// {@link XdgSurface.Events#ackConfigure}.
+        public final Signal1<XdgSurfaceConfigure.Popup> ackConfigure;
 
 
         Events(MemorySegment ptr) {
-            destroy = Signal.of(wlr_xdg_popup.events.destroy(ptr));
+            this.destroy = Signal.of(wlr_xdg_popup.events.destroy(ptr));
+
+            var baseAckConfigureSignalPtr = getBase().events.ackConfigure.signalPtr;
+            this.ackConfigure = Signal.of(baseAckConfigureSignalPtr, XdgSurfaceConfigure.Popup::new);
         }
 
 
