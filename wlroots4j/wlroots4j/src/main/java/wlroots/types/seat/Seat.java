@@ -78,6 +78,14 @@ public final class Seat {
     }
 
 
+    /// Clear the focused surface for the keyboard and leave all entered surfaces. This function does not
+    /// respect keyboard grabs: you probably want {@link Seat#keyboardNotifyClearFocus} instead.
+    public void keyboardClearFocus() {
+        wlr_seat_keyboard_clear_focus(seatPtr);
+
+    }
+
+
     /// Notify the seat that a key has been pressed on the keyboard. Defers to any keyboard grabs.
     ///
     /// @param time in milliseconds
@@ -89,6 +97,13 @@ public final class Seat {
     /// Notify the seat that the modifiers for the keyboard have changed. Defers to any keyboard grabs.
     public void keyboardNotifyModifiers(KeyboardModifiers modifiers) {
         wlr_seat_keyboard_notify_modifiers(seatPtr, modifiers.keyboardModifiersPtr);
+    }
+
+
+    /// Notify the seat of a keyboard leave event to the currently-focused surface. Defers to any keyboard
+    /// grabs.
+    public void keyboardNotifyClearFocus() {
+        wlr_seat_keyboard_notify_clear_focus(seatPtr);
     }
 
 

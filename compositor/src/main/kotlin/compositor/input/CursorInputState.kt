@@ -1,13 +1,13 @@
 package compositor.input
 
 import compositor.*
+import compositor.windows.Window
 import linux.MouseButton
 import wayland.PointerButtonState
 import wayland.util.Edge
 import wlroots.types.keyboard.KeyEvent
 import wlroots.types.keyboard.KeyboardModifier
 import wlroots.types.pointer.PointerButtonEvent
-import wlroots.types.xdgshell.XdgToplevel
 import wlroots.util.Box
 import xkbcommon.XkbKey
 
@@ -50,7 +50,7 @@ sealed class CursorInputState(val compositor: Compositor) {
             val cursor = compositor.inputSystem.cursor
             val seat = compositor.seat
 
-            when (val tpl = windowSystem.toplevelAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y)) {
+            when (val tpl = windowSystem.findWindowAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y)) {
                 // Find the XdgToplevel under the cursor and forward cursor events to it.
                 is WindowSystem.UnderCursor -> {
                     seat.pointerNotifyEnter(tpl.surface, tpl.nx, tpl.ny)
@@ -90,8 +90,8 @@ sealed class CursorInputState(val compositor: Compositor) {
             when {
                 altPressed && lmbPressed -> {
                     // begin window move
-                    windowSystem.toplevelAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y)?.let {
-                        COMPOSITOR.captureMode.transitionToMove(it.toplevel, event.button)
+                    windowSystem.findWindowAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y)?.let {
+                        COMPOSITOR.captureMode.transitionToMove(it.window, it.toplevel, event.button)
                         return
                     }
                 }
@@ -99,12 +99,12 @@ sealed class CursorInputState(val compositor: Compositor) {
                 altPressed && rmbPressed -> {
                     // TODO: Maybe defocus when clicking on desktop?
                     val cursorTarget =
-                        windowSystem.toplevelAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y) ?: return
+                        windowSystem.findWindowAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y) ?: return
                     val toplevel = cursorTarget.toplevel
 
 
                     val geometry = toplevel.base.geometry
-                    val sceneTree = windowSystem.toplevelSceneTree[toplevel]!!
+                    val sceneTree = cursorTarget.window.sceneTree // windowSystem.toplevelSceneTree[toplevel]!!
                     val coordinates = sceneTree.node.coords()
 
 
@@ -139,15 +139,22 @@ sealed class CursorInputState(val compositor: Compositor) {
 
                     // TODO: Detect grabbed window edge
 
-                    compositor.captureMode.transitionToResize(cursorTarget.toplevel, edges)
+                    compositor.captureMode.transitionToResize(cursorTarget.window, edges)
                     return
 
                 }
 
                 // Raise and focus the clicked window
                 event.state == PointerButtonState.Pressed -> {
-                    windowSystem.toplevelAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y)?.let {
-                        windowSystem.focusToplevel(it.toplevel)
+                    windowSystem.findWindowAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y)?.let {
+                        val toplevel = it.toplevel
+                        // TODO: Don't do it like this, create new function windowAtCoords
+//                        val window = compositor.windowSystem.windows.find { it.xdgToplevel == toplevel }!!
+
+
+                        windowSystem.focuser.focusWindow(it.window)
+//                        windowSystem.focusWindow(it.window)
+//                        windowSystem.focusToplevel(it.toplevel)
                     }
                 }
             }
@@ -170,17 +177,27 @@ sealed class CursorInputState(val compositor: Compositor) {
      * pressed.
      */
     class WindowMove(
-        compositor: Compositor, val grabbedToplevel: XdgToplevel, val initiatingButton: Int
+        compositor: Compositor,
+        val targetWindow: Window,
+//        val grabbedToplevel: XdgToplevel,
+        val initiatingButton: Int,
     ) : CursorInputState(compositor) {
 
         // TODO: pass this as param, no need to know where is the toplevel kept and how
-        val grabbedSceneNode = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!.node
-        val startingX = grabbedSceneNode.x
-        val startingY = grabbedSceneNode.y
+//        val grabbedSceneNode = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!.node
+
+        val grabbedSceneNode = targetWindow.sceneTree.node
+
+//        val startingX = grabbedSceneNode.x
+//        val startingY = grabbedSceneNode.y
+
+        val startingX = targetWindow.sceneTree.node.x
+        val startingY = targetWindow.sceneTree.node.y
+
 
         val cursor = compositor.inputSystem.cursor
-        val grabX = compositor.inputSystem.cursor.wlrCursor.x - grabbedSceneNode.x
-        val grabY = compositor.inputSystem.cursor.wlrCursor.y - grabbedSceneNode.y
+        val grabX = compositor.inputSystem.cursor.wlrCursor.x - targetWindow.sceneTree.node.x
+        val grabY = compositor.inputSystem.cursor.wlrCursor.y - targetWindow.sceneTree.node.y
 
 
         init {
@@ -201,9 +218,13 @@ sealed class CursorInputState(val compositor: Compositor) {
 
         override fun onCursorMotion(timeMsec: Int) {
             // HACK: this kind of check should be automatic and centralized somewhere
-            check(compositor.windowSystem.toplevels.containsValue(grabbedToplevel)) {
+//            check(compositor.windowSystem.toplevels.containsValue(grabbedToplevel)) {
+            check(compositor.windowSystem.windows.contains(targetWindow)) {
+
                 "BUG: Trying to move a non existent window"
             }
+            check(!targetWindow.isDestroyed)
+            println(targetWindow.isDestroyed)
             grabbedSceneNode.setPosition((cursor.wlrCursor.x - grabX), (cursor.wlrCursor.y - grabY))
         }
 
@@ -242,25 +263,30 @@ sealed class CursorInputState(val compositor: Compositor) {
     /**
      * Client window is being resized by the user, initiated by dragging the border of the window.
      */
-    class WindowResize(compositor: Compositor, val grabbedToplevel: XdgToplevel, val edges: Edges) :
+    class WindowResize(
+        compositor: Compositor,
+        val targetWindow: Window,
+//        val grabbedToplevel: XdgToplevel,
+        val edges: Edges
+    ) :
         CursorInputState(compositor) {
 
         val cursor = COMPOSITOR.inputSystem.cursor
         var grabbedGeometry: Box // TODO: var needed?
-        val grabbedSceneTree = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!
-        val grabbedSceneNode = grabbedSceneTree.node
+//        val grabbedSceneTree = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!
+        val grabbedSceneNode = targetWindow.sceneTree.node
 
         // Starting size and position, used for restoring.
         val startingX = grabbedSceneNode.x
         val startingY = grabbedSceneNode.y
-        val startingWidth = grabbedToplevel.base.geometry.width
-        val startingHeight = grabbedToplevel.base.geometry.height
+        val startingWidth = targetWindow.xdgToplevel.base.geometry.width
+        val startingHeight = targetWindow.xdgToplevel.base.geometry.height
 
         var grabX: Double
         var grabY: Double
 
         init {
-            val geometry = grabbedToplevel.base.geometry
+            val geometry = targetWindow.xdgToplevel.base.geometry
             val borderX = (grabbedSceneNode.x + geometry.x) + if (Edge.Right in edges) geometry.width else 0
             val borderY = (grabbedSceneNode.y + geometry.y) + if (Edge.Bottom in edges) geometry.height else 0
             grabX = cursor.wlrCursor.x - borderX
@@ -277,7 +303,7 @@ sealed class CursorInputState(val compositor: Compositor) {
                 XkbKey.Escape -> {
 
                     compositor.windowSystem.moveAndResizeAtomic(
-                        grabbedToplevel,
+                        targetWindow,
                         startingX, startingY,
                         startingWidth, startingHeight
                     )
@@ -289,6 +315,7 @@ sealed class CursorInputState(val compositor: Compositor) {
                     // Where to transition? Here or in the atomic move handler? Leave it for now here, it easier.
                     compositor.captureMode.transitionToPassthrough()
                 }
+
                 else -> println("$this -> don't know what to do on that key")
             }
         }
@@ -329,7 +356,7 @@ sealed class CursorInputState(val compositor: Compositor) {
                 }
             }
 
-            val geometry = grabbedToplevel.getBase().geometry
+            val geometry = targetWindow.xdgToplevel.base.geometry
 //            grabbedSceneNode.setPosition(left - geometry.x, top - geometry.y)
 //            grabbedToplevel.setSize(right - left, bottom - top)
 
@@ -337,7 +364,7 @@ sealed class CursorInputState(val compositor: Compositor) {
             val positionY = top - geometry.y
             val width = right - left
             val height = bottom - top
-            compositor.windowSystem.moveAndResizeAtomic(grabbedToplevel, positionX, positionY, width, height)
+            compositor.windowSystem.moveAndResizeAtomic(targetWindow, positionX, positionY, width, height)
         }
 
 

@@ -99,7 +99,7 @@ public class SceneNode {
     ///
     /// @param lx Target point, layout-local x coordinate
     /// @param ly Target point, layout-local y coordinate
-    /// @return Found {@link SceneNode} coordinates relative to the returned node, or NULL if no node found
+    /// @return Found {@link SceneNode} and coordinates relative to the returned node, or NULL if no node found
     public @Nullable Tuple3<SceneNode, Double, Double> nodeAt(double lx, double ly) {
         try (var arena = Arena.ofConfined()) {
             var nxPtr = arena.allocate(ValueLayout.JAVA_DOUBLE);

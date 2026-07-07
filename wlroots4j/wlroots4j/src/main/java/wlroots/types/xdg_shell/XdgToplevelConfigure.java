@@ -1,6 +1,5 @@
-package wlroots.types.xdgshell;
+package wlroots.types.xdg_shell;
 
-import jextract.wlroots.wlr;
 import jextract.wlroots.wlr_xdg_toplevel_configure;
 import org.jspecify.annotations.NullMarked;
 

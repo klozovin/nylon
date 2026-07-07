@@ -1,0 +1,175 @@
+package compositor.windows
+
+import compositor.WindowSystem
+import wayland.server.Listener
+import wlroots.types.compositor.Surface
+import wlroots.types.scene.SceneTree
+import wlroots.types.xdg_shell.XdgSurfaceConfigure
+import wlroots.types.xdg_shell.XdgToplevel
+
+
+/**
+ * Represents one visible window on the screen, combines in one place:
+ *
+ * - XdgSurface
+ * - XdgToplevel
+ * - SceneTree
+ */
+class Window(
+    val windows: WindowSystem,
+    val xdgToplevel: XdgToplevel,
+    val sceneTree: SceneTree
+) {
+    // Keep all the signal listeners here
+    val listeners: MutableList<Listener> = mutableListOf()
+
+    // Children
+    val childWindows: MutableList<Window> = mutableListOf()
+    val childPopups: MutableList<Popup> = mutableListOf()
+
+    // For debugging
+    var isDestroyed = false
+
+
+    init {
+        val surfaceListeners = with(xdgToplevel.base.surface.events) {
+            arrayOf(
+                map.add(::onMap),
+                unmap.add(::onUnmap),
+                commit.add(::onCommit),
+            )
+        }
+        val toplevelListeners = with(xdgToplevel.events) {
+            arrayOf(
+                destroy.add(::onDestroy),
+                requestMove.add(::onRequestMove),
+                requestResize.add(::onRequestResize),
+                requestMaximize.add(::onRequestMaximize),
+                requestFullscreen.add(::onRequestFullscreen),
+                ackConfigure.add(::onAckConfigure)
+            )
+        }
+        listeners.addAll(surfaceListeners)
+        listeners.addAll(toplevelListeners)
+    }
+
+
+    override fun equals(other: Any?): Boolean {
+        // Two windows are the same if they reference the same XdgToplevel
+        return when (other) {
+            is Window -> this.xdgToplevel == other.xdgToplevel
+            else -> false
+        }
+    }
+
+
+    override fun hashCode(): Int {
+        TODO()
+        var result = xdgToplevel.hashCode()
+        result = 31 * result + sceneTree.hashCode()
+        result = 31 * result + listeners.hashCode()
+        return result
+    }
+
+    //
+    // *** Helper functions
+    //
+
+    fun addChild(child: Window) {
+        require(!childWindows.contains(child))
+        childWindows.add(child)
+    }
+
+
+    fun addChild(child: Popup) {
+        require(!childPopups.contains(child))
+        childPopups.add(child)
+    }
+
+
+
+    //
+    // *** Signal handlers
+    //
+
+    fun onMap() {
+        windows.focuser.focusWindow(this)
+    }
+
+
+    fun onUnmap(listener: Listener) {
+        // TODO: Grab mode should use Window abstraction
+        if (windows.compositor.captureMode.isWindowGrabbed(this)) {
+            windows.compositor.captureMode.transitionToPassthrough()
+        }
+
+        // TODO: Clear focus or switch to previously focused?
+        windows.focuser.unfocusWindow(this)
+
+    }
+
+
+    fun onCommit(listener: Listener, surface: Surface) {
+        if (xdgToplevel.base.initialCommit)
+            xdgToplevel.setSize(0, 0)
+
+    }
+
+
+    fun onDestroy() {
+        require(childWindows.isEmpty())
+        require(childPopups.isEmpty())
+
+        // Unregister listeners, ask the window system to remove this window
+        listeners.forEach { it.remove() }
+        windows.removeWindow(this)
+
+        // Used for debugging and much needed sanity checking
+        isDestroyed = true
+    }
+
+
+    fun onRequestMove(event: XdgToplevel.MoveEvent) {
+        // Have to check if the event is valid, ie user initiated
+        if (!windows.isPointerGrabValid(event.serial))
+            return
+
+        val pressedButton = windows.compositor.seat.pointerState.buttons.first()
+        require(pressedButton.nPressed == 1L) { "Can't handle multiple pointing devies at the same time"}
+
+        windows.compositor.captureMode.transitionToMove(this, event.toplevel, pressedButton.button)
+    }
+
+
+    fun onRequestResize(event: XdgToplevel.ResizeEvent) {
+        if (!windows.isPointerGrabValid(event.serial))
+            return
+
+        windows.compositor.captureMode.transitionToResize(this, event.edges,)
+    }
+
+
+    fun onRequestMaximize() {
+        // Maximize request not supported, but wayland protocol demands we send a configure back to client.
+        if (xdgToplevel.base.initialized)
+            xdgToplevel.base.scheduleConfigure()
+
+    }
+
+
+    fun onRequestFullscreen() {
+        // Fullscreen not supported, Wayland protocol demands we send a configure back to client.
+        if (xdgToplevel.base.initialized)
+            xdgToplevel.base.scheduleConfigure()
+    }
+
+
+    fun onAckConfigure(configure: XdgSurfaceConfigure.Toplevel) {
+        // TODO: Should this remain here?
+        windows.moveAndResize?.let {
+            require(it.toplevel == this.xdgToplevel)
+            this.sceneTree.node.setPosition(it.x, it.y)
+            windows.moveAndResize = null
+        }
+    }
+}

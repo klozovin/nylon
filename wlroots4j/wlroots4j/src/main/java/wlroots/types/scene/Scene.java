@@ -33,11 +33,10 @@ public final class Scene {
 
 
     //
-    // *** Getters and setters **
+    // *** Fields ***
     //
 
-
-    public SceneTree tree() {
+    public SceneTree getTree() {
         return new SceneTree(wlr_scene.tree(scenePtr));
     }
 
@@ -45,7 +44,6 @@ public final class Scene {
     //
     // *** Methods ***
     //
-
 
     public SceneOutputLayout attachOutputLayout(OutputLayout outputLayout) {
         return new SceneOutputLayout(wlr_scene_attach_output_layout(scenePtr, outputLayout.outputLayoutPtr));

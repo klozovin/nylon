@@ -1,4 +1,4 @@
-package wlroots.types.xdgshell;
+package wlroots.types.xdg_shell;
 
 import jextract.wlroots.wlr_xdg_surface_configure;
 import org.jspecify.annotations.NullMarked;
@@ -6,8 +6,8 @@ import org.jspecify.annotations.NullMarked;
 import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.MemorySegment.NULL;
-import static wlroots.types.xdgshell.XdgSurface.SurfaceRole.Popup;
-import static wlroots.types.xdgshell.XdgSurface.SurfaceRole.Toplevel;
+import static wlroots.types.xdg_shell.XdgSurface.SurfaceRole.Popup;
+import static wlroots.types.xdg_shell.XdgSurface.SurfaceRole.Toplevel;
 
 
 @NullMarked

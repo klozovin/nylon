@@ -54,7 +54,7 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
         when {
             modifiers.contains(KeyboardModifier.Alt) && event.state == KeyboardKeyState.Pressed -> {
                 when (keysym) {
-                    XkbKey.F1 -> compositor.windowSystem.focusNextToplevel()
+                    XkbKey.F1 -> compositor.windowSystem.focuser.focusNextWindow()
 
                     XkbKey.F2 -> compositor.terminalPath?.let {
                         compositor.startProcess(it)

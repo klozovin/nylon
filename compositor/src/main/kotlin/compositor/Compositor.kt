@@ -117,7 +117,7 @@ class Compositor(val terminalPath: String? = null) {
     fun cleanup() {
         // Cleanup resources, must run after the wl_display_run() returns
         display.destroyClients()
-        scene.tree().node.destroy()
+        scene.tree.node.destroy()
         xcursorManager.destroy()
         inputSystem.cursor.destroy()
         allocator.destroy()

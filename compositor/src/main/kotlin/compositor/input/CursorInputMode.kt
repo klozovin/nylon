@@ -2,11 +2,12 @@ package compositor.input
 
 import compositor.COMPOSITOR
 import compositor.Compositor
+import compositor.windows.Window
 import wayland.util.Edge
 import wayland.util.Edge.*
 import wlroots.types.keyboard.KeyEvent
 import wlroots.types.pointer.PointerButtonEvent
-import wlroots.types.xdgshell.XdgToplevel
+import wlroots.types.xdg_shell.XdgToplevel
 import java.util.*
 
 
@@ -31,7 +32,7 @@ class CursorInputMode(val compositor: Compositor) {
     /**
      * @param pressedButton Mouse button that was held down while the user initiated the move request
      */
-    fun transitionToMove(toplevel: XdgToplevel, pressedButton: Int) {
+    fun transitionToMove(targetWindow: Window, toplevel: XdgToplevel, pressedButton: Int) {
         require(state is CursorInputState.Passthrough)
 
         println("____")
@@ -48,18 +49,18 @@ class CursorInputMode(val compositor: Compositor) {
         // Change the cursor here? Right? Right??
         compositor.inputSystem.cursor.setIcon("grabbing")
 
-        state = CursorInputState.WindowMove(compositor, toplevel, pressedButton)
+        state = CursorInputState.WindowMove(compositor, targetWindow, pressedButton)
     }
 
 
-    fun transitionToResize(toplevel: XdgToplevel, edges: Edges) {
+    fun transitionToResize(targetWindow: Window, edges: Edges) {
         require(state is CursorInputState.Passthrough)
 //        setCursorIcon("grabbing")
         // Icons: nw-, ne-, sw-, se-resize
 
         val cursorIconName = "${if (Top in edges) "n" else "s"}${if (Left in edges) "w" else "e"}-resize"
         compositor.inputSystem.cursor.setIcon(cursorIconName)
-        state = CursorInputState.WindowResize(compositor, toplevel, edges)
+        state = CursorInputState.WindowResize(compositor, targetWindow, edges)
     }
 
     // --------------------- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -84,11 +85,12 @@ class CursorInputMode(val compositor: Compositor) {
     // Helpers
     //
 
-    fun isToplevelGrabbed(toplevel: XdgToplevel): Boolean {
+    fun isWindowGrabbed(window: Window): Boolean {
         return when (val state = state) {
             is CursorInputState.Passthrough -> false
-            is CursorInputState.WindowMove -> state.grabbedToplevel == toplevel
-            is CursorInputState.WindowResize -> state.grabbedToplevel == toplevel
+            is CursorInputState.WindowMove -> state.targetWindow == window
+            is CursorInputState.WindowResize -> state.targetWindow == window
         }
+
     }
 }

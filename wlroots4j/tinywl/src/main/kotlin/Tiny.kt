@@ -32,10 +32,10 @@ import wlroots.types.seat.PointerRequestSetCursorEvent
 import wlroots.types.seat.RequestSetSelectionEvent
 import wlroots.types.seat.Seat
 import wlroots.types.xcursor_manager.XcursorManager
-import wlroots.types.xdgshell.XdgPopup
-import wlroots.types.xdgshell.XdgShell
-import wlroots.types.xdgshell.XdgSurface
-import wlroots.types.xdgshell.XdgToplevel
+import wlroots.types.xdg_shell.XdgPopup
+import wlroots.types.xdg_shell.XdgShell
+import wlroots.types.xdg_shell.XdgSurface
+import wlroots.types.xdg_shell.XdgToplevel
 import wlroots.util.Box
 import wlroots.util.Log
 import xkbcommon.Keymap
@@ -212,7 +212,7 @@ object Tiny {
 
         // Cleanup after the wl_display_run() returns
         display.destroyClients()
-        scene.tree().node.destroy()
+        scene.getTree().node.destroy()
         xcursorManager.destroy()
 
         cursorMotionListener.remove()
@@ -275,7 +275,7 @@ object Tiny {
 
 
     fun desktopToplevelAt(targetX: Double, targetY: Double): UnderCursor? {
-        val (sceneNode, nx, ny) = scene.tree().node.nodeAt(targetX, targetY) ?: return null
+        val (sceneNode, nx, ny) = scene.getTree().node.nodeAt(targetX, targetY) ?: return null
 
         if (sceneNode.type != SceneNode.Type.Buffer)
             return null
@@ -640,7 +640,7 @@ object Tiny {
 
 
     fun onNewXdgToplevel(toplevel: XdgToplevel) {
-        val sceneTree = scene.tree().xdgSurfaceCreate(toplevel.base)
+        val sceneTree = scene.getTree().xdgSurfaceCreate(toplevel.base)
         val tytop = TyToplevel(toplevel, sceneTree)
 
         // Event handlers for the base Surface

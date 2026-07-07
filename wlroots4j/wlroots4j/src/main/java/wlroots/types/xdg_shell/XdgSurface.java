@@ -1,4 +1,4 @@
-package wlroots.types.xdgshell;
+package wlroots.types.xdg_shell;
 
 import jextract.wlroots.wlr_xdg_surface;
 import org.jspecify.annotations.NullMarked;
@@ -15,7 +15,7 @@ import static java.lang.foreign.MemorySegment.NULL;
 import static jextract.wlroots.wlr.*;
 
 
-/// An xdg-surface is a user interface element requiring management by the compositor. An xdg-surface alone
+/// A xdg-surface is a user interface element requiring management by the compositor. An xdg-surface alone
 /// isn't useful, a role should be assigned to it in order to map it.
 @NullMarked
 public class XdgSurface {
@@ -31,7 +31,7 @@ public class XdgSurface {
 
 
     /// @return NULL if the surface doesn't have the xdg_surface role or if the xdg_surface has been
-    ///         destroyed.
+    ///     destroyed.
     public static @Nullable XdgSurface tryFromSurface(Surface surface) {
         var ptr = wlr_xdg_surface_try_from_wlr_surface(surface.surfacePtr);
         return !ptr.equals(NULL) ? new XdgSurface(ptr) : null;
@@ -51,6 +51,7 @@ public class XdgSurface {
     //
     // *** Field getters and setters ***
     //
+
 
     public Surface getSurface() {
         return new Surface(wlr_xdg_surface.surface(xdgSurfacePtr));
@@ -84,6 +85,7 @@ public class XdgSurface {
 
 
     /// Surface geometry
+    ///
     /// @return `wlr_xdg_surface.geometry` field
     public Box getGeometry() {
         return new Box(wlr_xdg_surface.geometry(xdgSurfacePtr));
@@ -93,6 +95,7 @@ public class XdgSurface {
     //
     // *** Methods ***
     //
+
 
     /// Schedule a surface configuration. This should only be called by protocols extending the shell.
     public int scheduleConfigure() {
@@ -117,10 +120,11 @@ public class XdgSurface {
             this.value = value;
         }
 
+
         public static SurfaceRole of(int value) {
-            if (value == WLR_XDG_SURFACE_ROLE_NONE())     return None;
+            if (value == WLR_XDG_SURFACE_ROLE_NONE()) return None;
             if (value == WLR_XDG_SURFACE_ROLE_TOPLEVEL()) return Toplevel;
-            if (value == WLR_XDG_SURFACE_ROLE_POPUP())    return Popup;
+            if (value == WLR_XDG_SURFACE_ROLE_POPUP()) return Popup;
 
             throw new RuntimeException("Invalid enum value from C code for wlr_xdg_surface_role");
         }
@@ -142,8 +146,8 @@ public class XdgSurface {
 
         public Events(MemorySegment eventsPtr) {
             assert !eventsPtr.equals(NULL);
-            this.eventsPtr    = eventsPtr;
-            this.destroy      = Signal.of(wlr_xdg_surface.events.destroy(eventsPtr));
+            this.eventsPtr = eventsPtr;
+            this.destroy = Signal.of(wlr_xdg_surface.events.destroy(eventsPtr));
             this.ackConfigure = Signal.of(wlr_xdg_surface.events.ack_configure(eventsPtr), XdgSurfaceConfigure::new);
         }
     }

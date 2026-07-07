@@ -1,4 +1,4 @@
-package wlroots.types.xdgshell;
+package wlroots.types.xdg_shell;
 
 import jextract.wlroots.wlr_xdg_popup;
 import org.jspecify.annotations.NullMarked;

@@ -3,7 +3,7 @@ package wlroots.types.scene;
 import jextract.wlroots.wlr_scene_tree;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import wlroots.types.xdgshell.XdgSurface;
+import wlroots.types.xdg_shell.XdgSurface;
 
 import java.lang.foreign.MemorySegment;
 
@@ -45,6 +45,13 @@ public final class SceneTree {
     }
 
 
+    /// Convenience function, does not exist in wlroots. Create a new SceneTree for `xdgSurface`, but with
+    /// parented in `parent.`
+    public static SceneTree createFromParent(SceneTree parent, XdgSurface xdgSurface) {
+        return parent.xdgSurfaceCreate(xdgSurface);
+    }
+
+
     /// If this node represents a wlr_scene_tree, that tree will be returned. It is not legal to feed a node
     /// that does not represent a wlr_scene_tree.
     public static SceneTree fromNode(SceneNode node) {
@@ -63,11 +70,14 @@ public final class SceneTree {
     // *** Methods **************************************************************************************** //
 
 
-    /// Add a node displaying a xdg_surface and all of its sub-surfaces to the scene-graph.
+    /// Add a node displaying a xdg_surface and all of its sub-surfaces to the scene-graph, with this SceneTree
+    /// as its parent.
     ///
     /// The origin of the returned scene-graph node will match the top-left corner of the xdg_surface window
     /// geometry.
-    // TODO: Where should this function go? Scene?
+    ///
+    /// @return SceneTree that was created and attached to the `xdgSurface` that was passed in
+    ///
     public SceneTree xdgSurfaceCreate(XdgSurface xdgSurface) {
         return new SceneTree(wlr_scene_xdg_surface_create(sceneTreePtr, xdgSurface.xdgSurfacePtr));
     }

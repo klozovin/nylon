@@ -11,8 +11,8 @@ import wlroots.types.scene.Scene
 import wlroots.types.scene.SceneOutput
 import wlroots.types.scene.SceneRect
 import wlroots.types.scene.SceneSurface
-import wlroots.types.xdgshell.XdgShell
-import wlroots.types.xdgshell.XdgToplevel
+import wlroots.types.xdg_shell.XdgShell
+import wlroots.types.xdg_shell.XdgToplevel
 import wlroots.util.Log
 import java.util.*
 import kotlin.concurrent.schedule
@@ -128,10 +128,10 @@ object SceneGraph {
         val commitListener = surface.events.commit.add(::surfaceCommitHandler)
         val destroyListener = surface.events.destroy.add(::surfaceDestroyHandler)
 
-        val surfaceBorder = SceneRect.create(scene.tree(), 0, 0, floatArrayOf(0.8f, 0.2f, 0.2f, 1.0f))
+        val surfaceBorder = SceneRect.create(scene.getTree(), 0, 0, floatArrayOf(0.8f, 0.2f, 0.2f, 1.0f))
         surfaceBorder.node().setPosition(surfaceOffset, surfaceOffset)
 
-        val sceneSurface = SceneSurface.create(scene.tree(), surface)
+        val sceneSurface = SceneSurface.create(scene.getTree(), surface)
         sceneSurface.buffer().node().setPosition(surfaceOffset + borderWidth, surfaceOffset + borderWidth)
 
         surfaceExtras[surface] = SurfaceExtra(sceneSurface, surfaceBorder, commitListener, destroyListener)
