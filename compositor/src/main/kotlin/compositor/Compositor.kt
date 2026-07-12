@@ -3,6 +3,7 @@ package compositor
 import compositor.input.CursorInputMode
 import compositor.input.InputSystem
 import compositor.inspector.Inspector
+import compositor.output.OutputSystem
 import wayland.server.Display
 import wayland.server.Listener
 import wlroots.backend.Backend

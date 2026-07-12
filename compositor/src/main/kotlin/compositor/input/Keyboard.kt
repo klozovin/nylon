@@ -86,7 +86,7 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
 
     fun onModifiers(wlrKeyboard: Keyboard) {
         compositor.seat.setKeyboard(wlrKeyboard)
-        compositor.seat.keyboardNotifyModifiers(wlrKeyboard.getModifiers())
+        compositor.seat.keyboardNotifyModifiers(wlrKeyboard.modifiers)
     }
 
 
@@ -99,8 +99,6 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
 
         // TODO: Memory management: Take care of Signals/Listeners
 
-        // Remove the `Keyboard` object from the input system, and check that it succeeded in that.
-        val removed = compositor.inputSystem.keyboards.remove(this)
-        assert(removed)
+        compositor.inputSystem.remove(this)
     }
 }

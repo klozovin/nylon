@@ -144,16 +144,16 @@ public final class Output {
         /// Raised every time an output is ready to display a frame, generally at the output's refresh rate
         public final Signal1<Output> frame;
 
-        public final Signal1<Output> destroy;
-
         /// Raised when the backend requests a new state for the output (i.e. output window resized)
         public final Signal1<EventRequestState> requestState;
+
+        public final Signal1<Output> destroy;
 
 
         Events(MemorySegment ptr) {
             frame        = Signal.of(wlr_output.events.frame(ptr), Output::new);
-            destroy      = Signal.of(wlr_output.events.destroy(ptr), Output::new);
             requestState = Signal.of(wlr_output.events.request_state(ptr), EventRequestState::new);
+            destroy      = Signal.of(wlr_output.events.destroy(ptr), Output::new);
         }
     }
 }

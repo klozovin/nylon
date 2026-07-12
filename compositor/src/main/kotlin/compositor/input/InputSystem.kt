@@ -75,6 +75,12 @@ class InputSystem(val compositor: Compositor) {
     }
 
 
+    fun remove(keyboard: Keyboard) {
+        require(keyboards.contains(keyboard))
+        keyboards.remove(keyboard)
+    }
+
+
     /*
     fun onNewKeyboardOld(keyboard: WlrKeyboard) {
         val context = XkbContext.of(XkbContext.Flags.NO_FLAGS)
