@@ -4,23 +4,20 @@ import compositor.input.CursorInputMode
 import compositor.input.InputSystem
 import compositor.inspector.Inspector
 import wayland.server.Display
+import wayland.server.Listener
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
-import wlroots.types.data_device.DataDeviceManager
-import wlroots.types.xcursor_manager.XcursorManager
 import wlroots.types.compositor.Subcompositor
+import wlroots.types.data_device.DataDeviceManager
 import wlroots.types.output.OutputLayout
 import wlroots.types.scene.Scene
 import wlroots.types.scene.SceneOutputLayout
-import wlroots.types.seat.PointerRequestSetCursorEvent
-import wlroots.types.seat.RequestSetSelectionEvent
 import wlroots.types.seat.Seat
+import wlroots.types.xcursor_manager.XcursorManager
 import wlroots.util.Log
 import kotlin.system.exitProcess
 import wlroots.types.compositor.Compositor as WlrCompositor
-
-// nocheckin
 
 
 class Compositor(val terminalPath: String? = null) {
@@ -35,17 +32,22 @@ class Compositor(val terminalPath: String? = null) {
 
     val xcursorManager: XcursorManager
 
-    // TODO: Move to inputSystem, maybe?
-    val seat: Seat
-
     val outputSystem: OutputSystem
     val inputSystem: InputSystem
     val windowSystem: WindowSystem
+
+    val onBackendNewInputListener: Listener
+    val onBackendNewOutputListener: Listener
+    val onBackendDestroyListener: Listener
 
     lateinit var socket: String
 
     // TODO: Move to inputSystem
     val captureMode: CursorInputMode
+
+
+    // TODO: Delete
+    val seat: Seat
 
 
     init {
@@ -73,12 +75,25 @@ class Compositor(val terminalPath: String? = null) {
         outputSystem = OutputSystem(this)
         windowSystem = WindowSystem(this)
 
-        seat = Seat.create(display, "seat0").apply {
-            events.requestSetCursor.add(::onSeatRequestSetCursor) // TODO: Maybe move to window system? It's a Pointer event
-            events.requestSetSelection.add(::onSeatRequestSetSelection)
+
+        with(backend.events) {
+            onBackendNewInputListener = newInput.add(inputSystem::onNewInput)
+            onBackendNewOutputListener = newOutput.add(outputSystem::onNewOutput)
+            onBackendDestroyListener = destroy.add(::onBackendDestroy)
         }
 
+        // TODO Remove later, reference it directly from the input system
+        seat = inputSystem.seat
+
+
         captureMode = CursorInputMode(this)
+    }
+
+
+    fun onBackendDestroy(backend: Backend) {
+        onBackendNewInputListener.remove()
+        onBackendNewOutputListener.remove()
+        onBackendDestroyListener.remove()
     }
 
 
@@ -123,6 +138,10 @@ class Compositor(val terminalPath: String? = null) {
         allocator.destroy()
         renderer.destroy()
         backend.destroy()
+
+        // Probably best to call after destroying the backend
+        seat.destroy()
+
         display.destroy()
     }
 
@@ -133,21 +152,6 @@ class Compositor(val terminalPath: String? = null) {
             environment().put("WAYLAND_DISPLAY", socket)
             start()
         }
-    }
-
-
-    // *** Seat signals *** //
-
-    fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
-        // TODO: Move to input system?
-        if (seat.pointerState.getFocusedClient() == event.seatClient)
-            inputSystem.cursor.wlrCursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
-    }
-
-
-    fun onSeatRequestSetSelection(event: RequestSetSelectionEvent) {
-        // TODO: This should go to some future 'clipboard' system
-        seat.setSelection(event.source, event.serial)
     }
 }
 

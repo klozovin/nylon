@@ -46,9 +46,9 @@ class Focuser(val compositor: Compositor) {
     /// Make sure that nothing is focused.
     fun clearFocus() {
         current?.let { focusedWindow ->
-            require(!focusedWindow.isDestroyed)
-            focusedWindow.xdgToplevel.setActivated(false)
+            focusedWindow.xdgToplevel.setActivated(false) // TODO Maybe do this only if !.isDestroyed?
             compositor.seat.keyboardNotifyClearFocus()
+            current = null
         }
     }
 

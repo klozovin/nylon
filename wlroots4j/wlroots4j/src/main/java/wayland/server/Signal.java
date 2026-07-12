@@ -111,6 +111,7 @@ public abstract sealed class Signal {
             this.observerParameterCtor = function;
         }
 
+        // TODO Add zero parameter listener for convenience
 
         /// Listener callback takes one parameter: void *data
         public Listener add(Consumer<T> observer) {

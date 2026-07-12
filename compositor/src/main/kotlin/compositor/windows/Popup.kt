@@ -61,6 +61,7 @@ class Popup(val xdgPopup: XdgPopup, val sceneTree: SceneTree) {
     fun onDestroy() {
         // Remove listeners
         listeners.forEach { it.remove() }
+        // TODO
 
         // TODO Free listeners arena here
     }

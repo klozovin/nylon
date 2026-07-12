@@ -3,6 +3,7 @@ package compositor
 import compositor.windows.Focuser
 import compositor.windows.Popup
 import compositor.windows.Window
+import wayland.server.Listener
 import wlroots.types.compositor.Surface
 import wlroots.types.scene.SceneBuffer
 import wlroots.types.scene.SceneNode
@@ -15,6 +16,10 @@ import java.util.*
 class WindowSystem(val compositor: Compositor) {
     val xdgShell: XdgShell
 
+    val newToplevelListener: Listener
+    val newPopupListener: Listener
+    val xdgShellDestroyListener: Listener
+
     val windows: MutableList<Window> = mutableListOf()
     val popups: MutableList<Popup> = mutableListOf()
 
@@ -24,8 +29,9 @@ class WindowSystem(val compositor: Compositor) {
 
     init {
         xdgShell = XdgShell.create(compositor.display, 3).apply {
-            events.newToplevel.add(::onNewToplevel)
-            events.newPopup.add(::onNewPopup)
+            newToplevelListener = events.newToplevel.add(::onNewToplevel)
+            newPopupListener = events.newPopup.add(::onNewPopup)
+            xdgShellDestroyListener = events.destroy.add(::onXdgShellDestroy)
         }
     }
 
@@ -82,6 +88,13 @@ class WindowSystem(val compositor: Compositor) {
 //        }
 //        popup = Popup(xdgPopup, sceneTree)
 //        popups.add(popup)
+    }
+
+
+    fun onXdgShellDestroy(xdgShell: XdgShell) {
+        newToplevelListener.remove()
+        newPopupListener.remove()
+        xdgShellDestroyListener.remove()
     }
 
 
@@ -163,6 +176,7 @@ class WindowSystem(val compositor: Compositor) {
 
 
     }
+
 
 
     //

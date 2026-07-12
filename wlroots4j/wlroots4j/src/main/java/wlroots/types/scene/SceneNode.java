@@ -31,7 +31,7 @@ public class SceneNode {
 
 
     //
-    // *** Getters and setters ***
+    // *** Fields ***
     //
 
     public Type getType() {
@@ -62,6 +62,13 @@ public class SceneNode {
     //
 
 
+    /// Enable or disable this node. If a node is disabled, all of its children are implicitly disabled as
+    /// well.
+    public void setEnabled(boolean enabled) {
+        wlr_scene_node_set_enabled(sceneNodePtr, enabled);
+    }
+
+
     /// Set the position of the node relative to its parent.
     public void setPosition(int x, int y) {
         wlr_scene_node_set_position(sceneNodePtr, x, y);
@@ -78,7 +85,7 @@ public class SceneNode {
     ///     enabled.
     public Coordinates coords() {
         // TODO: Implement boolean return also! Damnit Java and multiple return values
-        try(var arena = Arena.ofConfined()) {
+        try (var arena = Arena.ofConfined()) {
             var lx = arena.allocate(ValueLayout.JAVA_INT);
             var ly = arena.allocate(ValueLayout.JAVA_INT);
             var flag = wlr_scene_node_coords(this.sceneNodePtr, lx, ly);
@@ -99,7 +106,8 @@ public class SceneNode {
     ///
     /// @param lx Target point, layout-local x coordinate
     /// @param ly Target point, layout-local y coordinate
-    /// @return Found {@link SceneNode} and coordinates relative to the returned node, or NULL if no node found
+    /// @return Found {@link SceneNode} and coordinates relative to the returned node, or NULL if no node
+    ///     found
     public @Nullable Tuple3<SceneNode, Double, Double> nodeAt(double lx, double ly) {
         try (var arena = Arena.ofConfined()) {
             var nxPtr = arena.allocate(ValueLayout.JAVA_DOUBLE);

@@ -62,6 +62,16 @@ public final class Seat {
 
 
     //
+    // *** General methods ***
+    //
+
+    /// Destroys a seat, removes its wl_seat global and clears focus for all devices belonging to the seat.
+    public void destroy() {
+        wlr_seat_destroy(seatPtr);
+    }
+
+
+    //
     // *** Keyboard methods ***
     //
 
@@ -244,9 +254,9 @@ public final class Seat {
 
 
         Events(MemorySegment ptr) {
-            requestSetCursor = Signal.of(wlr_seat.events.request_set_cursor(ptr), PointerRequestSetCursorEvent::new);
+            requestSetCursor    = Signal.of(wlr_seat.events.request_set_cursor(ptr), PointerRequestSetCursorEvent::new);
             requestSetSelection = Signal.of(wlr_seat.events.request_set_selection(ptr), RequestSetSelectionEvent::new);
-            destroy = Signal.of(wlr_seat.events.destroy(ptr), Seat::new);
+            destroy             = Signal.of(wlr_seat.events.destroy(ptr), Seat::new);
         }
     }
 }

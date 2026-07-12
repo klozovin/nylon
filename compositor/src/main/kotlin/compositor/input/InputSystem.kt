@@ -2,19 +2,32 @@ package compositor.input
 
 import compositor.Compositor
 import wayland.SeatCapability
+import wayland.server.Listener
 import wlroots.types.input.InputDevice
 import wlroots.types.input.InputDeviceType
 import wlroots.types.pointer.Pointer
+import wlroots.types.seat.PointerRequestSetCursorEvent
+import wlroots.types.seat.RequestSetSelectionEvent
+import wlroots.types.seat.Seat
 import wlroots.types.keyboard.Keyboard as WlrKeyboard
 
 class InputSystem(val compositor: Compositor) {
 
+    val seat: Seat
     val cursor = Cursor(compositor)
-    val keyboards: MutableList<compositor.input.Keyboard> = mutableListOf()
+    val keyboards: MutableList<Keyboard> = mutableListOf()
+
+    val seatRequestSetCursorListener: Listener
+    val seatRequestSetSelectionListener: Listener
+    val seatDestroyListener: Listener
 
 
     init {
-        compositor.backend.events.newInput.add(::onNewInput)
+        seat = Seat.create(compositor.display, "seat0").apply {
+            seatRequestSetCursorListener= events.requestSetCursor.add(::onSeatRequestSetCursor)
+            seatRequestSetSelectionListener = events.requestSetSelection.add(::onSeatRequestSetSelection)
+            seatDestroyListener = events.destroy.add(::onSeatDestroy)
+        }
     }
 
 
@@ -32,14 +45,33 @@ class InputSystem(val compositor: Compositor) {
 
         val keyboard = Keyboard(compositor, wlrKeyboard)
         keyboards.add(keyboard)
-        compositor.seat.setKeyboard(wlrKeyboard)
-        compositor.seat.addCapability(SeatCapability.Keyboard)
+        seat.setKeyboard(wlrKeyboard)
+        seat.addCapability(SeatCapability.Keyboard)
     }
 
 
     fun onNewPointer(pointer: Pointer) {
         cursor.wlrCursor.attachInputDevice(pointer.base)
-        compositor.seat.addCapability(SeatCapability.Pointer)
+        seat.addCapability(SeatCapability.Pointer)
+    }
+
+
+    fun onSeatRequestSetCursor(event: PointerRequestSetCursorEvent) {
+        if (seat.pointerState.getFocusedClient() == event.seatClient)
+            cursor.wlrCursor.setSurface(event.surface, event.hotspotX, event.hotspotY)
+    }
+
+
+    fun onSeatRequestSetSelection(event: RequestSetSelectionEvent) {
+        // TODO: This should go to some future 'clipboard' system
+        seat.setSelection(event.source, event.serial)
+    }
+
+
+    fun onSeatDestroy(seat: Seat) {
+        seatRequestSetCursorListener.remove()
+        seatRequestSetSelectionListener.remove()
+        seatDestroyListener.remove()
     }
 
 
