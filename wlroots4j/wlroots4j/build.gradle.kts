@@ -38,8 +38,8 @@ allOpen {
 dependencies {
     implementation(project(":jextracted"))
     implementation("org.jspecify:jspecify:1.0.0")
-    testImplementation("io.kotest:kotest-runner-junit5:5.9.1")
-    testImplementation("io.kotest:kotest-assertions-core:5.9.1")
+    testImplementation("io.kotest:kotest-runner-junit5:6.2.0")
+    testImplementation("io.kotest:kotest-assertions-core:6.2.0")
 }
 
 tasks {
