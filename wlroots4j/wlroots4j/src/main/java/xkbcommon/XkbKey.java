@@ -20,6 +20,16 @@ public final class XkbKey {
     public static final int F11 = XKB_KEY_F11();
     public static final int F12 = XKB_KEY_F12();
 
+
+    public static final int i = XKB_KEY_i();
+    public static final int j = XKB_KEY_j();
+    public static final int k = XKB_KEY_k();
+    public static final int l = XKB_KEY_l();
+    public static final int u = XKB_KEY_u();
+    public static final int o = XKB_KEY_o();
+    public static final int m = XKB_KEY_m();
+    public static final int period = XKB_KEY_period();
+
     public static final int Insert = XKB_KEY_Insert();
     public static final int Delete = XKB_KEY_Delete();
 }
