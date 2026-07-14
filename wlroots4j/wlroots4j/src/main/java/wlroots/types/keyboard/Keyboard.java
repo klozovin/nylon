@@ -10,7 +10,6 @@ import xkbcommon.Keymap;
 import xkbcommon.XkbState;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 import java.util.EnumSet;
 
 import static java.lang.foreign.MemorySegment.NULL;
@@ -48,7 +47,7 @@ public class Keyboard {
     }
 
 
-    ///  Get a {@link Keyboard} from {@link InputDevice}, asserting that the input device is a keyboard.
+    /// Get a {@link Keyboard} from {@link InputDevice}, asserting that the input device is a keyboard.
     public static Keyboard fromInputDevice(InputDevice inputDevice) {
         return new Keyboard(wlr_keyboard_from_input_device(inputDevice.inputDevicePtr));
     }
@@ -63,24 +62,37 @@ public class Keyboard {
     }
 
 
-    ///`wlr_keyboard.modifiers: wlr_keyboard_modifiers`
+    /// `wlr_keyboard.modifiers: wlr_keyboard_modifiers`
     public KeyboardModifiers getModifiers() {
         return new KeyboardModifiers(wlr_keyboard.modifiers(keyboardPtr));
     }
 
 
-    public void getKeycodes() {
+    public int[] getKeycodes() {
+        var numKeycodes = Math.toIntExact(getNumKeycodes());
+        if (numKeycodes == 0) return new int[0];
+
         // TODO: Test this pointer shenanigans
-        var ptr = getKeycodesPtr();
+        var keycodesPtr = wlr_keyboard.keycodes(keyboardPtr);
         var keycodesElementLayout = wlr_keyboard.keycodes$layout().elementLayout();
-        var slice = ptr.asSlice(0, keycodesElementLayout.byteSize() * getNumKeycodes());
+        assert keycodesElementLayout.byteSize() > 64;
 
-        slice.getAtIndex(ValueLayout.JAVA_INT, 0);
+        var keycodesSlice = keycodesPtr.asSlice(0, keycodesElementLayout.byteSize() * numKeycodes);
+
+//        slice.getAtIndex(ValueLayout.JAVA_INT, 0);
+//        slice.getAtIndex(C_INT, 0);
+        var keycodes = new int[numKeycodes];
+        for (int i = 0; i < numKeycodes; i++) {
+            keycodes[i] = keycodesSlice.getAtIndex(C_INT, i);
+        }
+
+
 //        slice.getAtIndex(wlr_keyboard.keycodes$layout().elementLayout(), );
-
+        return keycodes;
     }
 
 
+    // TODO: Delete
     public MemorySegment getKeycodesPtr() {
         return wlr_keyboard.keycodes(keyboardPtr);
     }
