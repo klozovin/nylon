@@ -4,6 +4,7 @@ import compositor.input.CursorInputMode
 import compositor.input.InputSystem
 import compositor.inspector.Inspector
 import compositor.output.OutputSystem
+import compositor.windows.WindowSystem
 import wayland.server.Display
 import wayland.server.Listener
 import wlroots.backend.Backend
@@ -11,9 +12,6 @@ import wlroots.render.Allocator
 import wlroots.render.Renderer
 import wlroots.types.compositor.Subcompositor
 import wlroots.types.data_device.DataDeviceManager
-import wlroots.types.output.OutputLayout
-import wlroots.types.scene.Scene
-import wlroots.types.scene.SceneOutputLayout
 import wlroots.types.seat.Seat
 import wlroots.types.xcursor_manager.XcursorManager
 import wlroots.util.Log
@@ -26,10 +24,6 @@ class Compositor(val terminalPath: String? = null) {
     val backend: Backend
     val renderer: Renderer
     val allocator: Allocator
-
-    val scene: Scene
-    val outputLayout: OutputLayout
-    val sceneOutputLayout: SceneOutputLayout
 
     val xcursorManager: XcursorManager
 
@@ -63,19 +57,13 @@ class Compositor(val terminalPath: String? = null) {
         Subcompositor.create(display)
         DataDeviceManager.create(display)
 
-
-        scene = Scene.create()
-        outputLayout = OutputLayout.create(display)
-        sceneOutputLayout = scene.attachOutputLayout(outputLayout)
-
         xcursorManager = XcursorManager.create(null, 24) ?: error("Failed to create wlr_xcursor_manager")
 
         COMPOSITOR = this
 
-        inputSystem = InputSystem(this)
-        outputSystem = OutputSystem(this)
         windowSystem = WindowSystem(this)
-
+        outputSystem = OutputSystem(this)
+        inputSystem = InputSystem(this)
 
         with(backend.events) {
             onBackendNewInputListener = newInput.add(inputSystem::onNewInput)
@@ -133,7 +121,7 @@ class Compositor(val terminalPath: String? = null) {
     fun cleanup() {
         // Cleanup resources, must run after the wl_display_run() returns
         display.destroyClients()
-        scene.tree.node.destroy()
+        windowSystem.scene.tree.node.destroy()
         xcursorManager.destroy()
         inputSystem.cursor.destroy()
         allocator.destroy()

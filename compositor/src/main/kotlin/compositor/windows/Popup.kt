@@ -1,18 +1,26 @@
 package compositor.windows
 
+import compositor.unreachable
+import compositor.windows.WindowSystem.BaseWindow
 import wayland.server.Listener
 import wlroots.types.compositor.Surface
 import wlroots.types.scene.SceneTree
 import wlroots.types.xdg_shell.XdgPopup
 
 
-class Popup(val xdgPopup: XdgPopup, val sceneTree: SceneTree) {
+class Popup(val windows: WindowSystem, val parent: BaseWindow, val xdgPopup: XdgPopup) : BaseWindow {
 
+    override val sceneTree: SceneTree
     val listeners: MutableList<Listener>
     val childPopups: MutableList<Popup> = mutableListOf()
 
+    // Debugging
+    var isDestroyed = false
+
 
     init {
+        sceneTree = SceneTree.createFromParent(parent.sceneTree, xdgPopup.base)
+
         listeners = mutableListOf(
             xdgPopup.base.surface.events.commit.add(::onCommit),
             xdgPopup.events.destroy.add(::onDestroy)
@@ -20,11 +28,8 @@ class Popup(val xdgPopup: XdgPopup, val sceneTree: SceneTree) {
     }
 
 
-    /**
-     * Two Popups are equal when their XdgPopups are equal
-     */
     override fun equals(other: Any?): Boolean {
-        return when(other) {
+        return when (other) {
             is Popup -> xdgPopup == other.xdgPopup
             else -> false
         }
@@ -32,25 +37,36 @@ class Popup(val xdgPopup: XdgPopup, val sceneTree: SceneTree) {
 
 
     override fun hashCode(): Int {
-        TODO()
-        var result = xdgPopup.hashCode()
-        result = 31 * result + sceneTree.hashCode()
-        result = 31 * result + listeners.hashCode()
-        result = 31 * result + childPopups.hashCode()
-        return result
+        TODO("Don't use yet")
+        return xdgPopup.hashCode()
     }
 
 
-    fun addChild(child: Popup) {
-        require(!childPopups.contains(child))
-        childPopups.add(child)
+    override fun addChild(child: BaseWindow) {
+        when(child) {
+            is Window -> unreachable()
+            is Popup -> {
+                require(!childPopups.contains(child))
+                require(!child.isDestroyed)
+                childPopups.add(child)
+            }
+        }
+    }
+
+    override fun removeChild(child: BaseWindow) {
+        when(child) {
+            is Window -> unreachable()
+            is Popup -> {
+                val removed = childPopups.remove(child)
+                check(removed)
+            }
+        }
     }
 
 
     //
     // *** Signal handlers
     //
-
 
     fun onCommit(surface: Surface) {
         if (xdgPopup.base.initialCommit) {
@@ -59,9 +75,10 @@ class Popup(val xdgPopup: XdgPopup, val sceneTree: SceneTree) {
     }
 
     fun onDestroy() {
-        // Remove listeners
         listeners.forEach { it.remove() }
-        // TODO
+        parent.removeChild(this)
+        windows.removePopup(this)
+        isDestroyed = true
 
         // TODO Free listeners arena here
     }

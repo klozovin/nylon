@@ -2,6 +2,7 @@ package compositor.input
 
 import compositor.COMPOSITOR
 import compositor.Compositor
+import compositor.input.CursorInputState.InitiatedWith
 import compositor.windows.Window
 import wayland.util.Edge
 import wayland.util.Edge.*
@@ -32,7 +33,7 @@ class CursorInputMode(val compositor: Compositor) {
     /**
      * @param pressedButton Mouse button that was held down while the user initiated the move request
      */
-    fun transitionToMove(targetWindow: Window, toplevel: XdgToplevel, pressedButton: Int) {
+    fun transitionToMove(targetWindow: Window, pressedButton: Int?, initiatedWith: InitiatedWith = InitiatedWith.Mouse) {
         require(state is CursorInputState.Passthrough)
 
         println("____")
@@ -49,7 +50,7 @@ class CursorInputMode(val compositor: Compositor) {
         // Change the cursor here? Right? Right??
         compositor.inputSystem.cursor.setIcon("grabbing")
 
-        state = CursorInputState.WindowMove(compositor, targetWindow, pressedButton)
+        state = CursorInputState.WindowMove(compositor, targetWindow, pressedButton, initiatedWith)
     }
 
 

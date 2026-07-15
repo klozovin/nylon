@@ -1,6 +1,7 @@
 package compositor.input
 
 import compositor.Compositor
+import compositor.input.CursorInputState.InitiatedWith
 import wayland.KeyboardKeyState
 import wayland.server.Listener
 import wlroots.types.input.InputDevice
@@ -38,7 +39,7 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
         println("key: $event")
         val keycode = event.keycode + 8
         val keysym = wlrKeyboard.xkbState.keyGetOneSym(keycode)
-        val modifiers = wlrKeyboard.getKeyboardModifiers()
+        val modifiers = wlrKeyboard.keyboardModifiers
 
 
         // First check if we're in move/resize mode
@@ -59,6 +60,10 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
                     XkbKey.F2 -> compositor.terminalPath?.let {
                         compositor.startProcess(it)
                     }
+
+                    XkbKey.F3 -> compositor.startProcess("/usr/bin/gthumb")
+
+                    XkbKey.F11 -> compositor.windowSystem.focuser.getFocused()?.let { compositor.captureMode.transitionToMove(it, null, InitiatedWith.Keyboard) }
 
                     XkbKey.Escape -> compositor.stop()
                 }

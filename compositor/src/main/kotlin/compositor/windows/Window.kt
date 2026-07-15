@@ -1,6 +1,6 @@
 package compositor.windows
 
-import compositor.WindowSystem
+import compositor.windows.WindowSystem.BaseWindow
 import wayland.server.Listener
 import wlroots.types.compositor.Surface
 import wlroots.types.scene.SceneTree
@@ -15,12 +15,9 @@ import wlroots.types.xdg_shell.XdgToplevel
  * - XdgToplevel
  * - SceneTree
  */
-class Window(
-    val windows: WindowSystem,
-    val xdgToplevel: XdgToplevel,
-    val sceneTree: SceneTree
-) {
-    // Keep all the signal listeners here
+class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWindow {
+
+    override val sceneTree: SceneTree
     val listeners: MutableList<Listener> = mutableListOf()
 
     // Children
@@ -32,25 +29,28 @@ class Window(
 
 
     init {
-        val surfaceListeners = with(xdgToplevel.base.surface.events) {
-            arrayOf(
-                map.add(::onMap),
-                unmap.add(::onUnmap),
-                commit.add(::onCommit),
+        sceneTree = windows.scene.tree.xdgSurfaceCreate(xdgToplevel.base)
+        with(xdgToplevel.base.surface.events) {
+            listeners.addAll(
+                arrayOf( // TODO: Use array literals
+                    map.add(::onMap),
+                    unmap.add(::onUnmap),
+                    commit.add(::onCommit),
+                )
             )
         }
-        val toplevelListeners = with(xdgToplevel.events) {
-            arrayOf(
-                destroy.add(::onDestroy),
-                requestMove.add(::onRequestMove),
-                requestResize.add(::onRequestResize),
-                requestMaximize.add(::onRequestMaximize),
-                requestFullscreen.add(::onRequestFullscreen),
-                ackConfigure.add(::onAckConfigure)
+        with(xdgToplevel.events) {
+            listeners.addAll(
+                arrayOf(
+                    destroy.add(::onDestroy),
+                    requestMove.add(::onRequestMove),
+                    requestResize.add(::onRequestResize),
+                    requestMaximize.add(::onRequestMaximize),
+                    requestFullscreen.add(::onRequestFullscreen),
+                    ackConfigure.add(::onAckConfigure)
+                )
             )
         }
-        listeners.addAll(surfaceListeners)
-        listeners.addAll(toplevelListeners)
     }
 
 
@@ -64,28 +64,37 @@ class Window(
 
 
     override fun hashCode(): Int {
-        TODO()
-        var result = xdgToplevel.hashCode()
-        result = 31 * result + sceneTree.hashCode()
-        result = 31 * result + listeners.hashCode()
-        return result
+        TODO("Dont use yet")
+        return xdgToplevel.hashCode()
     }
+
 
     //
     // *** Helper functions
     //
 
-    fun addChild(child: Window) {
-        require(!childWindows.contains(child))
-        childWindows.add(child)
+    override fun addChild(child: BaseWindow) {
+        when (child) {
+            is Window -> {
+                require(!childWindows.contains(child))
+                require(!child.isDestroyed)
+                childWindows.add(child)
+            }
+
+            is Popup -> {
+                require(!childPopups.contains(child))
+                require(!child.isDestroyed)
+                childPopups.add(child)
+            }
+        }
     }
 
-
-    fun addChild(child: Popup) {
-        require(!childPopups.contains(child))
-        childPopups.add(child)
+    override fun removeChild(child: BaseWindow) {
+        when (child) {
+            is Window -> childWindows.remove(child)
+            is Popup -> childPopups.remove(child)
+        }
     }
-
 
 
     //
@@ -135,9 +144,9 @@ class Window(
             return
 
         val pressedButton = windows.compositor.seat.pointerState.buttons.first()
-        require(pressedButton.nPressed == 1L) { "Can't handle multiple pointing devies at the same time"}
+        require(pressedButton.nPressed == 1L) { "Can't handle multiple pointing devies at the same time" }
 
-        windows.compositor.captureMode.transitionToMove(this, event.toplevel, pressedButton.button)
+        windows.compositor.captureMode.transitionToMove(this, pressedButton.button)
     }
 
 
@@ -145,7 +154,7 @@ class Window(
         if (!windows.isPointerGrabValid(event.serial))
             return
 
-        windows.compositor.captureMode.transitionToResize(this, event.edges,)
+        windows.compositor.captureMode.transitionToResize(this, event.edges)
     }
 
 

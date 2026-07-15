@@ -2,7 +2,9 @@ package compositor.input
 
 import compositor.*
 import compositor.windows.Window
+import compositor.windows.WindowSystem
 import linux.MouseButton
+import wayland.KeyboardKeyState
 import wayland.PointerButtonState
 import wayland.util.Edge
 import wlroots.types.keyboard.KeyEvent
@@ -91,7 +93,7 @@ sealed class CursorInputState(val compositor: Compositor) {
                 altPressed && lmbPressed -> {
                     // begin window move
                     windowSystem.findWindowAtCoordinates(cursor.wlrCursor.x, cursor.wlrCursor.y)?.let {
-                        COMPOSITOR.captureMode.transitionToMove(it.window, it.toplevel, event.button)
+                        COMPOSITOR.captureMode.transitionToMove(it.window, event.button)
                         return
                     }
                 }
@@ -104,7 +106,8 @@ sealed class CursorInputState(val compositor: Compositor) {
 
 
                     val geometry = toplevel.base.geometry
-                    val sceneTree = cursorTarget.window.sceneTree // windowSystem.toplevelSceneTree[toplevel]!!
+                    val sceneTree =
+                        cursorTarget.window.sceneTree // windowSystem.toplevelSceneTree[toplevel]!!
                     val coordinates = sceneTree.node.coords()
 
 
@@ -178,9 +181,10 @@ sealed class CursorInputState(val compositor: Compositor) {
      */
     class WindowMove(
         compositor: Compositor,
-        val targetWindow: Window,
+        val targetWindow: Window, // TODO: Rename to target
 //        val grabbedToplevel: XdgToplevel,
-        val initiatingButton: Int,
+        val initiatingButton: Int?,
+        val initiatedWith: InitiatedWith = InitiatedWith.Mouse
     ) : CursorInputState(compositor) {
 
         // TODO: pass this as param, no need to know where is the toplevel kept and how
@@ -206,17 +210,34 @@ sealed class CursorInputState(val compositor: Compositor) {
 
 
         override fun onKeyboardKey(event: KeyEvent, keysym: Int) {
+            if (keysym == XkbKey.Escape) {
+                // Stop the move, restore starting window position
+                grabbedSceneNode.setPosition(startingX, startingY)
+                compositor.captureMode.transitionToPassthrough()
+                return
+            }
+
+            // Ignore all keypresses in mouse initiated move except above ESC
+            if (initiatedWith == InitiatedWith.Mouse) return
+
+            // Do nothing on key release, only move window on key press
+            if (event.state == KeyboardKeyState.Released) return
+
+            val nudge = 10
             when (keysym) {
-                // Stop the move operation, restore starting window position
-                XkbKey.Escape -> {
-                    grabbedSceneNode.setPosition(startingX, startingY)
-                    compositor.captureMode.transitionToPassthrough()
-                }
+                XkbKey.i -> grabbedSceneNode.setPosition(grabbedSceneNode.x, grabbedSceneNode.y -10)
+                XkbKey.j -> grabbedSceneNode.setPosition(grabbedSceneNode.x - nudge, grabbedSceneNode.y)
+                XkbKey.k -> grabbedSceneNode.setPosition(grabbedSceneNode.x, grabbedSceneNode.y + 10)
+                XkbKey.l -> grabbedSceneNode.setPosition(grabbedSceneNode.x + nudge, grabbedSceneNode.y)
+
+                XkbKey.o -> grabbedSceneNode.setPosition(grabbedSceneNode.x + nudge, grabbedSceneNode.y - nudge)
             }
         }
 
 
         override fun onCursorMotion(timeMsec: Int) {
+            if (initiatedWith == InitiatedWith.Keyboard) return
+
             // HACK: this kind of check should be automatic and centralized somewhere
 //            check(compositor.windowSystem.toplevels.containsValue(grabbedToplevel)) {
             check(compositor.windowSystem.windows.contains(targetWindow)) {
@@ -224,7 +245,6 @@ sealed class CursorInputState(val compositor: Compositor) {
                 "BUG: Trying to move a non existent window"
             }
             check(!targetWindow.isDestroyed)
-            println(targetWindow.isDestroyed)
             grabbedSceneNode.setPosition((cursor.wlrCursor.x - grabX), (cursor.wlrCursor.y - grabY))
         }
 
@@ -273,7 +293,8 @@ sealed class CursorInputState(val compositor: Compositor) {
 
         val cursor = COMPOSITOR.inputSystem.cursor
         var grabbedGeometry: Box // TODO: var needed?
-//        val grabbedSceneTree = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!
+
+        //        val grabbedSceneTree = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!
         val grabbedSceneNode = targetWindow.sceneTree.node
 
         // Starting size and position, used for restoring.
@@ -371,5 +392,11 @@ sealed class CursorInputState(val compositor: Compositor) {
         override fun onCursorButton(event: PointerButtonEvent) {
             if (event.state == PointerButtonState.Released) COMPOSITOR.captureMode.transitionToPassthrough()
         }
+    }
+
+
+    enum class InitiatedWith {
+        Mouse,
+        Keyboard
     }
 }

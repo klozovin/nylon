@@ -13,6 +13,7 @@ class Output(val compositor: Compositor, val wlrOutput: WlrOutput) {
     val frameListener: Listener
     val requestStateListener: Listener
     val destroyListener: Listener
+    val outputs = compositor.outputSystem
 
 
     init {
@@ -28,9 +29,9 @@ class Output(val compositor: Compositor, val wlrOutput: WlrOutput) {
         }
 
         // Let the scene graph know that we have a new output attached
-        val outputLayoutOutput = compositor.outputLayout.addAuto(wlrOutput)
-        val sceneOutput = SceneOutput.create(compositor.scene, wlrOutput)
-        compositor.sceneOutputLayout.addOutput(outputLayoutOutput, sceneOutput)
+        val outputLayoutOutput = outputs.outputLayout.addAuto(wlrOutput)
+        val sceneOutput = SceneOutput.create(compositor.windowSystem.scene, wlrOutput)
+        outputs.sceneOutputLayout.addOutput(outputLayoutOutput, sceneOutput)
 
         with(wlrOutput.events) {
             frameListener = frame.add(::onOutputFrame)
@@ -41,7 +42,7 @@ class Output(val compositor: Compositor, val wlrOutput: WlrOutput) {
 
 
     fun onOutputFrame(output: WlrOutput) {
-        compositor.scene.getSceneOutput(output)!!.apply {
+        compositor.windowSystem.scene.getSceneOutput(output)!!.apply {
             commit()
             sendFrameDone()
         }

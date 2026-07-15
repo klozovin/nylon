@@ -1,10 +1,10 @@
-package compositor
+package compositor.windows
 
-import compositor.windows.Focuser
-import compositor.windows.Popup
-import compositor.windows.Window
+import compositor.Compositor
+import compositor.unreachable
 import wayland.server.Listener
 import wlroots.types.compositor.Surface
+import wlroots.types.scene.Scene
 import wlroots.types.scene.SceneBuffer
 import wlroots.types.scene.SceneNode
 import wlroots.types.scene.SceneSurface
@@ -14,6 +14,9 @@ import java.util.*
 
 
 class WindowSystem(val compositor: Compositor) {
+
+    val scene: Scene
+
     val xdgShell: XdgShell
 
     val newToplevelListener: Listener
@@ -28,6 +31,8 @@ class WindowSystem(val compositor: Compositor) {
 
 
     init {
+        scene = Scene.create()
+
         xdgShell = XdgShell.create(compositor.display, 3).apply {
             newToplevelListener = events.newToplevel.add(::onNewToplevel)
             newPopupListener = events.newPopup.add(::onNewPopup)
@@ -38,56 +43,23 @@ class WindowSystem(val compositor: Compositor) {
 
     fun onNewToplevel(xdgToplevel: XdgToplevel) {
         require(xdgToplevel.parent == null) // For the time being, remove later when it first fails
-        val sceneTree = compositor.scene.tree.xdgSurfaceCreate(xdgToplevel.base)
-        val window = Window(this, xdgToplevel, sceneTree)
-        check(!windows.contains(window))
-        windows.add(window)
+        val window = Window(this, xdgToplevel)
+        addWindow(window)
     }
-
 
 
     fun onNewPopup(xdgPopup: XdgPopup) {
         // Try to get parent's XdgSurface. I guess this is the only way to locate a popup.
-        val parentSurface =
-            XdgSurface.tryFromSurface(xdgPopup.parent) ?: error("Popup's parent can't be null")
+        val parentSurface = XdgSurface.tryFromSurface(xdgPopup.parent)
+            ?: error("Popup's parent can't be null")
 
-        // Parent is a Window
-        findWindowByXdgSurface(parentSurface)?.let { parent ->
-            val sceneTree = SceneTree.createFromParent(parent.sceneTree, xdgPopup.base)
-            val popup = Popup(xdgPopup, sceneTree)
-            parent.addChild(popup)
-            popups.add(popup)
-            return
+        // Find a parent (either a Window or Popup)
+        val parent: BaseWindow = findWindowByXdgSurface(parentSurface)
+            ?: findPopupByXdgSurface(parentSurface) ?: error("Popup must have a parent Window/Popup")
 
-        }
-
-        // Parent is a Popup
-        findPopupByXdgSurface(parentSurface)?.let { parent ->
-            val sceneTree = SceneTree.createFromParent(parent.sceneTree, xdgPopup.base)
-            val popup = Popup(xdgPopup, sceneTree)
-            parent.addChild(popup)
-            popups.add(popup)
-            return
-        }
-
-        error("BUG: Can't have a XdgPopup without a parent")
-
-        // Find the parent's SceneTree. In wlroots parent of an XdgPopup can be either XdgToplevel or another
-        // XdgPopup.
-//        val parentsSceneTree =
-//            findWindowByXdgSurface(parentSurface)?.sceneTree
-//                ?: findPopupByXdgSurface(parentSurface)?.sceneTree
-//                ?: error("BUG: Can't have a XdgPopup without a parent")
-
-        // Create a SceneTree for this popup in order for the wlroots to display it
-//        val sceneTree = SceneTree.createFromParent(parentsSceneTree, xdgPopup.base)
-
-//        val popup: Popup
-//        if (val blabal = findWindowByXdgSurface(parentSurface)) {
-//            pare
-//        }
-//        popup = Popup(xdgPopup, sceneTree)
-//        popups.add(popup)
+        val popup = Popup(this, parent, xdgPopup)
+        parent.addChild(popup)
+        popups.add(popup)
     }
 
 
@@ -98,16 +70,28 @@ class WindowSystem(val compositor: Compositor) {
     }
 
 
+    fun addWindow(window: Window) {
+        require(!windows.contains(window))
+        windows.add(window)
+    }
+
+
     fun removeWindow(window: Window) {
         windows.remove(window)
         focuser.unfocusWindow(window)
     }
 
 
+    fun removePopup(popup: Popup) {
+        val removed = this.popups.remove(popup)
+        check(removed)
+    }
+
+
     fun findWindowAtCoordinates(x: Double, y: Double): UnderCursor? {
         // First, find a scene node under the cursor, then walk its parents upwards until you reach a
         // top level window.
-        val (sceneNode, nx, ny) = compositor.scene.tree.node.nodeAt(x, y)
+        val (sceneNode, nx, ny) = scene.tree.node.nodeAt(x, y)
             ?: return null
 
         if (sceneNode.type != SceneNode.Type.Buffer)
@@ -123,10 +107,10 @@ class WindowSystem(val compositor: Compositor) {
 //                    return UnderCursor(toplevel, sceneSurface.surface(), nx, ny)
 
         for (sceneTree in sceneNode.parentIterator) {
-           for (window in windows) {
-               if (sceneTree == window.sceneTree)
-                   return UnderCursor(window, window.xdgToplevel, sceneSurface.surface(), nx, ny)
-           }
+            for (window in windows) {
+                if (sceneTree == window.sceneTree)
+                    return UnderCursor(window, window.xdgToplevel, sceneSurface.surface(), nx, ny)
+            }
         }
 
         unreachable()
@@ -178,7 +162,6 @@ class WindowSystem(val compositor: Compositor) {
     }
 
 
-
     //
     // Helper classes
     //
@@ -204,5 +187,12 @@ class WindowSystem(val compositor: Compositor) {
         init {
             window.xdgToplevel.base.surface == surface
         }
+    }
+
+
+    sealed interface BaseWindow {
+        val sceneTree: SceneTree
+        fun addChild(child: BaseWindow)
+        fun removeChild(child: BaseWindow)
     }
 }

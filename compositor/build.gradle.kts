@@ -26,6 +26,7 @@ kotlin.compilerOptions {
     jvmTarget = JvmTarget.JVM_25
     apiVersion = KotlinVersion.KOTLIN_2_4
     languageVersion = KotlinVersion.KOTLIN_2_4
+    freeCompilerArgs.add("-Xcollection-literals)")
 }
 
 tasks.withType<JavaExec> {

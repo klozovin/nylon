@@ -14,7 +14,7 @@ class Cursor(val compositor: Compositor) {
     val listeners: MutableList<Listener> = mutableListOf()
 
     val wlrCursor = WlrCursor.create().apply {
-        attachOutputLayout(compositor.outputLayout)
+        attachOutputLayout(compositor.outputSystem.outputLayout)
         with(events) {
             listeners.addAll(
                 arrayOf(
