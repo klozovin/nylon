@@ -32,7 +32,8 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
         sceneTree = windows.scene.tree.xdgSurfaceCreate(xdgToplevel.base)
         with(xdgToplevel.base.surface.events) {
             listeners.addAll(
-                arrayOf( // TODO: Use array literals
+                arrayOf(
+                    // TODO: Use array literals
                     map.add(::onMap),
                     unmap.add(::onUnmap),
                     commit.add(::onCommit),
@@ -180,5 +181,12 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
             this.sceneTree.node.setPosition(it.x, it.y)
             windows.moveAndResize = null
         }
+    }
+
+
+    fun moveDiagonallyDown() {
+        val x = sceneTree.node.x
+        val y = sceneTree.node.y
+        sceneTree.node.setPosition(x + 10, y + 10)
     }
 }

@@ -4,11 +4,11 @@ import compositor.COMPOSITOR
 import compositor.Compositor
 import compositor.input.CursorInputState.InitiatedWith
 import compositor.windows.Window
+import wayland.KeyboardKeyState
 import wayland.util.Edge
-import wayland.util.Edge.*
-import wlroots.types.keyboard.KeyEvent
+import wayland.util.Edge.Left
+import wayland.util.Edge.Top
 import wlroots.types.pointer.PointerButtonEvent
-import wlroots.types.xdg_shell.XdgToplevel
 import java.util.*
 
 
@@ -33,7 +33,11 @@ class CursorInputMode(val compositor: Compositor) {
     /**
      * @param pressedButton Mouse button that was held down while the user initiated the move request
      */
-    fun transitionToMove(targetWindow: Window, pressedButton: Int?, initiatedWith: InitiatedWith = InitiatedWith.Mouse) {
+    fun transitionToMove(
+        targetWindow: Window,
+        pressedButton: Int?,
+        initiatedWith: InitiatedWith = InitiatedWith.Mouse
+    ) {
         require(state is CursorInputState.Passthrough)
 
         println("____")
@@ -67,8 +71,8 @@ class CursorInputMode(val compositor: Compositor) {
     // --------------------- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-    fun onKeyboardKey(event: KeyEvent, keysym: Int) {
-        state.onKeyboardKey(event, keysym)
+    fun onKeyboardKey(keysym: Int, keyState: KeyboardKeyState): Boolean {
+        return state.onKeyboardKey(keysym, keyState)
     }
 
 

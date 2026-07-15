@@ -45,15 +45,23 @@ public class PointerState {
 
     /// @return `wlr_seat_pointer_state.buttons` field
     public PointerButton[] getButtons() {
-        assert getButtonCount() <= WLR_POINTER_BUTTONS_CAP();
+        var buttonCount = Math.toIntExact(getButtonCount());
+        var buttonsPtr = wlr_seat_pointer_state.buttons(pointerStatePtr);
 
-        // PERF: Maybe use regular for loop instead of streams (for getButtonCount() > 1)
-        // PERF: Maybe hardcode when there's only one button pressed (getButtonCount() == 1)
-        return wlr_seat_pointer_state.buttons(pointerStatePtr)
-            .elements(wlr_seat_pointer_button.layout())
-            .limit(getButtonCount())
-            .map(PointerButton::new)
-            .toArray(PointerButton[]::new);
+        assert buttonCount <= WLR_POINTER_BUTTONS_CAP();
+
+        return switch (buttonCount) {
+            case 0 -> new PointerButton[0];
+
+            case 1 -> new PointerButton[]{new PointerButton(buttonsPtr)};
+
+            default -> buttonsPtr
+                .elements(wlr_seat_pointer_button.layout())
+                .limit(buttonCount)
+                .map(PointerButton::new)
+                .toArray(PointerButton[]::new);
+
+        };
     }
 
 

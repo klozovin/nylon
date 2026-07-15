@@ -25,7 +25,7 @@ inline fun error(block: () -> Any): Nothing =
 abstract class Timer(eventLoop: EventLoop) {
     private val arena = Arena.ofShared() // TODO: Why not confined?
     private val eventSource: EventSource
-    private var delayMs: Int = 0
+    private var delay: Int = 0
     private var removed = false
 
 
@@ -37,18 +37,18 @@ abstract class Timer(eventLoop: EventLoop) {
     abstract fun callback()
 
 
-    fun start(delay: Int) {
+    fun start(delayMs: Int) {
         require(!removed)
-        delayMs = delay
-        eventSource.timerUpdate(delayMs)
+        delay = delayMs
+        eventSource.timerUpdate(delay)
 
     }
 
 
     fun stop() {
         require(!removed)
-        delayMs = 0
-        eventSource.timerUpdate(delayMs)
+        delay = 0
+        eventSource.timerUpdate(delay)
     }
 
 
@@ -63,7 +63,7 @@ abstract class Timer(eventLoop: EventLoop) {
     private fun loop(): Int {
         require(!removed)
         callback()
-        eventSource.timerUpdate(delayMs)
+        eventSource.timerUpdate(delay)
         return 0
     }
 }

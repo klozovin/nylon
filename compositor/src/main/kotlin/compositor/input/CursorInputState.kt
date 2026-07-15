@@ -20,7 +20,7 @@ import xkbcommon.XkbKey
 sealed class CursorInputState(val compositor: Compositor) {
     // TODO: add compositor as param
 
-    abstract fun onKeyboardKey(event: KeyEvent, keysym: Int)
+    abstract fun onKeyboardKey(keysym: Int, state: KeyboardKeyState): Boolean
     abstract fun onCursorMotion(timeMsec: Int)
     abstract fun onCursorButton(event: PointerButtonEvent)
 
@@ -36,7 +36,7 @@ sealed class CursorInputState(val compositor: Compositor) {
         }
 
 
-        override fun onKeyboardKey(event: KeyEvent, keysym: Int) {
+        override fun onKeyboardKey(keysym: Int, state: KeyboardKeyState): Boolean {
             unreachable()
         }
 
@@ -209,29 +209,31 @@ sealed class CursorInputState(val compositor: Compositor) {
         }
 
 
-        override fun onKeyboardKey(event: KeyEvent, keysym: Int) {
+        override fun onKeyboardKey(keysym: Int, state: KeyboardKeyState): Boolean {
             if (keysym == XkbKey.Escape) {
                 // Stop the move, restore starting window position
                 grabbedSceneNode.setPosition(startingX, startingY)
                 compositor.captureMode.transitionToPassthrough()
-                return
+                return true
             }
 
             // Ignore all keypresses in mouse initiated move except above ESC
-            if (initiatedWith == InitiatedWith.Mouse) return
+            if (initiatedWith == InitiatedWith.Mouse) return false
 
             // Do nothing on key release, only move window on key press
-            if (event.state == KeyboardKeyState.Released) return
+            if (state == KeyboardKeyState.Released) return false
 
             val nudge = 10
+            var nudged= true
             when (keysym) {
                 XkbKey.i -> grabbedSceneNode.setPosition(grabbedSceneNode.x, grabbedSceneNode.y -10)
                 XkbKey.j -> grabbedSceneNode.setPosition(grabbedSceneNode.x - nudge, grabbedSceneNode.y)
                 XkbKey.k -> grabbedSceneNode.setPosition(grabbedSceneNode.x, grabbedSceneNode.y + 10)
                 XkbKey.l -> grabbedSceneNode.setPosition(grabbedSceneNode.x + nudge, grabbedSceneNode.y)
-
                 XkbKey.o -> grabbedSceneNode.setPosition(grabbedSceneNode.x + nudge, grabbedSceneNode.y - nudge)
+                else -> nudged = false
             }
+            return nudged
         }
 
 
@@ -319,7 +321,7 @@ sealed class CursorInputState(val compositor: Compositor) {
         }
 
 
-        override fun onKeyboardKey(event: KeyEvent, keysym: Int) {
+        override fun onKeyboardKey(keysym: Int, state: KeyboardKeyState): Boolean {
             when (keysym) {
                 XkbKey.Escape -> {
 
@@ -335,9 +337,13 @@ sealed class CursorInputState(val compositor: Compositor) {
 
                     // Where to transition? Here or in the atomic move handler? Leave it for now here, it easier.
                     compositor.captureMode.transitionToPassthrough()
+                    return true
                 }
 
-                else -> println("$this -> don't know what to do on that key")
+                else -> {
+                    println("$this -> don't know what to do on that key")
+                    return false
+                }
             }
         }
 

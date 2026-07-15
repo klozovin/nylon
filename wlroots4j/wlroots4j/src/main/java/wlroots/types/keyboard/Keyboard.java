@@ -10,6 +10,7 @@ import xkbcommon.Keymap;
 import xkbcommon.XkbState;
 
 import java.lang.foreign.MemorySegment;
+import java.util.Arrays;
 import java.util.EnumSet;
 
 import static java.lang.foreign.MemorySegment.NULL;
@@ -72,23 +73,35 @@ public class Keyboard {
         var numKeycodes = Math.toIntExact(getNumKeycodes());
         if (numKeycodes == 0) return new int[0];
 
-        // TODO: Test this pointer shenanigans
+        /*
+        return switch (numKeycodes) {
+            case 0 -> new int[0];
+            case 1 -> {
+                // hardcode
+            }
+            default -> {
+             // loop, or stream
+            }
+        }
+        */
+
+        return wlr_keyboard.keycodes(keyboardPtr)
+            .elements(wlr_keyboard.keycodes$layout().elementLayout())
+            .limit(numKeycodes)
+            .mapToInt(x -> x.get(C_INT, 0))
+            .toArray();
+
+
+        /*
+        Left for benchmarking later
         var keycodesPtr = wlr_keyboard.keycodes(keyboardPtr);
         var keycodesElementLayout = wlr_keyboard.keycodes$layout().elementLayout();
-        assert keycodesElementLayout.byteSize() > 64;
-
         var keycodesSlice = keycodesPtr.asSlice(0, keycodesElementLayout.byteSize() * numKeycodes);
-
-//        slice.getAtIndex(ValueLayout.JAVA_INT, 0);
-//        slice.getAtIndex(C_INT, 0);
         var keycodes = new int[numKeycodes];
         for (int i = 0; i < numKeycodes; i++) {
             keycodes[i] = keycodesSlice.getAtIndex(C_INT, i);
         }
-
-
-//        slice.getAtIndex(wlr_keyboard.keycodes$layout().elementLayout(), );
-        return keycodes;
+         */
     }
 
 

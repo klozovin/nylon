@@ -1,20 +1,31 @@
 package compositor.input
 
 import compositor.Compositor
-import compositor.input.CursorInputState.InitiatedWith
+import compositor.Timer
+import compositor.input.CursorInputState.*
 import wayland.KeyboardKeyState
+import wayland.KeyboardKeyState.Pressed
+import wayland.KeyboardKeyState.Released
 import wayland.server.Listener
 import wlroots.types.input.InputDevice
 import wlroots.types.keyboard.KeyEvent
 import wlroots.types.keyboard.Keyboard
 import wlroots.types.keyboard.KeyboardModifier
+import wlroots.types.keyboard.KeyboardModifier.Alt
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
 import xkbcommon.XkbKey
+import java.util.*
+
+
+typealias Modifiers = EnumSet<KeyboardModifier>
+
 
 class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
 
     val listeners: MutableList<Listener> = mutableListOf()
+    val repeatTimer = RepeatTimer()
+    var repeatKey: Int? = null
 
 
     init {
@@ -35,56 +46,78 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
     }
 
 
+    fun keycodeToKeysym(keycode: Int): Int {
+        return wlrKeyboard.xkbState.keyGetOneSym(keycode + 8)
+    }
+
+
+    fun tryCompositorShortcut(keysym: Int, modifiers: Modifiers, state: KeyboardKeyState): Boolean {
+        var isCompositorShortcut = true
+
+        when (compositor.captureMode.state) {
+            // TODO: Move to passthrough?
+            is Passthrough -> {
+                if (state == Released) return false
+                if (!modifiers.contains(Alt)) return false
+
+                when (keysym) {
+                    XkbKey.F1 -> compositor.windowSystem.focuser.focusNextWindow()
+                    XkbKey.F2 -> compositor.terminalPath?.let { compositor.startProcess(it) }
+                    XkbKey.F3 -> compositor.startProcess("/usr/bin/gthumb")
+                    XkbKey.F9 -> compositor.windowSystem.focuser.getFocused()?.moveDiagonallyDown()
+                    XkbKey.F11 -> compositor.windowSystem.focuser.getFocused()
+                        ?.let { compositor.captureMode.transitionToMove(it, null, InitiatedWith.Keyboard) }
+
+                    XkbKey.Escape -> compositor.stop()
+                    else -> isCompositorShortcut = false
+                }
+            }
+
+            is WindowMove, is WindowResize -> {
+                isCompositorShortcut = compositor.captureMode.onKeyboardKey(keysym, state)
+            }
+        }
+
+        if (isCompositorShortcut)
+            repeatKey = keysym
+
+        return isCompositorShortcut
+    }
+
+
+    //
+    // Signal handlers
+    //
+
     fun onKey(event: KeyEvent) {
-        println("key: $event")
         val keycode = event.keycode + 8
         val keysym = wlrKeyboard.xkbState.keyGetOneSym(keycode)
         val modifiers = wlrKeyboard.keyboardModifiers
 
+        var propagateToClient = true
 
-        // First check if we're in move/resize mode
-        val isWindowMove = compositor.captureMode.state is CursorInputState.WindowMove
-        val isWindowResize = compositor.captureMode.state is CursorInputState.WindowResize
-        if (isWindowMove || isWindowResize ) {
-            compositor.captureMode.onKeyboardKey(event, keysym)
-            return
+        // Do we have to cancel the repeat timer? If the key currently released was held down...
+        if (keysym == repeatKey && event.state == Released) {
+            repeatKey = null
+            repeatTimer.stop()
+            propagateToClient = false
         }
 
-        // Propagate the key to the focused client? Only if the compositor doesn't handle that key combo.
-        var propagateKey = false
-        when {
-            modifiers.contains(KeyboardModifier.Alt) && event.state == KeyboardKeyState.Pressed -> {
-                when (keysym) {
-                    XkbKey.F1 -> compositor.windowSystem.focuser.focusNextWindow()
+        // Try to handle the key as a compositor shortcut, if that fails forward it to the client
+        val isCompositorShortcut = tryCompositorShortcut(keysym, modifiers, event.state)
 
-                    XkbKey.F2 -> compositor.terminalPath?.let {
-                        compositor.startProcess(it)
-                    }
 
-                    XkbKey.F3 -> compositor.startProcess("/usr/bin/gthumb")
-
-                    XkbKey.F11 -> compositor.windowSystem.focuser.getFocused()?.let { compositor.captureMode.transitionToMove(it, null, InitiatedWith.Keyboard) }
-
-                    XkbKey.Escape -> compositor.stop()
-                }
-            }
-
-            modifiers.contains(KeyboardModifier.Logo) && event.state == KeyboardKeyState.Pressed -> {
-                when (keysym) {
-                    XkbKey.Insert -> println("Meta+Insert")
-                }
-
-            }
-
-            else -> propagateKey = true
+        // If it's a compositor recognized shortcut, start the timer because the user might hold the key down
+        // to try to repeat the action. Shortcuts handled internaly in the compositor are naturally not
+        // propagated to the client.
+        if (isCompositorShortcut) {
+            repeatTimer.start(500)
+            propagateToClient = false
         }
 
-        if (propagateKey) {
-            println("Propagatin key: $event")
+        if (propagateToClient) {
             compositor.seat.setKeyboard(wlrKeyboard)
             compositor.seat.keyboardNotifyKey(event.timeMsec, event.keycode, event.state)
-        } else {
-            println("NOT propagatin: $event")
         }
     }
 
@@ -105,5 +138,13 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
         // TODO: Memory management: Take care of Signals/Listeners
 
         compositor.inputSystem.remove(this)
+    }
+
+
+    inner class RepeatTimer : Timer(compositor.display.eventLoop) {
+        override fun callback() {
+            require(repeatKey != null)
+            tryCompositorShortcut(repeatKey!!, wlrKeyboard.keyboardModifiers, Pressed)
+        }
     }
 }
