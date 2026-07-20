@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
     application
-    kotlin("jvm") version "2.4.0"
+    kotlin("jvm") version "2.4.10"
 }
 
 
@@ -28,5 +28,6 @@ subprojects {
         jvmTarget = JvmTarget.JVM_25
         apiVersion = KotlinVersion.KOTLIN_2_4
         languageVersion = KotlinVersion.KOTLIN_2_4
+        freeCompilerArgs.add("-Xcollection-literals")
     }
 }

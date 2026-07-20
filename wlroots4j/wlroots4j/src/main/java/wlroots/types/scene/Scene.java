@@ -16,12 +16,13 @@ import static jextract.wlroots.wlr.*;
 ///
 /// `struct wlr_scene {}`
 @NullMarked
-public final class Scene {
+public final class Scene extends SceneTree {
     MemorySegment scenePtr;
 
 
     private Scene(MemorySegment scenePtr) {
         assert !scenePtr.equals(NULL);
+        super(wlr_scene.tree(scenePtr));
         this.scenePtr = scenePtr;
     }
 
@@ -29,15 +30,6 @@ public final class Scene {
     /// Create a new scene-graph.
     static public Scene create() {
         return new Scene(wlr_scene_create());
-    }
-
-
-    //
-    // *** Fields ***
-    //
-
-    public SceneTree getTree() {
-        return new SceneTree(wlr_scene.tree(scenePtr));
     }
 
 

@@ -15,12 +15,13 @@ import static jextract.wlroots.wlr.*;
 ///
 /// `struct wlr_scene_rect {};`
 @NullMarked
-public final class SceneRect {
+public final class SceneRect extends SceneNode {
     public final MemorySegment sceneRectPtr;
 
 
     public SceneRect(MemorySegment sceneRectPtr) {
         assert !sceneRectPtr.equals(NULL);
+        super(wlr_scene_rect.node(sceneRectPtr));
         this.sceneRectPtr = sceneRectPtr;
     }
 
@@ -39,15 +40,6 @@ public final class SceneRect {
     /// that does not represent a wlr_scene_rect.
     public static SceneRect fromNode(SceneNode node) {
         return new SceneRect(wlr_scene_rect_from_node(node.sceneNodePtr));
-    }
-
-
-    //
-    // *** Getters and setters ***
-    //
-
-    public SceneNode node() {
-        return new SceneNode(wlr_scene_rect.node(sceneRectPtr));
     }
 
 

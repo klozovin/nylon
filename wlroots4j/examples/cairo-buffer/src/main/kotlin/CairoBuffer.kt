@@ -96,8 +96,8 @@ object CairoBuffer {
         cairoContext.destroy()
 
         // Scene buffer
-        val sceneBuffer = SceneBuffer.create(scene.getTree(), cairoSurfaceBuffer)
-        sceneBuffer.node().setPosition(50, 50)
+        val sceneBuffer = scene.createSceneBuffer(cairoSurfaceBuffer)
+        sceneBuffer.setPosition(50, 50)
         cairoSurfaceBuffer.drop()
         display.run()
         display.destroy()

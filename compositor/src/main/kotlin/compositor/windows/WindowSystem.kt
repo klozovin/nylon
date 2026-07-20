@@ -10,7 +10,6 @@ import wlroots.types.scene.SceneNode
 import wlroots.types.scene.SceneSurface
 import wlroots.types.scene.SceneTree
 import wlroots.types.xdg_shell.*
-import java.util.*
 
 
 class WindowSystem(val compositor: Compositor) {
@@ -87,33 +86,29 @@ class WindowSystem(val compositor: Compositor) {
         check(removed)
     }
 
-
     fun findWindowAtCoordinates(x: Double, y: Double): UnderCursor? {
         // First, find a scene node under the cursor, then walk its parents upwards until you reach a
         // top level window.
-        val (sceneNode, nx, ny) = scene.tree.node.nodeAt(x, y)
-            ?: return null
+        val (node, nx, ny) = scene.nodeAt(x, y) ?: return null
+        if (node !is SceneBuffer) return null
 
-        if (sceneNode.type != SceneNode.Type.Buffer)
-            return null
+        val buffer = node // SceneBuffer.fromNode(sceneNode)
+        val surface = SceneSurface.tryFromBuffer(buffer) ?: return null
 
-        val sceneBuffer = SceneBuffer.fromNode(sceneNode)
-        val sceneSurface = SceneSurface.tryFromBuffer(sceneBuffer) ?: return null
-
-        // TODO: Extract into method
-//        for (sceneTree in sceneNode.parentIterator)
-//            for ((toplevel, toplevelSceneTree) in toplevelSceneTree)
-//                if (sceneTree == toplevelSceneTree)
-//                    return UnderCursor(toplevel, sceneSurface.surface(), nx, ny)
-
-        for (sceneTree in sceneNode.parentIterator) {
-            for (window in windows) {
-                if (sceneTree == window.sceneTree)
-                    return UnderCursor(window, window.xdgToplevel, sceneSurface.surface(), nx, ny)
+        for (sceneTree in node.parentIterator) {
+            findWindowBySceneTree(sceneTree)?.let { window ->
+                return UnderCursor(window, window.xdgToplevel, surface.getSurface(), nx, ny)
             }
         }
 
         unreachable()
+    }
+
+
+    fun findWindowBySceneTree(sceneTree: SceneTree): Window?{
+        return windows.find {
+            it.sceneTree == sceneTree
+        }
     }
 
 
@@ -153,7 +148,7 @@ class WindowSystem(val compositor: Compositor) {
         check(setSizeSerial == configureSerial) // Don't need this for real, just to check an assumption
 
         // Setup waiting for ack
-        val op = MoveAndResize(window.xdgToplevel, window.sceneTree.node, configureSerial, x, y, w, h)
+        val op = MoveAndResize(window.xdgToplevel, window.sceneTree, configureSerial, x, y, w, h)
 
         moveAndResize = op
         // Then do a move ... but NOT here :D

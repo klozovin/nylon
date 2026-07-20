@@ -3,6 +3,7 @@ package wlroots.types.scene;
 import jextract.wlroots.wlr_scene_tree;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import wlroots.types.buffer.Buffer;
 import wlroots.types.xdg_shell.XdgSurface;
 
 import java.lang.foreign.MemorySegment;
@@ -14,21 +15,22 @@ import static jextract.wlroots.wlr.wlr_scene_xdg_surface_create;
 
 /// Node representing a subtree in the scene-graph.
 @NullMarked
-public final class SceneTree {
+public sealed class SceneTree extends SceneNode permits Scene {
     public final MemorySegment sceneTreePtr;
 
 
     public SceneTree(MemorySegment sceneTreePtr) {
         assert !sceneTreePtr.equals(NULL);
+        super(wlr_scene_tree.node(sceneTreePtr));
         this.sceneTreePtr = sceneTreePtr;
     }
 
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(@Nullable Object other) {
         return switch (other) {
-            case SceneTree otherSceneTree -> sceneTreePtr.equals(otherSceneTree.sceneTreePtr);
             case null -> false;
+            case SceneTree otherSceneTree -> sceneTreePtr.equals(otherSceneTree.sceneTreePtr);
             default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }
@@ -46,7 +48,7 @@ public final class SceneTree {
 
 
     /// Convenience function, does not exist in wlroots. Create a new SceneTree for `xdgSurface`, but with
-    /// parented in `parent.`
+    /// parented in `parent`.
     public static SceneTree createFromParent(SceneTree parent, XdgSurface xdgSurface) {
         return parent.xdgSurfaceCreate(xdgSurface);
     }
@@ -59,16 +61,10 @@ public final class SceneTree {
     }
 
 
-    // *** Getters and setters **************************************************************************** //
 
-
-    public SceneNode getNode() {
-        return new SceneNode(wlr_scene_tree.node(sceneTreePtr));
-    }
-
-
-    // *** Methods **************************************************************************************** //
-
+    //
+    // *** Methods ***
+    //
 
     /// Add a node displaying a xdg_surface and all of its sub-surfaces to the scene-graph, with this SceneTree
     /// as its parent.
@@ -80,5 +76,17 @@ public final class SceneTree {
     ///
     public SceneTree xdgSurfaceCreate(XdgSurface xdgSurface) {
         return new SceneTree(wlr_scene_xdg_surface_create(sceneTreePtr, xdgSurface.xdgSurfacePtr));
+    }
+
+
+    /// Convenience function to create a {@link SceneRect} with this SceneTree as a parent.
+    public SceneRect createSceneRect(int width, int height, float[] color) {
+        return SceneRect.create(this, width, height, color);
+    }
+
+
+    /// Convenience function to create a {@link SceneBuffer} with this SceneTree as its parent.
+    public SceneBuffer createSceneBuffer(Buffer buffer) {
+        return SceneBuffer.create(this, buffer);
     }
 }

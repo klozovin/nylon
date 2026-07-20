@@ -29,7 +29,7 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
 
 
     init {
-        sceneTree = windows.scene.tree.xdgSurfaceCreate(xdgToplevel.base)
+        sceneTree = windows.scene.xdgSurfaceCreate(xdgToplevel.base)
         with(xdgToplevel.base.surface.events) {
             listeners.addAll([map.add(::onMap), unmap.add(::onUnmap), commit.add(::onCommit)])
         }
@@ -166,15 +166,15 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
         // TODO: Should this remain here?
         windows.moveAndResize?.let {
             require(it.toplevel == this.xdgToplevel)
-            this.sceneTree.node.setPosition(it.x, it.y)
+            this.sceneTree.setPosition(it.x, it.y)
             windows.moveAndResize = null
         }
     }
 
 
     fun moveDiagonallyDown() {
-        val x = sceneTree.node.x
-        val y = sceneTree.node.y
-        sceneTree.node.setPosition(x + 10, y + 10)
+        val x = sceneTree.x
+        val y = sceneTree.y
+        sceneTree.setPosition(x + 10, y + 10)
     }
 }

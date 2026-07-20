@@ -17,7 +17,7 @@ import static jextract.wlroots.wlr.*;
 
 
 @NullMarked
-public class SceneNode {
+public sealed class SceneNode permits SceneTree, SceneBuffer, SceneRect {
     public final MemorySegment sceneNodePtr;
 
     /// Iterate over the .parent field all the way up to the root of the tree.
@@ -40,7 +40,7 @@ public class SceneNode {
 
 
     /// Can be NULL when accessing wlr_scene.tree.node.parent.
-    public @Nullable SceneTree parent() {
+    public @Nullable SceneTree getParent() {
         return SceneTree.ofPtrOrNull(wlr_scene_node.parent(sceneNodePtr));
     }
 
@@ -60,7 +60,6 @@ public class SceneNode {
     //
     // *** Methods ***
     //
-
 
     /// Enable or disable this node. If a node is disabled, all of its children are implicitly disabled as
     /// well.
@@ -112,14 +111,16 @@ public class SceneNode {
         try (var arena = Arena.ofConfined()) {
             var nxPtr = arena.allocate(ValueLayout.JAVA_DOUBLE);
             var nyPtr = arena.allocate(ValueLayout.JAVA_DOUBLE);
-            var nodePtr = wlr_scene_node_at(sceneNodePtr, lx, ly, nxPtr, nyPtr);
+            var sceneNodePtr = wlr_scene_node_at(this.sceneNodePtr, lx, ly, nxPtr, nyPtr);
 
-            return !nodePtr.equals(NULL) ?
-                Tuple.of(
-                    new SceneNode(nodePtr),
+            if (!sceneNodePtr.equals(NULL)) {
+                return Tuple.of(
+                    new SceneNode(sceneNodePtr).toConcreteSceneNode(),
                     nxPtr.get(ValueLayout.JAVA_DOUBLE, 0),
-                    nyPtr.get(ValueLayout.JAVA_DOUBLE, 0))
-                : null;
+                    nyPtr.get(ValueLayout.JAVA_DOUBLE, 0));
+            } else {
+                return null;
+            }
         }
     }
 
@@ -130,26 +131,36 @@ public class SceneNode {
     }
 
 
+    /// Convenience method, not present in wlroots. Converts {@link SceneNode} to a concrete implementation
+    public SceneNode toConcreteSceneNode() {
+        return switch (getType()) {
+            case Tree -> SceneTree.fromNode(this);
+            case Rect -> SceneRect.fromNode(this);
+            case Buffer -> SceneBuffer.fromNode(this);
+        };
+    }
+
+
     public class ParentIterator implements Iterator<SceneTree> {
-        private SceneNode node;
+        private SceneNode currentNode;
 
 
         public ParentIterator() {
-            this.node = SceneNode.this;
+            this.currentNode = SceneNode.this;
         }
 
 
         @Override
         public boolean hasNext() {
-            return this.node.parent() != null;
+            return currentNode.getParent() != null;
         }
 
 
         @Override
         public SceneTree next() {
-            var next = node.parent();
+            var next = currentNode.getParent();
             assert next != null;
-            node = next.getNode();
+            currentNode = next;
             return next;
         }
     }

@@ -128,11 +128,11 @@ object SceneGraph {
         val commitListener = surface.events.commit.add(::surfaceCommitHandler)
         val destroyListener = surface.events.destroy.add(::surfaceDestroyHandler)
 
-        val surfaceBorder = SceneRect.create(scene.getTree(), 0, 0, floatArrayOf(0.8f, 0.2f, 0.2f, 1.0f))
-        surfaceBorder.node().setPosition(surfaceOffset, surfaceOffset)
+        val surfaceBorder = scene.createSceneRect(0, 0, [0.8f, 0.2f, 0.2f, 1.0f])
+        surfaceBorder.setPosition(surfaceOffset, surfaceOffset)
 
-        val sceneSurface = SceneSurface.create(scene.getTree(), surface)
-        sceneSurface.buffer().node().setPosition(surfaceOffset + borderWidth, surfaceOffset + borderWidth)
+        val sceneSurface = SceneSurface.create(scene, surface)
+        sceneSurface.buffer.setPosition(surfaceOffset + borderWidth, surfaceOffset + borderWidth)
 
         surfaceExtras[surface] = SurfaceExtra(sceneSurface, surfaceBorder, commitListener, destroyListener)
         surfaceOffset += 50
@@ -146,7 +146,7 @@ object SceneGraph {
         surfaceBorder.setSize(surface.current().width() + 2 * borderWidth, surface.current().height() + 2 * borderWidth)
 
         XdgToplevel.tryFromSurface(surface)?.let { topLevel ->
-            if (topLevel.base.getInitialCommit())
+            if (topLevel.base.initialCommit)
                 topLevel.setSize(0, 0)
         }
     }
@@ -160,8 +160,8 @@ object SceneGraph {
         surfaceExtras[surface]!!.commitListener.remove()
         surfaceExtras[surface]!!.destroyListener.remove()
 
-        sceneSurface.buffer().node().destroy()
-        surfaceBorder.node().destroy()
+        sceneSurface.buffer.destroy()
+        surfaceBorder.destroy()
     }
 }
 

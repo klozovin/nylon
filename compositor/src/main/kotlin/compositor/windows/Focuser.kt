@@ -22,7 +22,7 @@ class Focuser(val compositor: Compositor) {
         clearFocus()
 
         this.current = window
-        window.sceneTree.node.raiseToTop()
+        window.sceneTree.raiseToTop()
         window.xdgToplevel.setActivated(true)
         compositor.seat.keyboard?.let { keyboard ->
             compositor.seat.keyboardNotifyEnter(

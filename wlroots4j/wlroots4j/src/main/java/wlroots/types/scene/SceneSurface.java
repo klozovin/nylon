@@ -44,16 +44,16 @@ public class SceneSurface {
 
 
     //
-    // *** Methods ***
+    // *** Fields ***
     //
 
 
-    public SceneBuffer buffer() {
+    public SceneBuffer getBuffer() {
         return new SceneBuffer(wlr_scene_surface.buffer(sceneSurfacePtr));
     }
 
 
-    public Surface surface() {
+    public Surface getSurface() {
         return new Surface(wlr_scene_surface.surface(sceneSurfacePtr));
     }
 }

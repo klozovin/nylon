@@ -7,7 +7,6 @@ import linux.MouseButton
 import wayland.KeyboardKeyState
 import wayland.PointerButtonState
 import wayland.util.Edge
-import wlroots.types.keyboard.KeyEvent
 import wlroots.types.keyboard.KeyboardModifier
 import wlroots.types.pointer.PointerButtonEvent
 import wlroots.util.Box
@@ -108,7 +107,7 @@ sealed class CursorInputState(val compositor: Compositor) {
                     val geometry = toplevel.base.geometry
                     val sceneTree =
                         cursorTarget.window.sceneTree // windowSystem.toplevelSceneTree[toplevel]!!
-                    val coordinates = sceneTree.node.coords()
+                    val coordinates = sceneTree.coords()
 
 
                     println("Window geometry: $geometry")
@@ -190,18 +189,18 @@ sealed class CursorInputState(val compositor: Compositor) {
         // TODO: pass this as param, no need to know where is the toplevel kept and how
 //        val grabbedSceneNode = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!.node
 
-        val grabbedSceneNode = targetWindow.sceneTree.node
+        val grabbedSceneTree = targetWindow.sceneTree
 
 //        val startingX = grabbedSceneNode.x
 //        val startingY = grabbedSceneNode.y
 
-        val startingX = targetWindow.sceneTree.node.x
-        val startingY = targetWindow.sceneTree.node.y
+        val startingX = targetWindow.sceneTree.x
+        val startingY = targetWindow.sceneTree.y
 
 
         val cursor = compositor.inputSystem.cursor
-        val grabX = compositor.inputSystem.cursor.wlrCursor.x - targetWindow.sceneTree.node.x
-        val grabY = compositor.inputSystem.cursor.wlrCursor.y - targetWindow.sceneTree.node.y
+        val grabX = compositor.inputSystem.cursor.wlrCursor.x - targetWindow.sceneTree.x
+        val grabY = compositor.inputSystem.cursor.wlrCursor.y - targetWindow.sceneTree.y
 
 
         init {
@@ -212,7 +211,7 @@ sealed class CursorInputState(val compositor: Compositor) {
         override fun onKeyboardKey(keysym: Int, state: KeyboardKeyState): Boolean {
             if (keysym == XkbKey.Escape) {
                 // Stop the move, restore starting window position
-                grabbedSceneNode.setPosition(startingX, startingY)
+                grabbedSceneTree.setPosition(startingX, startingY)
                 compositor.captureMode.transitionToPassthrough()
                 return true
             }
@@ -226,11 +225,11 @@ sealed class CursorInputState(val compositor: Compositor) {
             val nudge = 10
             var nudged= true
             when (keysym) {
-                XkbKey.i -> grabbedSceneNode.setPosition(grabbedSceneNode.x, grabbedSceneNode.y -10)
-                XkbKey.j -> grabbedSceneNode.setPosition(grabbedSceneNode.x - nudge, grabbedSceneNode.y)
-                XkbKey.k -> grabbedSceneNode.setPosition(grabbedSceneNode.x, grabbedSceneNode.y + 10)
-                XkbKey.l -> grabbedSceneNode.setPosition(grabbedSceneNode.x + nudge, grabbedSceneNode.y)
-                XkbKey.o -> grabbedSceneNode.setPosition(grabbedSceneNode.x + nudge, grabbedSceneNode.y - nudge)
+                XkbKey.i -> grabbedSceneTree.setPosition(grabbedSceneTree.x, grabbedSceneTree.y -10)
+                XkbKey.j -> grabbedSceneTree.setPosition(grabbedSceneTree.x - nudge, grabbedSceneTree.y)
+                XkbKey.k -> grabbedSceneTree.setPosition(grabbedSceneTree.x, grabbedSceneTree.y + 10)
+                XkbKey.l -> grabbedSceneTree.setPosition(grabbedSceneTree.x + nudge, grabbedSceneTree.y)
+                XkbKey.o -> grabbedSceneTree.setPosition(grabbedSceneTree.x + nudge, grabbedSceneTree.y - nudge)
                 else -> nudged = false
             }
             return nudged
@@ -247,7 +246,7 @@ sealed class CursorInputState(val compositor: Compositor) {
                 "BUG: Trying to move a non existent window"
             }
             check(!targetWindow.isDestroyed)
-            grabbedSceneNode.setPosition((cursor.wlrCursor.x - grabX), (cursor.wlrCursor.y - grabY))
+            grabbedSceneTree.setPosition((cursor.wlrCursor.x - grabX), (cursor.wlrCursor.y - grabY))
         }
 
 
@@ -297,11 +296,11 @@ sealed class CursorInputState(val compositor: Compositor) {
         var grabbedGeometry: Box // TODO: var needed?
 
         //        val grabbedSceneTree = compositor.windowSystem.toplevelSceneTree[grabbedToplevel]!!
-        val grabbedSceneNode = targetWindow.sceneTree.node
+        val grabbedSceneTree = targetWindow.sceneTree
 
         // Starting size and position, used for restoring.
-        val startingX = grabbedSceneNode.x
-        val startingY = grabbedSceneNode.y
+        val startingX = grabbedSceneTree.x
+        val startingY = grabbedSceneTree.y
         val startingWidth = targetWindow.xdgToplevel.base.geometry.width
         val startingHeight = targetWindow.xdgToplevel.base.geometry.height
 
@@ -310,13 +309,13 @@ sealed class CursorInputState(val compositor: Compositor) {
 
         init {
             val geometry = targetWindow.xdgToplevel.base.geometry
-            val borderX = (grabbedSceneNode.x + geometry.x) + if (Edge.Right in edges) geometry.width else 0
-            val borderY = (grabbedSceneNode.y + geometry.y) + if (Edge.Bottom in edges) geometry.height else 0
+            val borderX = (grabbedSceneTree.x + geometry.x) + if (Edge.Right in edges) geometry.width else 0
+            val borderY = (grabbedSceneTree.y + geometry.y) + if (Edge.Bottom in edges) geometry.height else 0
             grabX = cursor.wlrCursor.x - borderX
             grabY = cursor.wlrCursor.y - borderY
             grabbedGeometry = Box.allocateCopy(geometry).apply {
-                x += grabbedSceneNode.x
-                y += grabbedSceneNode.y
+                x += grabbedSceneTree.x
+                y += grabbedSceneTree.y
             }
         }
 
