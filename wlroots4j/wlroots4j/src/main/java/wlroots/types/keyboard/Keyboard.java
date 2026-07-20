@@ -1,5 +1,6 @@
 package wlroots.types.keyboard;
 
+import jextract.wlroots.wlr_input_device;
 import jextract.wlroots.wlr_keyboard;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -10,7 +11,6 @@ import xkbcommon.Keymap;
 import xkbcommon.XkbState;
 
 import java.lang.foreign.MemorySegment;
-import java.util.Arrays;
 import java.util.EnumSet;
 
 import static java.lang.foreign.MemorySegment.NULL;
@@ -18,16 +18,16 @@ import static jextract.wlroots.wlr.*;
 
 
 @NullMarked
-public class Keyboard {
+public final class Keyboard extends InputDevice {
     public final MemorySegment keyboardPtr;
-    public final InputDevice base;
     public final Events events;
 
 
     public Keyboard(MemorySegment keyboardPtr) {
         assert !keyboardPtr.equals(NULL);
+
+        super(wlr_keyboard.base(keyboardPtr));
         this.keyboardPtr = keyboardPtr;
-        this.base = new InputDevice(wlr_keyboard.base(keyboardPtr));
         this.events = new Events(wlr_keyboard.events(keyboardPtr));
     }
 
@@ -176,8 +176,6 @@ public class Keyboard {
         public boolean containsShift() {
             return (modifiers & WLR_MODIFIER_SHIFT()) != 0;
         }
-
-
     }
 
 
@@ -185,7 +183,7 @@ public class Keyboard {
     // *** Events ***
     //
 
-    public static class Events {
+    public final class Events extends InputDevice.Events {
         /// Raised when a key has been pressed or released on the keyboard. Emitted before the xkb state of
         /// the keyboard has been updated (including modifiers).
         public final Signal1<KeyEvent> key;
@@ -198,6 +196,8 @@ public class Keyboard {
 
         Events(MemorySegment ptr) {
             assert !ptr.equals(NULL);
+
+            super(wlr_input_device.events(inputDevicePtr));
             key       = Signal.of(wlr_keyboard.events.key(ptr), KeyEvent::new);
             modifiers = Signal.of(wlr_keyboard.events.modifiers(ptr), Keyboard::new);
         }

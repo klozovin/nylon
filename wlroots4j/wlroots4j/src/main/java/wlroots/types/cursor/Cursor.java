@@ -85,8 +85,8 @@ public class Cursor {
     /// @param inputDevice May be passed to respect device mapping constraints. If NULL, device mapping constraints
     ///               will be ignored.
     public void move(@Nullable InputDevice inputDevice, double deltaX, double deltaY) {
-        var device = inputDevice != null ? inputDevice.inputDevicePtr : NULL;
-        wlr_cursor_move(cursorPtr, device, deltaX, deltaY);
+        var devicePtr = inputDevice != null ? inputDevice.inputDevicePtr : NULL;
+        wlr_cursor_move(cursorPtr, devicePtr, deltaX, deltaY);
     }
 
 

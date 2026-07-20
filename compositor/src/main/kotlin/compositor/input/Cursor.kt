@@ -36,13 +36,13 @@ class Cursor(val compositor: Compositor) {
 
 
     fun onCursorMotion(event: PointerMotionEvent) {
-        wlrCursor.move(event.pointer.base, event.deltaX, event.deltaY)
+        wlrCursor.move(event.pointer, event.deltaX, event.deltaY)
         compositor.captureMode.onCursorMotion(event.timeMsec)
     }
 
 
     fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
-        wlrCursor.warpAbsolute(event.pointer.base, event.x, event.y)
+        wlrCursor.warpAbsolute(event.pointer, event.x, event.y)
         compositor.captureMode.onCursorMotion(event.timeMsec)
     }
 

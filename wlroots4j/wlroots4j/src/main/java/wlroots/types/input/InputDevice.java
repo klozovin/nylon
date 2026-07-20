@@ -5,6 +5,8 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
+import wlroots.types.keyboard.Keyboard;
+import wlroots.types.pointer.Pointer;
 
 import java.lang.foreign.MemorySegment;
 
@@ -12,7 +14,7 @@ import static java.lang.foreign.MemorySegment.NULL;
 
 
 @NullMarked
-public final class InputDevice {
+public sealed class InputDevice permits Keyboard, Pointer {
     public final MemorySegment inputDevicePtr;
     public final Events events;
 
@@ -21,6 +23,16 @@ public final class InputDevice {
         assert !inputDevicePtr.equals(NULL);
         this.inputDevicePtr = inputDevicePtr;
         this.events = new Events(wlr_input_device.events(inputDevicePtr));
+    }
+
+
+    /// Convenience method, not present in wlroots. Converts base InputDevice to a concrete implementation.
+    public InputDevice toConcreteInputDevice() {
+        return switch (getType()) {
+            case Keyboard -> Keyboard.fromInputDevice(this);
+            case Pointer -> Pointer.fromInputDevice(this);
+            default -> throw new AssertionError("Not yet implemented");
+        };
     }
 
 

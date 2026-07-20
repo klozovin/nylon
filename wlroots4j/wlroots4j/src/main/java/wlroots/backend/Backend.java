@@ -89,7 +89,7 @@ public final class Backend {
         Events(MemorySegment eventsPtr) {
             assert !eventsPtr.equals(NULL);
             newOutput = Signal.of(wlr_backend.events.new_output(eventsPtr), Output::new);
-            newInput  = Signal.of(wlr_backend.events.new_input(eventsPtr), InputDevice::new);
+            newInput  = Signal.of(wlr_backend.events.new_input(eventsPtr), inputDevicePtr -> new InputDevice(inputDevicePtr).toConcreteInputDevice());
             destroy   = Signal.of(wlr_backend.events.destroy(eventsPtr), Backend::new);
         }
     }

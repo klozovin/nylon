@@ -35,10 +35,10 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
         wlrKeyboard.setKeymap(keymap)
         wlrKeyboard.setRepeatInfo(25, 200)
 
-        with(wlrKeyboard) {
-            listeners.add(events.key.add(::onKey))
-            listeners.add(events.modifiers.add(::onModifiers))
-            listeners.add(base.events.destroy.add(::onDestroy))
+        with(wlrKeyboard.events) {
+            listeners.add(key.add(::onKey))
+            listeners.add(modifiers.add(::onModifiers))
+            listeners.add(destroy.add(::onDestroy))
         }
 
         keymap.unref()

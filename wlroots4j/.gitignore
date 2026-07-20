@@ -1,2 +1,3 @@
 jextracted/src/main/c
-jextracted/src/main/java
+jextracted/src/main/java/*
+!jextracted/src/main/java/module-info.java

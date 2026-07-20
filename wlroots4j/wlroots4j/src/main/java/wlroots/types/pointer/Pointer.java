@@ -12,12 +12,14 @@ import static jextract.wlroots.wlr.wlr_pointer_from_input_device;
 
 
 @NullMarked
-public class Pointer {
+public final class Pointer extends InputDevice{
     public final MemorySegment pointerPtr;
 
 
     public Pointer(MemorySegment pointerPtr) {
         assert !pointerPtr.equals(NULL);
+
+        super(wlr_pointer.base(pointerPtr));
         this.pointerPtr = pointerPtr;
     }
 
@@ -42,8 +44,9 @@ public class Pointer {
     // *** Getters and setters ***
     //
 
+    // TODO: Delete
     /// @return wlr_pointer.base
-    public InputDevice getBase() {
+    public InputDevice _getBase() {
         return new InputDevice(wlr_pointer.base(pointerPtr));
     }
 

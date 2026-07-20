@@ -32,9 +32,9 @@ class InputSystem(val compositor: Compositor) {
 
 
     fun onNewInput(device: InputDevice) {
-        when (device.type) {
-            InputDeviceType.Keyboard -> onNewKeyboard(WlrKeyboard.fromInputDevice(device))
-            InputDeviceType.Pointer -> onNewPointer(Pointer.fromInputDevice(device))
+        when(device) {
+            is WlrKeyboard -> onNewKeyboard(device)
+            is Pointer -> onNewPointer(device)
             else -> error("Unsupported wlr_input_device_type: ${device.type}")
         }
     }
@@ -51,7 +51,7 @@ class InputSystem(val compositor: Compositor) {
 
 
     fun onNewPointer(pointer: Pointer) {
-        cursor.wlrCursor.attachInputDevice(pointer.base)
+        cursor.wlrCursor.attachInputDevice(pointer)
         seat.addCapability(SeatCapability.Pointer)
     }
 

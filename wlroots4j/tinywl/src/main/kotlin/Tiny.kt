@@ -7,7 +7,6 @@ import wayland.util.Edge
 import wlroots.backend.Backend
 import wlroots.render.Allocator
 import wlroots.render.Renderer
-import wlroots.types.*
 import wlroots.types.compositor.Compositor
 import wlroots.types.compositor.Subcompositor
 import wlroots.types.compositor.Surface
@@ -459,13 +458,13 @@ object Tiny {
 
 
     fun onCursorMotion(event: PointerMotionEvent) {
-        cursor.move(event.pointer.getBase(), event.deltaX, event.deltaY)
+        cursor.move(event.pointer, event.deltaX, event.deltaY)
         processCursorMotion(event.timeMsec)
     }
 
 
     fun onCursorMotionAbsolute(event: PointerMotionAbsoluteEvent) {
-        cursor.warpAbsolute(event.pointer.getBase(), event.x, event.y)
+        cursor.warpAbsolute(event.pointer, event.x, event.y)
         processCursorMotion(event.timeMsec)
     }
 
