@@ -35,8 +35,8 @@ public class Keyboard {
     @Override
     public boolean equals(@Nullable Object other) {
         return switch (other) {
-            case Keyboard otherKeyboard -> keyboardPtr.equals(otherKeyboard.keyboardPtr);
             case null -> false;
+            case Keyboard otherKeyboard -> keyboardPtr.equals(otherKeyboard.keyboardPtr);
             default -> throw new RuntimeException("BUG: Trying to compare objects of different types");
         };
     }

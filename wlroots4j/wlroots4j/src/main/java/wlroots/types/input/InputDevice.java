@@ -2,6 +2,7 @@ package wlroots.types.input;
 
 import jextract.wlroots.wlr_input_device;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import wayland.server.Signal;
 import wayland.server.Signal.Signal1;
 
@@ -29,6 +30,12 @@ public final class InputDevice {
 
     public InputDeviceType getType() {
         return InputDeviceType.of(wlr_input_device.type(inputDevicePtr));
+    }
+
+
+    public @Nullable String getName() {
+        var namePtr = wlr_input_device.name(inputDevicePtr);
+        return !namePtr.equals(NULL) ? namePtr.getString(0) : null;
     }
 
 

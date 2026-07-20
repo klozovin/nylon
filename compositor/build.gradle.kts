@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 plugins {
     java
     application
-    kotlin("jvm") version "2.4.0"
+    kotlin("jvm") version "2.4.10"
 }
 
 repositories {
@@ -26,7 +26,7 @@ kotlin.compilerOptions {
     jvmTarget = JvmTarget.JVM_25
     apiVersion = KotlinVersion.KOTLIN_2_4
     languageVersion = KotlinVersion.KOTLIN_2_4
-    freeCompilerArgs.add("-Xcollection-literals)")
+    freeCompilerArgs.add("-Xcollection-literals")
 }
 
 tasks.withType<JavaExec> {

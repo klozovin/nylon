@@ -31,25 +31,18 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
     init {
         sceneTree = windows.scene.tree.xdgSurfaceCreate(xdgToplevel.base)
         with(xdgToplevel.base.surface.events) {
-            listeners.addAll(
-                arrayOf(
-                    // TODO: Use array literals
-                    map.add(::onMap),
-                    unmap.add(::onUnmap),
-                    commit.add(::onCommit),
-                )
-            )
+            listeners.addAll([map.add(::onMap), unmap.add(::onUnmap), commit.add(::onCommit)])
         }
         with(xdgToplevel.events) {
             listeners.addAll(
-                arrayOf(
+                [
                     destroy.add(::onDestroy),
                     requestMove.add(::onRequestMove),
                     requestResize.add(::onRequestResize),
                     requestMaximize.add(::onRequestMaximize),
                     requestFullscreen.add(::onRequestFullscreen),
                     ackConfigure.add(::onAckConfigure)
-                )
+                ]
             )
         }
     }
@@ -120,8 +113,7 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
 
 
     fun onCommit(listener: Listener, surface: Surface) {
-        if (xdgToplevel.base.initialCommit)
-            xdgToplevel.setSize(0, 0)
+        if (xdgToplevel.base.initialCommit) xdgToplevel.setSize(0, 0)
 
     }
 
@@ -141,8 +133,7 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
 
     fun onRequestMove(event: XdgToplevel.MoveEvent) {
         // Have to check if the event is valid, ie user initiated
-        if (!windows.isPointerGrabValid(event.serial))
-            return
+        if (!windows.isPointerGrabValid(event.serial)) return
 
         val pressedButton = windows.compositor.seat.pointerState.buttons.first()
         require(pressedButton.nPressed == 1L) { "Can't handle multiple pointing devies at the same time" }
@@ -152,8 +143,7 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
 
 
     fun onRequestResize(event: XdgToplevel.ResizeEvent) {
-        if (!windows.isPointerGrabValid(event.serial))
-            return
+        if (!windows.isPointerGrabValid(event.serial)) return
 
         windows.compositor.captureMode.transitionToResize(this, event.edges)
     }
@@ -161,16 +151,14 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
 
     fun onRequestMaximize() {
         // Maximize request not supported, but wayland protocol demands we send a configure back to client.
-        if (xdgToplevel.base.initialized)
-            xdgToplevel.base.scheduleConfigure()
+        if (xdgToplevel.base.initialized) xdgToplevel.base.scheduleConfigure()
 
     }
 
 
     fun onRequestFullscreen() {
         // Fullscreen not supported, Wayland protocol demands we send a configure back to client.
-        if (xdgToplevel.base.initialized)
-            xdgToplevel.base.scheduleConfigure()
+        if (xdgToplevel.base.initialized) xdgToplevel.base.scheduleConfigure()
     }
 
 
