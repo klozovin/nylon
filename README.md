@@ -8,17 +8,6 @@ Minimal Wayland compositor in Kotlin, based on wlroots.
 
 Simple GUI file manager, based on GTK and inspired by ranger.
 
-## Bindings
+## [wlroots4j](wlroots4j)
 
-Java bindings (using Panama and handwritten wrappers) to various libraries useful for writing Wayland compositors: currently wlroots, wayland and xkbcommon.
-
-## Examples
-
-Ports of wlroots/examples:
-
-* [simple.c](examples/simple)
-* [cairo-buffer.c](examples/cairo-buffer)
-* [scene-graph.c](examples/scene-graph)
-* [pointer.c](examples/pointer)
-
-Port of TinyWL (wlroots/tinywl) example compositor: [TinyWL](examples/tinywl) 
+Java bindings to [wlroots](https://gitlab.freedesktop.org/wlroots/wlroots/) and other libraries useful for writing Wayland compositors (libwayland, xkbcommon).
