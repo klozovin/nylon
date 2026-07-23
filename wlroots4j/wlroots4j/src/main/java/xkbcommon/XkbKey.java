@@ -30,6 +30,13 @@ public final class XkbKey {
     public static final int m = XKB_KEY_m();
     public static final int period = XKB_KEY_period();
 
+    public static final int Num0 = XKB_KEY_0();
+    public static final int Num1 = XKB_KEY_1();
+    public static final int Num2 = XKB_KEY_2();
+    public static final int Num3 = XKB_KEY_3();
+    public static final int Num4 = XKB_KEY_4();
+    public static final int Num5 = XKB_KEY_5();
+
     public static final int Insert = XKB_KEY_Insert();
     public static final int Delete = XKB_KEY_Delete();
 }

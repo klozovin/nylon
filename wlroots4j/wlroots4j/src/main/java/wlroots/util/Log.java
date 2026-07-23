@@ -33,30 +33,30 @@ public final class Log {
 
 
     public static void logSilent(String message) {
-        log(Importance.SILENT, message);
+        log(Importance.Silent, message);
     }
 
 
     public static void logError(String message) {
-        log(Importance.ERROR, message);
+        log(Importance.Error, message);
     }
 
 
     public static void logInfo(String message) {
-        log(Importance.INFO, message);
+        log(Importance.Info, message);
     }
 
 
     public static void logDebug(String message) {
-        log(Importance.DEBUG, message);
+        log(Importance.Debug, message);
     }
 
 
     public enum Importance {
-        SILENT(WLR_SILENT()),
-        ERROR(WLR_ERROR()),
-        INFO(WLR_INFO()),
-        DEBUG(WLR_DEBUG()),
+        Silent(WLR_SILENT()),
+        Error(WLR_ERROR()),
+        Info(WLR_INFO()),
+        Debug(WLR_DEBUG()),
         IMPORTANCE_LAST(WLR_LOG_IMPORTANCE_LAST());
 
         final int idx;

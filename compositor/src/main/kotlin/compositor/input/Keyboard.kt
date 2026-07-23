@@ -12,6 +12,7 @@ import wlroots.types.keyboard.KeyEvent
 import wlroots.types.keyboard.Keyboard
 import wlroots.types.keyboard.KeyboardModifier
 import wlroots.types.keyboard.KeyboardModifier.Alt
+import wlroots.util.Log
 import xkbcommon.Keymap
 import xkbcommon.XkbContext
 import xkbcommon.XkbKey
@@ -67,6 +68,11 @@ class Keyboard(val compositor: Compositor, val wlrKeyboard: Keyboard) {
                     XkbKey.F9 -> compositor.windowSystem.focuser.getFocused()?.moveDiagonallyDown()
                     XkbKey.F11 -> compositor.windowSystem.focuser.getFocused()
                         ?.let { compositor.captureMode.transitionToMove(it, null, InitiatedWith.Keyboard) }
+
+                    XkbKey.Num0 -> Log.init(Log.Importance.Silent)
+                    XkbKey.Num1 -> Log.init(Log.Importance.Error)
+                    XkbKey.Num2 -> Log.init(Log.Importance.Info)
+                    XkbKey.Num3 -> Log.init(Log.Importance.Debug)
 
                     XkbKey.Escape -> compositor.stop()
                     else -> isCompositorShortcut = false

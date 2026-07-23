@@ -12,7 +12,6 @@ import wlroots.types.buffer.DataAccessFlag
 import wlroots.types.output.Output
 import wlroots.types.output.OutputState
 import wlroots.types.scene.Scene
-import wlroots.types.scene.SceneBuffer
 import wlroots.types.scene.SceneOutput
 import java.lang.foreign.Arena
 import java.util.*
@@ -60,7 +59,7 @@ object CairoBuffer {
 
 
     fun run() {
-        Log.init(Log.Importance.INFO)
+        Log.init(Log.Importance.Info)
 
         display = Display.create()
         backend = Backend.autocreate(display.eventLoop, null) ?: error("Failed to create wlr_backend")

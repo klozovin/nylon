@@ -167,7 +167,7 @@ fun keyboardDestroyNotify(device: InputDevice) {
 
 
 fun main() {
-    Log.init(Log.Importance.DEBUG)
+    Log.init(Log.Importance.Debug)
     Log.logInfo("This is Java version: ${System.getProperty("java.version")}")
     Log.logDebug("Running on wlroots version: ${Version.STR}")
 

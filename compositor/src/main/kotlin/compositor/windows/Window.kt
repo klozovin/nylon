@@ -63,6 +63,11 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
     }
 
 
+    override fun toString(): String {
+        return "Window:title=${xdgToplevel.title()}:appid:${xdgToplevel.appId()}"
+    }
+
+
     //
     // *** Helper functions
     //
@@ -133,7 +138,7 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
 
     fun onRequestMove(event: XdgToplevel.MoveEvent) {
         // Have to check if the event is valid, ie user initiated
-        if (!windows.isPointerGrabValid(event.serial)) return
+        if (!windows.isPointerGrabValid(event.toplevel.base.surface, event.serial)) return
 
         val pressedButton = windows.compositor.seat.pointerState.buttons.first()
         require(pressedButton.nPressed == 1L) { "Can't handle multiple pointing devies at the same time" }
@@ -143,7 +148,7 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
 
 
     fun onRequestResize(event: XdgToplevel.ResizeEvent) {
-        if (!windows.isPointerGrabValid(event.serial)) return
+        if (!windows.isPointerGrabValid(event.toplevel.base.surface, event.serial)) return
 
         windows.compositor.captureMode.transitionToResize(this, event.edges)
     }

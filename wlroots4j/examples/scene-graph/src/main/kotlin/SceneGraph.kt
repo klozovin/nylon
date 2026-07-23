@@ -48,7 +48,7 @@ object SceneGraph {
 
 
     fun main(args: Array<String>) {
-        Log.init(Log.Importance.DEBUG)
+        Log.init(Log.Importance.Debug)
 
         display = Display.create()
         backend = Backend.autocreate(display.eventLoop, null) ?: error("Failed to create wlr_backend")

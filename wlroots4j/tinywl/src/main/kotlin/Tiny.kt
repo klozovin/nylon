@@ -626,7 +626,10 @@ object Tiny {
         grabbedToplevel = null
     }
 
-    // *** XDG Shell ************************************************************************************** //
+
+    //
+    // *** XDG Shell ***
+    //
 
     fun onXdgShellDestroy(xdgShell: XdgShell) {
         xdgShellNewToplevelListener.remove()
@@ -635,8 +638,9 @@ object Tiny {
     }
 
 
-    // *** XDG Shell: Top level *************************************************************************** //
-
+    //
+    // *** XDG Shell: Top level ***
+    //
 
     fun onNewXdgToplevel(toplevel: XdgToplevel) {
         val sceneTree = scene.xdgSurfaceCreate(toplevel.base)
@@ -667,7 +671,7 @@ object Tiny {
         // When an xdg_surface performs an initial commit, the compositor must reply with a configure so the
         // client can map the surface. tinywl configures the xdg_toplevel with 0,0 size to let the client pick
         // the dimensions itself.
-        if (xdgToplevel.base.getInitialCommit())
+        if (xdgToplevel.base.initialCommit)
             xdgToplevel.setSize(0, 0)
     }
 
@@ -818,7 +822,7 @@ object Tiny {
 
 
 fun main(args: Array<String>) {
-    Log.init(Log.Importance.DEBUG)
+    Log.init(Log.Importance.Debug)
     Tiny.main(args)
 }
 

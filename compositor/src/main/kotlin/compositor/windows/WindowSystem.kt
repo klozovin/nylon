@@ -97,7 +97,7 @@ class WindowSystem(val compositor: Compositor) {
 
         for (sceneTree in node.parentIterator) {
             findWindowBySceneTree(sceneTree)?.let { window ->
-                return UnderCursor(window, window.xdgToplevel, surface.getSurface(), nx, ny)
+                return UnderCursor(window, window.xdgToplevel, surface.surface, nx, ny)
             }
         }
 

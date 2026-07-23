@@ -268,7 +268,7 @@ object Pointer {
 
 
 fun main() {
-    Log.init(Log.Importance.DEBUG)
+    Log.init(Log.Importance.Debug)
     Pointer.main()
 }
 

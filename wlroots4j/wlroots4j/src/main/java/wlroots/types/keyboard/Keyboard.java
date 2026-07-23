@@ -196,7 +196,6 @@ public final class Keyboard extends InputDevice {
 
         Events(MemorySegment ptr) {
             assert !ptr.equals(NULL);
-
             super(wlr_input_device.events(inputDevicePtr));
             key       = Signal.of(wlr_keyboard.events.key(ptr), KeyEvent::new);
             modifiers = Signal.of(wlr_keyboard.events.modifiers(ptr), Keyboard::new);

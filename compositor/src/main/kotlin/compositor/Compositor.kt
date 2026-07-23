@@ -149,7 +149,7 @@ lateinit var COMPOSITOR: Compositor
 
 
 fun main(args: Array<String>) {
-    Log.init(Log.Importance.DEBUG)
+    Log.init(Log.Importance.Debug)
     COMPOSITOR = Compositor(terminalPath = "/usr/bin/foot")
     COMPOSITOR.start()
 }

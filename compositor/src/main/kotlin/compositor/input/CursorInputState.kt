@@ -56,7 +56,6 @@ sealed class CursorInputState(val compositor: Compositor) {
                 is WindowSystem.UnderCursor -> {
                     seat.pointerNotifyEnter(tpl.surface, tpl.nx, tpl.ny)
                     seat.pointerNotifyMotion(timeMsec, tpl.nx, tpl.ny)
-
                 }
 
                 // Clear pointer focus so the future button events are not sent to the last client to
@@ -395,7 +394,9 @@ sealed class CursorInputState(val compositor: Compositor) {
 
 
         override fun onCursorButton(event: PointerButtonEvent) {
-            if (event.state == PointerButtonState.Released) COMPOSITOR.captureMode.transitionToPassthrough()
+            if (event.state == PointerButtonState.Released) {
+                COMPOSITOR.captureMode.transitionToPassthrough()
+            }
         }
     }
 
