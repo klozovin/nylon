@@ -705,9 +705,6 @@ object Tiny {
 
 
     fun onXdgToplevelRequestMove(event: XdgToplevel.MoveEvent) {
-        // Fix: Clients (using winit Rust library) trying to initiate drag after mouse button has been released
-        if (!seat.validatePointerGrabSerial(seat.pointerState.focusedSurface!!, event.serial))
-            return
         beginInteractive(
             TOPLEVELS.find { it.xdgToplevel == event.toplevel }!!,
             CursorMode.Move,
@@ -717,9 +714,6 @@ object Tiny {
 
 
     fun onXdgToplevelRequestResize(event: XdgToplevel.ResizeEvent) {
-        if (!seat.validatePointerGrabSerial(seat.pointerState.focusedSurface!!, event.serial))
-            return
-
         beginInteractive(
             TOPLEVELS.find { it.xdgToplevel == event.toplevel }!!,
             CursorMode.Resize,
