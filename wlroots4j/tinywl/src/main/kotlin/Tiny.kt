@@ -454,8 +454,9 @@ object Tiny {
     }
 
 
-    // *** Cursor events ********************************************************************************** //
-
+    //
+    // *** Cursor events ***
+    //
 
     fun onCursorMotion(event: PointerMotionEvent) {
         cursor.move(event.pointer, event.deltaX, event.deltaY)

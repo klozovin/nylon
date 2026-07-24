@@ -132,10 +132,23 @@ class WindowSystem(val compositor: Compositor) {
      * move/resize after the mouse button has already been released, leading to state where the window is
      * "stuck" to the cursor even though no mouse buttons are held down.
      */
-    fun isPointerGrabValid(serial: Int): Boolean {
-        // TODO: Add some kind of logging when this fails
-        val focusedSurface = compositor.seat.pointerState.focusedSurface ?: error("No surface focused")
-        return compositor.seat.validatePointerGrabSerial(focusedSurface, serial)
+    fun isPointerGrabValid(surface: Surface, serial: Int): Boolean {
+        // This is for apps that have just one wlr_surface and draw everything on it (e.g. GTK apps). If this
+        // is false, we still have to validate the other way.
+        if (compositor.seat.validatePointerGrabSerial(surface, serial)) {
+            return true
+        }
+
+        // This is for apps that have multiple wlr_surfaces, for example one that shows the title bar, and other
+        // for the main app content (e.g. foot terminal).
+        val focusedSurface = compositor.seat.pointerState.focusedSurface
+        if (focusedSurface != null) {
+            return compositor.seat.validatePointerGrabSerial(focusedSurface, serial)
+
+        } else {
+            println("%%% Could not validate pointer grab because focusedSurface is null %%%")
+            return false
+        }
     }
 
 

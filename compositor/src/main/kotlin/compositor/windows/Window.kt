@@ -141,7 +141,7 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
         if (!windows.isPointerGrabValid(event.toplevel.base.surface, event.serial)) return
 
         val pressedButton = windows.compositor.seat.pointerState.buttons.first()
-        require(pressedButton.nPressed == 1L) { "Can't handle multiple pointing devies at the same time" }
+        require(pressedButton.nPressed == 1L) { "Can't handle multiple pointing devices at the same time" }
 
         windows.compositor.captureMode.transitionToMove(this, pressedButton.button)
     }
@@ -150,7 +150,10 @@ class Window(val windows: WindowSystem, val xdgToplevel: XdgToplevel) : BaseWind
     fun onRequestResize(event: XdgToplevel.ResizeEvent) {
         if (!windows.isPointerGrabValid(event.toplevel.base.surface, event.serial)) return
 
-        windows.compositor.captureMode.transitionToResize(this, event.edges)
+        val pressedButton = windows.compositor.seat.pointerState.buttons.first()
+        require(pressedButton.nPressed == 1L) { "Can't handle multiple pointing devices at the same time" }
+
+        windows.compositor.captureMode.transitionToResize(this, pressedButton.button, event.edges)
     }
 
 

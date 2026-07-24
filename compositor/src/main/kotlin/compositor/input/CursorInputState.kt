@@ -1,6 +1,9 @@
 package compositor.input
 
-import compositor.*
+import compositor.COMPOSITOR
+import compositor.Compositor
+import compositor.enumSetOf
+import compositor.unreachable
 import compositor.windows.Window
 import compositor.windows.WindowSystem
 import linux.MouseButton
@@ -31,7 +34,8 @@ sealed class CursorInputState(val compositor: Compositor) {
     class Passthrough(compositor: Compositor) : CursorInputState(compositor) {
 
         init {
-            compositor.inputSystem.cursor.setIcon("default")
+            // TODO
+//            compositor.inputSystem.cursor.setIcon("default")
         }
 
 
@@ -140,7 +144,7 @@ sealed class CursorInputState(val compositor: Compositor) {
 
                     // TODO: Detect grabbed window edge
 
-                    compositor.captureMode.transitionToResize(cursorTarget.window, edges)
+                    compositor.captureMode.transitionToResize(cursorTarget.window, event.button, edges)
                     return
 
                 }
@@ -222,7 +226,7 @@ sealed class CursorInputState(val compositor: Compositor) {
             if (state == KeyboardKeyState.Released) return false
 
             val nudge = 10
-            var nudged= true
+            var nudged = true
             when (keysym) {
                 XkbKey.i -> grabbedSceneTree.setPosition(grabbedSceneTree.x, grabbedSceneTree.y -10)
                 XkbKey.j -> grabbedSceneTree.setPosition(grabbedSceneTree.x - nudge, grabbedSceneTree.y)
@@ -255,7 +259,7 @@ sealed class CursorInputState(val compositor: Compositor) {
             // ignore them.
 
             if (event.button == initiatingButton) {
-                assert(event.state != PointerButtonState.Pressed) { "This can't happen, button pressed twice in row" }
+                require(event.state != PointerButtonState.Pressed) { "Can't happen: Button pressed twice in row" }
 
                 // Bugfix: It's not enough to just transition to `passthrough` mode, MUST pass "button released"
                 // event to client window, so it can know the users stopped the drag procedure. Otherwise, the
@@ -268,7 +272,7 @@ sealed class CursorInputState(val compositor: Compositor) {
             } else {
                 // Exit the move mode only when the released button is the one that started the move request
                 // (kind of). Don't do anything on any other mouse button, just swallow the event.
-                println("Mouse button pressed while dragging: ${event.button}")
+                println("INFO: Mouse button ${event.button} was ${event.state} while window moving")
             }
 
             // TOOD: Why do I have to comment this out???
@@ -286,6 +290,7 @@ sealed class CursorInputState(val compositor: Compositor) {
     class WindowResize(
         compositor: Compositor,
         val targetWindow: Window,
+        val initiatingButton: Int?,
 //        val grabbedToplevel: XdgToplevel,
         val edges: Edges
     ) :
@@ -394,8 +399,17 @@ sealed class CursorInputState(val compositor: Compositor) {
 
 
         override fun onCursorButton(event: PointerButtonEvent) {
-            if (event.state == PointerButtonState.Released) {
-                COMPOSITOR.captureMode.transitionToPassthrough()
+            if (event.button == initiatingButton) {
+                require(event.state != PointerButtonState.Pressed) { "Can't happen: Button pressed twice in a row" }
+                // MUST pass button released event to the client, so it knows the user stopped the drag
+                // procedure.
+                compositor.seat.pointerNotifyButton(event.timeMsec, event.button, event.state)
+                compositor.captureMode.transitionToPassthrough()
+
+            } else {
+                // Exit the resize mode only when the released mouse button is the one that started the
+                // resize. Don't do anything on other buttons, just swallow the event.
+                println("INFO: Mouse button ${event.button} was ${event.state} while window resizing")
             }
         }
     }

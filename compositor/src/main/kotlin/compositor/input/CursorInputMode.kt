@@ -40,32 +40,34 @@ class CursorInputMode(val compositor: Compositor) {
     ) {
         require(state is CursorInputState.Passthrough)
 
-        println("____")
-        println("Currently number of held buttons: ${COMPOSITOR.seat.pointerState.buttonCount}")
-        println("Buttons:")
-        for (button in COMPOSITOR.seat.pointerState.buttons) {
-            println("\t*) Button: btnid: ${button.button}, npressed: ${button.nPressed}")
-        }
+//        println("____")
+//        println("Currently number of held buttons: ${COMPOSITOR.seat.pointerState.buttonCount}")
+//        println("Buttons:")
+//        for (button in COMPOSITOR.seat.pointerState.buttons) {
+//            println("\t*) Button: btnid: ${button.button}, npressed: ${button.nPressed}")
+//        }
 
         // TODO: Use button_count for this
         // TODO: Remove this
         val pressedButtons = COMPOSITOR.seat.pointerState.buttons.filter { it.button != 0 }.map { it.button }
 
         // Change the cursor here? Right? Right??
-        compositor.inputSystem.cursor.setIcon("grabbing")
+        // TODO
+//        compositor.inputSystem.cursor.setIcon("grabbing")
 
         state = CursorInputState.WindowMove(compositor, targetWindow, pressedButton, initiatedWith)
     }
 
 
-    fun transitionToResize(targetWindow: Window, edges: Edges) {
+    fun transitionToResize(targetWindow: Window, pressedButton: Int?, edges: Edges) {
         require(state is CursorInputState.Passthrough)
 //        setCursorIcon("grabbing")
         // Icons: nw-, ne-, sw-, se-resize
 
         val cursorIconName = "${if (Top in edges) "n" else "s"}${if (Left in edges) "w" else "e"}-resize"
-        compositor.inputSystem.cursor.setIcon(cursorIconName)
-        state = CursorInputState.WindowResize(compositor, targetWindow, edges)
+//        compositor.inputSystem.cursor.setIcon(cursorIconName)
+        // TODO ^
+        state = CursorInputState.WindowResize(compositor, targetWindow, pressedButton, edges)
     }
 
     // --------------------- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
